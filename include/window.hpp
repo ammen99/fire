@@ -36,7 +36,6 @@ class __FireWindow {
         GLuint texture; // image on screen
 
         bool norender = false; // should we draw window?
-        bool paintTransformed;
         Transform transform;
 
         GLuint vbo = -1;

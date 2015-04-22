@@ -18,12 +18,11 @@ class Core {
         pollfd fd;
     
         bool moving; // are we moving a window?
-        FireWindow movingWin; // window to be moved
-        int sx, sy; // startint x & y
 
-        int lastMoveX, lastMoveY; // last pointer pos when actual move 
-        float accel; // acceleration
-        timeval lastMove; // time when lastly moved
+        FireWindow operatingWin; // window which we operate with
+
+        bool resizing;
+        int sx, sy; // starting x & y
 
     public:
         bool redraw = true; // should we redraw?
@@ -48,6 +47,11 @@ class Core {
         void moveInitiate(XButtonPressedEvent);
         void moveIntermediate(XMotionEvent);
         void moveTerminate(XButtonPressedEvent);
+
+        void resizeInitiate(XButtonPressedEvent);
+        void resizeIntermediate(XMotionEvent);
+        void resizeTerminate(XButtonPressedEvent);
+
 
         static int onXError (Display* d, XErrorEvent* xev);
         static int onOtherWmDetected(Display *d, XErrorEvent *xev);

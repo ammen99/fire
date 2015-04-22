@@ -154,10 +154,10 @@ void WinStack::updateTransientsAttrib(FireWindow win,
 void WinStack::focusWindow(FireWindow win) {
 
 
-    auto winToFocus = WindowWorker::getAncestor(win);
+    activeWin = WindowWorker::getAncestor(win);
 
-    auto w1 = findTopmostStackingWindow(winToFocus);
-    auto w2 = winToFocus;
+    auto w1 = findTopmostStackingWindow(activeWin);
+    auto w2 = activeWin;
 
     if(w1 == nullptr)
         err << "caught nullptr";
@@ -173,16 +173,13 @@ void WinStack::focusWindow(FireWindow win) {
     restackTransients(w1);
     restackTransients(w2);
 //
-    WindowWorker::setInputFocusToWindow(winToFocus->id);
+    WindowWorker::setInputFocusToWindow(activeWin->id);
 
-   err << "Event Send";
     
     XWindowChanges xwc;
     xwc.stack_mode = Above;
     xwc.sibling = w1->id;
-    XConfigureWindow(core->d, winToFocus->id, CWSibling|CWStackMode, &xwc);
+    XConfigureWindow(core->d, activeWin->id, CWSibling|CWStackMode, &xwc);
 
-    err << "Xlib calls done. Rendering Windows";
     core->redraw = true;
-    err << "FocusWindow end";
 }

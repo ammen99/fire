@@ -409,6 +409,22 @@ void WindowWorker::moveWindow(FireWindow win, int x, int y) {
             win->vao, win->vbo);
 }
 
+void WindowWorker::resizeWindow(FireWindow win, int w, int h) {
+    win->attrib.width  = w;
+    win->attrib.height = h;
+
+    XWindowChanges xwc;
+    xwc.width  = w;
+    xwc.height = h;
+
+    glDeleteBuffers(1, &win->vbo);
+    glDeleteVertexArrays(1, &win->vao);
+
+    XConfigureWindow(core->d, win->id, CWWidth | CWHeight, &xwc);
+    OpenGLWorker::generateVAOVBO(win->attrib.x, win->attrib.y,
+            win->attrib.width, win->attrib.height,
+            win->vao, win->vbo);
+}
 void WindowWorker::syncWindowAttrib(FireWindow win) {
     XWindowAttributes xwa; 
     XGetWindowAttributes(core->d, win->id, &xwa);

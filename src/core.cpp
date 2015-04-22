@@ -74,8 +74,6 @@ Core::Core() {
             root, FALSE,
             GrabModeAsync, GrabModeAsync);
 
-
-
     err << "Init ended";
 }
  
@@ -103,38 +101,27 @@ void Core::addWindow(XCreateWindowEvent xev) {
 }
 
 float degree = 0;
-int ignore = 0;
+void rotate(FireWindow w) {
+    degree += 10;
+    w->transform.rotation = glm::rotate(glm::mat4(),
+            degree * float(M_PI) / 180.0f, glm::vec3(0.0f, 1.0f, 0.0f));
+
+}
 
 void Core::handleEvent(XEvent xev){
     switch(xev.type) {
         case Expose:
             redraw = true;
         case KeyPress: {
-            if(ignore++ < 4)
-                break;
             if(xev.xkey.keycode == XKeysymToKeycode(d, XK_q))
                 err << "Bye!!", std::exit(0);
             if(xev.xkey.keycode == XKeysymToKeycode(d, XK_s))
-                OpenGLWorker::transformed = !OpenGLWorker::transformed, 
-                    redraw = true;
+                OpenGLWorker::transformed = !OpenGLWorker::transformed; 
             if(xev.xkey.keycode == XKeysymToKeycode(d, XK_a)){
-                    err << "Here";
-                auto w = 
-                    WindowWorker::getAncestor(findWindow(xev.xkey.window));
-                err << "Transforming";
-                degree += 10;
-               //if(!w)
-                //w = findWindow(0x600004);
-                if(w) {
-                    err << "win->id = " << w->id;
-                    w->paintTransformed = true; 
-                    w->transform.rotation = 
-                        glm::rotate(glm::mat4(),
-                                degree * float(M_PI) / 180.0f,
-                                glm::vec3(0.0f, 1.0f, 0.0f));
-                    redraw = true;
-                }
+                if(wins->activeWin)
+                    rotate(wins->activeWin);
             }
+
             err << "KeyPress";
             redraw = true;
             break;
@@ -168,9 +155,6 @@ void Core::handleEvent(XEvent xev){
             if(w == nullptr)
                 break;
 
-            //auto ancestor = WindowWorker::getAncestor(w);
-
-            //wins->restackAbove(w, ancestor); // restack win on top of ancestor
             w->norender = false;
             WindowWorker::syncWindowAttrib(w);
             redraw = true;
@@ -193,6 +177,13 @@ void Core::handleEvent(XEvent xev){
                 moveInitiate(xev.xbutton);    
                 break;
             }
+
+            if(xev.xbutton.button == Button1 &&
+                    xev.xbutton.state  == ControlMask ){
+                resizeInitiate(xev.xbutton);
+                break;
+            }
+
             else if(xev.xbutton.button == Button1 ||
                     xev.xbutton.button == Button2 ||
                     xev.xbutton.button == Button3 ){
@@ -205,15 +196,21 @@ void Core::handleEvent(XEvent xev){
             break;
         }
         case ButtonRelease:
-            if(moving) {
+
+            if(moving)
                 moveTerminate(xev.xbutton);
-            }
+
+            if(resizing)
+                resizeTerminate(xev.xbutton);
+
             XAllowEvents(d, ReplayPointer, xev.xbutton.time);
             break;
 
         case MotionNotify:
             if(moving)
                 moveIntermediate(xev.xmotion);
+            if(resizing)
+                resizeIntermediate(xev.xmotion);
             break;
         default:
             if(xev.type == damage + XDamageNotify)
@@ -279,7 +276,7 @@ int Core::onXError(Display *d, XErrorEvent *xev) {
         auto x = wins->findWindow(xev->resourceid);
         if (x != nullptr) 
             x->norender = true;
-        //return 0;
+        return 0;
     }
 
     err << "____________________________";
@@ -307,17 +304,10 @@ void Core::moveInitiate(XButtonPressedEvent xev) {
     if(w){
         wins->focusWindow(w);
         this->moving = true;
-        movingWin = w;
-        w->paintTransformed = true;
+        operatingWin = w;
 
         this->sx = xev.x_root;
         this->sy = xev.y_root;
-
-        this->lastMoveX = sx;
-        this->lastMoveY = sy;
-
-        this->accel = 0.0f;
-        gettimeofday(&lastMove, 0);
 
         XGrabPointer(d, overlay, TRUE,
                 ButtonPressMask | ButtonReleaseMask |
@@ -329,23 +319,23 @@ void Core::moveInitiate(XButtonPressedEvent xev) {
 
 void Core::moveTerminate(XButtonPressedEvent xev) {
     moving = false;
-    movingWin->transform.translation = glm::mat4();
+    operatingWin->transform.translation = glm::mat4();
     err << xev.x_root << " " << xev.y_root;
     int dx = xev.x_root - sx;
     int dy = xev.y_root - sy;
 
-    int nx = movingWin->attrib.x + dx;
-    int ny = movingWin->attrib.y + dy;
-    WindowWorker::moveWindow(movingWin, nx, ny);
+    int nx = operatingWin->attrib.x + dx;
+    int ny = operatingWin->attrib.y + dy;
+    WindowWorker::moveWindow(operatingWin, nx, ny);
     XUngrabPointer(core->d, CurrentTime);
 
     err << dx << " " << dy;
-    wins->focusWindow(movingWin);
+    wins->focusWindow(operatingWin);
     redraw = true; 
 }
 
 void Core::moveIntermediate(XMotionEvent xev) {
-    movingWin->transform.translation =
+    operatingWin->transform.translation =
         glm::translate(glm::mat4(),
                 glm::vec3(float(xev.x_root - sx) / float(width / 2.0),
                     float(sy - xev.y_root) / float(height / 2.0),
@@ -353,5 +343,62 @@ void Core::moveIntermediate(XMotionEvent xev) {
     redraw = true;
 }
 
+
+
+void Core::resizeInitiate(XButtonPressedEvent xev) {
+    auto w = WindowWorker::getAncestor(wins->findWindow(xev.window));
+    if(w){
+        wins->focusWindow(w);
+        this->resizing = true;
+        operatingWin = w;
+        if(w->attrib.width == 0)
+            w->attrib.width = 1;
+        if(w->attrib.height == 0)
+            w->attrib.height = 1;
+
+        this->sx = xev.x_root;
+        this->sy = xev.y_root;
+
+        XGrabPointer(d, overlay, TRUE,
+                ButtonPressMask | ButtonReleaseMask |
+                PointerMotionMask,
+                GrabModeAsync, GrabModeAsync,
+                root, None, CurrentTime);
+    }
+}
+
+void Core::resizeTerminate(XButtonPressedEvent xev) {
+    resizing = false;
+
+    operatingWin->transform.scalation = glm::mat4();
+
+    int dw = xev.x_root - sx;
+    int dh = xev.y_root - sy;
+
+    int nw = operatingWin->attrib.width  + dw;
+    int nh = operatingWin->attrib.height + dh;
+    WindowWorker::resizeWindow(operatingWin, nw, nh);
+
+    XUngrabPointer(core->d, CurrentTime);
+
+    wins->focusWindow(operatingWin);
+    redraw = true; 
+}
+
+void Core::resizeIntermediate(XMotionEvent xev) {
+
+    int dw = xev.x_root - sx;
+    int dh = xev.y_root - sy;
+
+    int nw = operatingWin->attrib.width  + dw;
+    int nh = operatingWin->attrib.height + dh;
+
+    operatingWin->transform.scalation = 
+        glm::scale(glm::mat4(), glm::vec3(
+                   float(nw) / float(operatingWin->attrib.width ),
+                   float(nh) / float(operatingWin->attrib.height),
+                   1.f));
+    redraw = true;
+}
 Core *core;
 
