@@ -371,6 +371,7 @@ void Core::resizeTerminate(XButtonPressedEvent xev) {
     resizing = false;
 
     operatingWin->transform.scalation = glm::mat4();
+    operatingWin->transform.translation = glm::mat4();
 
     int dw = xev.x_root - sx;
     int dh = xev.y_root - sy;
@@ -393,11 +394,28 @@ void Core::resizeIntermediate(XMotionEvent xev) {
     int nw = operatingWin->attrib.width  + dw;
     int nh = operatingWin->attrib.height + dh;
 
+    float kW = float(nw) / float(operatingWin->attrib.width );
+    float kH = float(nh) / float(operatingWin->attrib.height);
+
+    auto w = operatingWin;
+
+    float w2 = float(width) / 2.;
+    float h2 = float(height) / 2.;
+
+    float tlx = float(w->attrib.x) - w2,
+          tly = h2 - float(w->attrib.y);
+
+    float ntlx = kW * tlx;
+    float ntly = kH * tly;
+
+    operatingWin->transform.translation =
+    glm::translate(glm::mat4(),
+        glm::vec3(float(ntlx - tlx) / float(width  / -2.0),
+                  float(ntly - tly) / float(height / -2.0),
+                  0.f));
+
     operatingWin->transform.scalation = 
-        glm::scale(glm::mat4(), glm::vec3(
-                   float(nw) / float(operatingWin->attrib.width ),
-                   float(nh) / float(operatingWin->attrib.height),
-                   1.f));
+        glm::scale(glm::mat4(), glm::vec3(kW, kH, 1.f));
     redraw = true;
 }
 Core *core;
