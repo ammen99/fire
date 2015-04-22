@@ -14,7 +14,7 @@ glm::mat4 Transform::compose() {
         glm::translate(translation,
                 glm::vec3(0.f, 0.f, stackID * 1e-2));
 
-    return translation * rotation * scalation;
+    return trans * rotation * scalation;
 }
 
 static int attrListVisual[] = {

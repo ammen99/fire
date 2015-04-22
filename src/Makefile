@@ -1,3 +1,9 @@
+define colorecho
+	@tput setaf 6
+	@echo $1
+	@tput sgr0
+endef
+
 CC=g++
 CFLAGS= -std=c++11 -c -Wno-narrowing -MMD -MP
 LDFLAGS= -g -lX11 -lXmu -lXcomposite -lXfixes -lXdamage -ldl -lGL -lGLEW -lIL -lILU -lILUT -lglog
@@ -7,16 +13,19 @@ DEPS=$(OBJECTS:.o=.d)
 EXECUTABLE=manager
 
 all: $(EXECUTABLE)
+	$(call colorecho, "Output executable $(EXECUTABLE) ready")
 
 clean:
-	rm -rf $(OBJECTS) $(DEPS) $(EXECUTABLE)
+	@rm -rf $(OBJECTS) $(DEPS) $(EXECUTABLE)
 
 rebuild: clean all
 
 $(EXECUTABLE): $(OBJECTS)
-	$(CC) $(OBJECTS) $(LDFLAGS) -o $@
+	$(call colorecho, "Linking...")
+	@$(CC) $(OBJECTS) $(LDFLAGS) -o $@
 
 %.o: %.cpp
-	$(CC) $(CFLAGS) $< -o $@
+	$(call colorecho, "Building cpp file " $<)
+	@$(CC) $(CFLAGS) $< -o $@
 # Let make read the dependency files and handle them.
 -include $(DEPS)
