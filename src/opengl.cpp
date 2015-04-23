@@ -16,8 +16,6 @@ void OpenGLWorker::generateVAOVBO(int x, int y, int w, int h,
         GLuint &vao, GLuint &vbo) {
 
 
-    err << "regen vbo ";
-
     float w2 = float(core->width) / 2.;
     float h2 = float(core->height) / 2.;
 
@@ -59,10 +57,6 @@ void OpenGLWorker::generateVAOVBO(int x, int y, int w, int h,
 
     glEnableVertexAttribArray (position);
     glEnableVertexAttribArray (uvPosition);
-
-    //glBindBuffer(GL_ARRAY_BUFFER, 0);
-    //glBindVertexArray(0);
-
 }
 
 
@@ -93,13 +87,64 @@ void OpenGLWorker::renderTransformedTexture(GLuint tex,
 
 
 void OpenGLWorker::preStage() {
-    //glClearColor(0.5, 1.0, 1.0, 1.0);
     glClear ( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 }
 
-GLuint dummyVAO, dummyVBO;
+#define cout std::cout
+
+const char *getStrSrc(GLenum src) {
+    if(src == GL_DEBUG_SOURCE_API_ARB            )return "API_ARB        ";
+    if(src == GL_DEBUG_SOURCE_WINDOW_SYSTEM_ARB  )return "WINDOW_SYSTEM  ";
+    if(src == GL_DEBUG_SOURCE_SHADER_COMPILER_ARB)return "SHADER_COMPILER";
+    if(src == GL_DEBUG_SOURCE_THIRD_PARTY_ARB    )return "THIRD_PARTYB   ";
+    if(src == GL_DEBUG_SOURCE_APPLICATION_ARB    )return "APPLICATIONB   ";
+    if(src == GL_DEBUG_SOURCE_OTHER_ARB          )return "OTHER_ARB      ";
+    else return "UNKNOWN";
+}
+
+const char *getStrType(GLenum type) {
+    if(type==GL_DEBUG_TYPE_ERROR_ARB              )return "ERROR_ARB          ";
+    if(type==GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR_ARB)return "DEPRECATED_BEHAVIOR";
+    if(type==GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR_ARB )return "UNDEFINED_BEHAVIOR ";
+    if(type==GL_DEBUG_TYPE_PORTABILITY_ARB        )return "PORTABILITY_ARB    ";
+    if(type==GL_DEBUG_TYPE_PERFORMANCE_ARB        )return "PERFORMANCE_ARB    ";
+    if(type==GL_DEBUG_TYPE_OTHER_ARB              )return "OTHER_ARB          ";
+    return "UNKNOWN";
+}
+
+const char *getStrSeverity(GLenum severity) {
+    if( severity == GL_DEBUG_SEVERITY_HIGH_ARB  )return "HIGH";
+    if( severity == GL_DEBUG_SEVERITY_MEDIUM_ARB)return "MEDIUM";
+    if( severity == GL_DEBUG_SEVERITY_LOW_ARB   )return "LOW";
+    if( severity == GL_DEBUG_SEVERITY_NOTIFICATION) return "NOTIFICATION";
+    return "UNKNOWN";
+
+}
+
+
+void errorHandler(GLenum src, GLenum type,
+               GLuint id, GLenum severity,
+               GLsizei len, const GLchar *msg,
+               const void *dummy) {
+
+    cout << "_______________________________________________";
+    cout << "OGL debug: ";
+    cout << "Source: " << getStrSrc(src);
+    cout << "Type: " << getStrType(type);
+    cout << "ID: " << id;
+    cout << "Severity: " << getStrSeverity(severity);
+    cout << "Msg: " << msg;
+    cout << "_______________________________________________";
+}
+
+
 
 void OpenGLWorker::initOpenGL(const char *shaderSrcPath) {
+
+    glEnable(GL_DEBUG_OUTPUT);
+    glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+    glDebugMessageCallback(errorHandler, (void*)0);
+
     glClearColor ( .0f, .0f, .0f, 0.0f );
     glClearDepth ( 1.f );
     glEnable ( GL_DEPTH_TEST );
@@ -109,8 +154,6 @@ void OpenGLWorker::initOpenGL(const char *shaderSrcPath) {
     glDepthFunc ( GL_LESS );
     glViewport ( 0, 0, core->width, core->height );
     glDisable ( GL_CULL_FACE );
-
-    err << glewGetErrorString(glGetError());
 
     std::string tmp = shaderSrcPath;
 
@@ -153,7 +196,8 @@ void OpenGLWorker::initOpenGL(const char *shaderSrcPath) {
     glLinkProgram (program);
     glUseProgram (program);
 
-    
+
+    GLuint dummyVAO, dummyVBO;
     glGenVertexArrays(1, &dummyVAO);
     glBindVertexArray(dummyVAO);
     generateVAOVBO(0, 0, core->width, core->height, dummyVAO, dummyVBO);
@@ -162,14 +206,14 @@ void OpenGLWorker::initOpenGL(const char *shaderSrcPath) {
     mvpID = glGetUniformLocation(program, "MVP");
     normalID = glGetUniformLocation(program, "NormalMatrix");
 
-    err << std::tan(M_PI/8);
     View = glm::lookAt(glm::vec3(0., 1., 1 ),
                        glm::vec3(0., 0., 0.),
                        glm::vec3(0., 1., 0.));
     Proj = glm::perspective(45.f, 1.f, .1f, 100.f);
-    //MVP = Proj * View;
+
     MVP = glm::mat4();
     NM = glm::inverse(glm::transpose(glm::mat3(View)));
+
     glUniformMatrix4fv(mvpID, 1, GL_FALSE, &MVP[0][0]);
     glUniformMatrix3fv(normalID, 1, GL_FALSE, &NM[0][0]);
 

@@ -144,7 +144,6 @@ void Core::handleEvent(XEvent xev){
             if (xev.xcreatewindow.window == overlay)
                 break;
 
-            err << "Creating windows";
             XMapWindow(core->d, xev.xcreatewindow.window);
             addWindow(xev.xcreatewindow);
 
@@ -156,13 +155,12 @@ void Core::handleEvent(XEvent xev){
             if ( w == nullptr )
                 break;
 
-            err << "Destroy Notify";
             wins->removeWindow(w, true);
             redraw = true;
             break;
         }
         case MapNotify: {
-            err << "MapNotify";
+
             auto w = wins->findWindow(xev.xmap.window);
             if(w == nullptr)
                 break;
@@ -173,7 +171,7 @@ void Core::handleEvent(XEvent xev){
             break;
         }
         case UnmapNotify: {
-            err << "UnmapNotify";
+
             auto w = wins->findWindow(xev.xunmap.window);
             if(w == nullptr)
                 break;
@@ -185,13 +183,15 @@ void Core::handleEvent(XEvent xev){
 
         case ButtonPress: {
             if(xev.xbutton.button == Button1 &&
-               xev.xbutton.state  == Mod1Mask ){
+               xev.xbutton.state  == Mod1Mask){
+
                 moveInitiate(xev.xbutton);    
                 break;
             }
 
-            if(xev.xbutton.button == Button1 &&
-                    xev.xbutton.state  == ControlMask ){
+            if(xev.xbutton.button == Button1    &&
+               xev.xbutton.state  == ControlMask){
+
                 resizeInitiate(xev.xbutton);
                 break;
             }
@@ -204,6 +204,7 @@ void Core::handleEvent(XEvent xev){
                 if(w != nullptr)
                     wins->focusWindow(w);
             }
+
             XAllowEvents(d, ReplayPointer, xev.xbutton.time);
             break;
         }
@@ -221,8 +222,10 @@ void Core::handleEvent(XEvent xev){
         case MotionNotify:
             if(moving)
                 moveIntermediate(xev.xmotion);
+
             if(resizing)
                 resizeIntermediate(xev.xmotion);
+
             break;
         default:
             if(xev.type == damage + XDamageNotify)
@@ -310,7 +313,6 @@ void Core::wait(int timeout) {
     poll(&fd, 1, timeout);
 }
 
-
 void Core::moveInitiate(XButtonPressedEvent xev) {
     auto w = WindowWorker::getAncestor(wins->findWindow(xev.window));
     if(w){
@@ -330,23 +332,24 @@ void Core::moveInitiate(XButtonPressedEvent xev) {
 }
 
 void Core::moveTerminate(XButtonPressedEvent xev) {
+
     moving = false;
     operatingWin->transform.translation = glm::mat4();
-    err << xev.x_root << " " << xev.y_root;
+
     int dx = xev.x_root - sx;
     int dy = xev.y_root - sy;
 
     int nx = operatingWin->attrib.x + dx;
     int ny = operatingWin->attrib.y + dy;
+
     WindowWorker::moveWindow(operatingWin, nx, ny);
     XUngrabPointer(core->d, CurrentTime);
-
-    err << dx << " " << dy;
     wins->focusWindow(operatingWin);
     redraw = true; 
 }
 
 void Core::moveIntermediate(XMotionEvent xev) {
+
     operatingWin->transform.translation =
         glm::translate(glm::mat4(),
                 glm::vec3(float(xev.x_root - sx) / float(width / 2.0),
@@ -355,14 +358,14 @@ void Core::moveIntermediate(XMotionEvent xev) {
     redraw = true;
 }
 
-
-
 void Core::resizeInitiate(XButtonPressedEvent xev) {
     auto w = WindowWorker::getAncestor(wins->findWindow(xev.window));
     if(w){
+
         wins->focusWindow(w);
         this->resizing = true;
         operatingWin = w;
+
         if(w->attrib.width == 0)
             w->attrib.width = 1;
         if(w->attrib.height == 0)
@@ -393,7 +396,6 @@ void Core::resizeTerminate(XButtonPressedEvent xev) {
     WindowWorker::resizeWindow(operatingWin, nw, nh);
 
     XUngrabPointer(core->d, CurrentTime);
-
     wins->focusWindow(operatingWin);
     redraw = true; 
 }
@@ -431,4 +433,3 @@ void Core::resizeIntermediate(XMotionEvent xev) {
     redraw = true;
 }
 Core *core;
-

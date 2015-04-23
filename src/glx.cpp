@@ -101,7 +101,7 @@ void GLXWorker::createDefaultContext(Window win) {
 void GLXWorker::initGLX() {
 
     auto x = glXGetCurrentContext();
-    if ( x == NULL ) 
+    if ( x == NULL )
         err << "current context is NULL!!!",
             std::exit(-1);
     glewExperimental = GL_TRUE;
@@ -117,7 +117,7 @@ void GLXWorker::initGLX() {
     ilutInit();
     ilutRenderer ( ILUT_OPENGL );
 
-    
+
     glXBindTexImageEXT_func = (PFNGLXBINDTEXIMAGEEXTPROC)
         glXGetProcAddress((GLubyte *) "glXBindTexImageEXT");
     glXReleaseTexImageEXT_func = (PFNGLXRELEASETEXIMAGEEXTPROC)
@@ -128,7 +128,7 @@ void GLXWorker::initGLX() {
 }
 
 GLuint GLXWorker::compileShader(const char *src, GLuint type) {
-    GLuint shader = glCreateShader(type); 
+    GLuint shader = glCreateShader(type);
     glShaderSource ( shader, 1, &src, NULL );
 
     int s;
@@ -163,8 +163,8 @@ GLuint GLXWorker::loadShader(const char *path, GLuint type) {
     if(!file.is_open())
         err << "Cannot open shader file. Aborting", std::exit(1);
 
-    std::string str, line; 
-    
+    std::string str, line;
+
     while(std::getline(file, line))
         str += line, str += '\n';
 
@@ -179,7 +179,7 @@ void GLXWorker::endFrame(Window win) {
 GLuint GLXWorker::textureFromPixmap(Pixmap pixmap,
         int w, int h, XVisualInfo* xvi) {
 
-    auto fbconf = fbconfigs[xvi->depth]; 
+    auto fbconf = fbconfigs[xvi->depth];
     if (fbconf == nullptr)
         return -1;
 
@@ -207,7 +207,7 @@ GLuint GLXWorker::textureFromPixmap(Pixmap pixmap,
     //err << "bound pixmap to texture";
     glXDestroyPixmap(core->d, gpix);
 
-    return tex;    
+    return tex;
 }
 
 void GLXWorker::initFBConf() {
@@ -231,7 +231,7 @@ void GLXWorker::initFBConf() {
 
             vi = glXGetVisualFromFBConfig (core->d, fbConfigs[j]);
             if (vi == NULL)
-                continue; 
+                continue;
 
             visualDepth = vi->depth;
 
@@ -245,7 +245,7 @@ void GLXWorker::initFBConf() {
             glXGetFBConfigAttrib (core->d, fbConfigs[j],
                     GLX_BUFFER_SIZE, &value);
             if (value != i && (value - alpha) != i)
-                continue; 
+                continue;
 
             value = 0;
             if (i == 32) {
@@ -256,29 +256,29 @@ void GLXWorker::initFBConf() {
 
                     glXGetFBConfigAttrib (core->d, fbConfigs[j],
                             GLX_BIND_TO_TEXTURE_RGB_EXT, &value);
-                    if (!value)  
+                    if (!value)
                         continue;
-                }   
-            }   
+                }
+            }
 
             glXGetFBConfigAttrib (core->d, fbConfigs[j],
                     GLX_DOUBLEBUFFER, &value);
             if (value > db)
-                continue; 
+                continue;
 
             db = value;
 
             glXGetFBConfigAttrib (core->d, fbConfigs[j],
                     GLX_STENCIL_SIZE, &value);
             if (value > stencil)
-                continue; 
+                continue;
 
             stencil = value;
 
             glXGetFBConfigAttrib (core->d, fbConfigs[j],
                     GLX_DEPTH_SIZE, &value);
             if (value > depth)
-                continue; 
+                continue;
 
             depth = value;
 
