@@ -13,7 +13,7 @@ class OpenGLWorker {
     public:
         static bool transformed;
 
-        static void initOpenGL();
+        static void initOpenGL(const char *shaderSrcPath);
         static void renderTransformedTexture(GLuint text, GLuint vao, GLuint vbo, glm::mat4 t);
         static void renderTexture(GLuint text, GLuint vao, GLuint vbo);
         static void rotate(float x, float y, float z, float direction);

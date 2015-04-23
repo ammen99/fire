@@ -157,9 +157,12 @@ GLuint GLXWorker::compileShader(const char *src, GLuint type) {
 }
 
 GLuint GLXWorker::loadShader(const char *path, GLuint type) {
+
+    err << path;
     std::fstream file(path);
     if(!file.is_open())
         err << "Cannot open shader file. Aborting", std::exit(1);
+
     std::string str, line; 
     
     while(std::getline(file, line))

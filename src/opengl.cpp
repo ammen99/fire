@@ -99,7 +99,7 @@ void OpenGLWorker::preStage() {
 
 GLuint dummyVAO, dummyVBO;
 
-void OpenGLWorker::initOpenGL() {
+void OpenGLWorker::initOpenGL(const char *shaderSrcPath) {
     glClearColor ( .0f, .0f, .0f, 0.0f );
     glClearDepth ( 1.f );
     glEnable ( GL_DEPTH_TEST );
@@ -112,25 +112,34 @@ void OpenGLWorker::initOpenGL() {
 
     err << glewGetErrorString(glGetError());
 
+    std::string tmp = shaderSrcPath;
+
     GLuint vss =
-        GLXWorker::loadShader("/static/shaders/vertex.glsl",
+        GLXWorker::loadShader(std::string(shaderSrcPath)
+                .append("/vertex.glsl").c_str(),
                 GL_VERTEX_SHADER);
 
     GLuint fss =
-        GLXWorker::loadShader("/static/shaders/frag.glsl",
-            GL_FRAGMENT_SHADER);
+        GLXWorker::loadShader(std::string(shaderSrcPath)
+                .append("/frag.glsl").c_str(),
+                GL_FRAGMENT_SHADER);
 
     GLuint tcs =
-        GLXWorker::loadShader("/static/shaders/tcs.glsl",
+        GLXWorker::loadShader(std::string(shaderSrcPath)
+                .append("/tcs.glsl").c_str(),
                 GL_TESS_CONTROL_SHADER);
+
     GLuint tes =
-        GLXWorker::loadShader("/static/shaders/tes.glsl",
+        GLXWorker::loadShader(std::string(shaderSrcPath)
+                .append("/tes.glsl").c_str(),
                 GL_TESS_EVALUATION_SHADER);
+
     GLuint gss =
-        GLXWorker::loadShader("/static/shaders/geom.glsl",
+        GLXWorker::loadShader(std::string(shaderSrcPath)
+                .append("/geom.glsl").c_str(),
                 GL_GEOMETRY_SHADER);
 
-    
+
     program = glCreateProgram();
 
     glAttachShader (program, vss);

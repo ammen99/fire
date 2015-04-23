@@ -87,7 +87,7 @@ void Core::setBackground(const char *path) {
     background->texture = GLXWorker::loadImage(const_cast<char*>(path));
     background->norender = false;
 
-    OpenGLWorker::generateVAOVBO(0, height, width, height, 
+    OpenGLWorker::generateVAOVBO(0, height, width, -height, 
             background->vao, background->vbo);
 
     background->type = WindowTypeDesktop;
