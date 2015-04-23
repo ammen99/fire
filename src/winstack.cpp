@@ -9,6 +9,10 @@ WinStack::WinStack() {
 }
 
 void WinStack::addWindow(FireWindow win) {
+    if(win->type == WindowTypeDesktop) {
+        wins.push_back(win);
+        return;
+    }
     wins.push_front(win);
 
     win->transientFor = WindowWorker::getTransient(win);
@@ -153,6 +157,8 @@ void WinStack::updateTransientsAttrib(FireWindow win,
 
 void WinStack::focusWindow(FireWindow win) {
 
+    if(win->type == WindowTypeDesktop)
+        return;
 
     activeWin = WindowWorker::getAncestor(win);
 

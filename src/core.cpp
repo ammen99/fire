@@ -20,7 +20,6 @@ Core::Core() {
         err << "Failed to open display!";
 
 
-    //XSynchronize(d, True);
     root = DefaultRootWindow(d);
     fd.fd = ConnectionNumber(d);
     fd.events = POLLIN;
@@ -74,12 +73,25 @@ Core::Core() {
             root, FALSE,
             GrabModeAsync, GrabModeAsync);
 
+    background = std::make_shared<__FireWindow>();
+
     err << "Init ended";
 }
  
 Core::~Core(){
     XCompositeReleaseOverlayWindow(d, overlay);
     XCloseDisplay(d);
+}
+
+void Core::setBackground(const char *path) {
+    background->texture = GLXWorker::loadImage(const_cast<char*>(path));
+    background->norender = false;
+
+    OpenGLWorker::generateVAOVBO(0, height, width, height, 
+            background->vao, background->vbo);
+
+    background->type = WindowTypeDesktop;
+    wins->addWindow(background);
 }
 
 FireWindow Core::findWindow(Window win) {

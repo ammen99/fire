@@ -9,6 +9,7 @@ class WinStack;
 
 class Core {
     private:
+        FireWindow background;
         int damage;
 
         static WinStack *wins;
@@ -26,7 +27,8 @@ class Core {
 
     public:
         bool redraw = true; // should we redraw?
-
+        
+        void setBackground(const char *path);
 
     public:
         ~Core();

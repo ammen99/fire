@@ -12,55 +12,6 @@ glm::mat4 OpenGLWorker::View;
 glm::mat4 OpenGLWorker::Proj;
 glm::mat3 OpenGLWorker::NM;
 
-//using std::cout;
-//using std::endl;
-#define cout err
-
-const char *getStrSrc(GLenum src) {
-    if(src == GL_DEBUG_SOURCE_API_ARB            )return "API_ARB        ";
-    if(src == GL_DEBUG_SOURCE_WINDOW_SYSTEM_ARB  )return "WINDOW_SYSTEM  ";
-    if(src == GL_DEBUG_SOURCE_SHADER_COMPILER_ARB)return "SHADER_COMPILER";
-    if(src == GL_DEBUG_SOURCE_THIRD_PARTY_ARB    )return "THIRD_PARTYB   ";
-    if(src == GL_DEBUG_SOURCE_APPLICATION_ARB    )return "APPLICATIONB   ";
-    if(src == GL_DEBUG_SOURCE_OTHER_ARB          )return "OTHER_ARB      ";
-    else return "UNKNOWN";
-}
-
-const char *getStrType(GLenum type) {
-    if(type==GL_DEBUG_TYPE_ERROR_ARB              )return "ERROR_ARB          ";
-    if(type==GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR_ARB)return "DEPRECATED_BEHAVIOR";
-    if(type==GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR_ARB )return "UNDEFINED_BEHAVIOR ";
-    if(type==GL_DEBUG_TYPE_PORTABILITY_ARB        )return "PORTABILITY_ARB    ";
-    if(type==GL_DEBUG_TYPE_PERFORMANCE_ARB        )return "PERFORMANCE_ARB    ";
-    if(type==GL_DEBUG_TYPE_OTHER_ARB              )return "OTHER_ARB          ";
-    return "UNKNOWN";
-}
-
-const char *getStrSeverity(GLenum severity) {
-    if( severity == GL_DEBUG_SEVERITY_HIGH_ARB  )return "HIGH";
-    if( severity == GL_DEBUG_SEVERITY_MEDIUM_ARB)return "MEDIUM";
-    if( severity == GL_DEBUG_SEVERITY_LOW_ARB   )return "LOW";
-    if( severity == GL_DEBUG_SEVERITY_NOTIFICATION) return "NOTIFICATION";
-    return "UNKNOWN";
-
-}
-
-
-void errorHandler(GLenum src, GLenum type,
-        GLuint id, GLenum severity,
-        GLsizei len, const GLchar *msg,
-        const void *dummy) {
-
-    cout << "_______________________________________________";
-    cout << "OGL debug: ";
-    cout << "Source: " << getStrSrc(src);
-    cout << "Type: " << getStrType(type);
-    cout << "ID: " << id;
-    cout << "Severity: " << getStrSeverity(severity);
-    cout << "Msg: " << msg;
-    cout << "_______________________________________________";
-}
-
 void OpenGLWorker::generateVAOVBO(int x, int y, int w, int h,
         GLuint &vao, GLuint &vbo) {
 
@@ -118,6 +69,7 @@ void OpenGLWorker::generateVAOVBO(int x, int y, int w, int h,
 void OpenGLWorker::renderTexture(GLuint tex, GLuint vao, GLuint vbo) {
     glBindVertexArray(vao);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBindTexture(GL_TEXTURE_2D, tex);
 
     glPatchParameteri(GL_PATCH_VERTICES, 3);
     glDrawArrays (GL_PATCHES, 0, 6);
@@ -206,8 +158,8 @@ void OpenGLWorker::initOpenGL() {
                        glm::vec3(0., 0., 0.),
                        glm::vec3(0., 1., 0.));
     Proj = glm::perspective(45.f, 1.f, .1f, 100.f);
-    MVP = Proj * View;
-    //MVP = glm::mat4();
+    //MVP = Proj * View;
+    MVP = glm::mat4();
     NM = glm::inverse(glm::transpose(glm::mat3(View)));
     glUniformMatrix4fv(mvpID, 1, GL_FALSE, &MVP[0][0]);
     glUniformMatrix3fv(normalID, 1, GL_FALSE, &NM[0][0]);

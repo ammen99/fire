@@ -144,6 +144,12 @@ void WindowWorker::finishWindow(FireWindow win) {
 
 
 void WindowWorker::renderWindow(FireWindow win) {
+    if(win->type == WindowTypeDesktop){
+        OpenGLWorker::renderTransformedTexture(win->texture,
+                win->vao, win->vbo,
+                win->transform.compose()); 
+        return;
+    }
 
     if(!WindowWorker::setWindowTexture(win)) {
         err <<"failed to paint window " << win->id << " (no texture avail)";

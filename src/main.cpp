@@ -12,6 +12,7 @@ int main(int argc, const char **argv ) {
 
     OpenGLWorker::initOpenGL();
     //OpenGLWorker::prepare();
+    core->setBackground("/tarball/backgrounds/last.jpg");
 
     core->loop();
    
