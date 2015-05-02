@@ -16,7 +16,7 @@ Core::Core() {
     err << "init start";
     d = XOpenDisplay(NULL);
 
-    if ( d == nullptr ) 
+    if ( d == nullptr )
         err << "Failed to open display!";
 
 
@@ -34,7 +34,7 @@ Core::Core() {
 
     XSetErrorHandler(&Core::onOtherWmDetected);
 
-    XCompositeRedirectSubwindows(d, root, CompositeRedirectManual);   
+    XCompositeRedirectSubwindows(d, root, CompositeRedirectManual);
     XSelectInput (d, root,
              SubstructureRedirectMask | SubstructureNotifyMask   |
              StructureNotifyMask      | PropertyChangeMask       |
@@ -58,7 +58,7 @@ Core::Core() {
     XFixesSetWindowShapeRegion(d, overlay, ShapeInput, 0, 0, region);
     XFixesDestroyRegion(d, region);
 
-    int dummy; 
+    int dummy;
     XDamageQueryExtension(d, &damage, &dummy);
 
     XGrabKey(d, XKeysymToKeycode(d, XK_a), ControlMask,
@@ -77,17 +77,17 @@ Core::Core() {
 
     err << "Init ended";
 }
- 
+
 Core::~Core(){
     XCompositeReleaseOverlayWindow(d, overlay);
     XCloseDisplay(d);
 }
 
 void Core::setBackground(const char *path) {
-    background->texture = GLXWorker::loadImage(const_cast<char*>(path));
+    background->texture = GLXUtils::loadImage(const_cast<char*>(path));
     background->norender = false;
 
-    OpenGLWorker::generateVAOVBO(0, height, width, -height, 
+    OpenGLWorker::generateVAOVBO(0, height, width, -height,
             background->vao, background->vbo);
 
     background->type = WindowTypeDesktop;
@@ -128,7 +128,7 @@ void Core::handleEvent(XEvent xev){
             if(xev.xkey.keycode == XKeysymToKeycode(d, XK_q))
                 err << "Bye!!", std::exit(0);
             if(xev.xkey.keycode == XKeysymToKeycode(d, XK_s))
-                OpenGLWorker::transformed = !OpenGLWorker::transformed; 
+                OpenGLWorker::transformed = !OpenGLWorker::transformed;
             if(xev.xkey.keycode == XKeysymToKeycode(d, XK_a)){
                 if(wins->activeWin)
                     rotate(wins->activeWin);
@@ -144,10 +144,13 @@ void Core::handleEvent(XEvent xev){
             if (xev.xcreatewindow.window == overlay)
                 break;
 
+            err << "Crash not";
             XMapWindow(core->d, xev.xcreatewindow.window);
+            err << "Crash not middle";
             addWindow(xev.xcreatewindow);
 
             redraw = true;
+            err << "Crash not 2";
             break;
         }
         case DestroyNotify: {
@@ -166,7 +169,7 @@ void Core::handleEvent(XEvent xev){
                 break;
 
             w->norender = false;
-            WindowWorker::syncWindowAttrib(w);
+            WinUtil::syncWindowAttrib(w);
             redraw = true;
             break;
         }
@@ -185,7 +188,7 @@ void Core::handleEvent(XEvent xev){
             if(xev.xbutton.button == Button1 &&
                xev.xbutton.state  == Mod1Mask){
 
-                moveInitiate(xev.xbutton);    
+                moveInitiate(xev.xbutton);
                 break;
             }
 
@@ -200,7 +203,7 @@ void Core::handleEvent(XEvent xev){
                     xev.xbutton.button == Button2 ||
                     xev.xbutton.button == Button3 ){
 
-                auto w = wins->findWindow(xev.xbutton.window);                  
+                auto w = wins->findWindow(xev.xbutton.window);
                 if(w != nullptr)
                     wins->focusWindow(w);
             }
@@ -248,7 +251,7 @@ void Core::loop(){
     XEvent xev;
 
     while(true) {
-        
+
         while(XPending(d)) {
             XNextEvent(d, &xev);
             handleEvent(xev);
@@ -259,7 +262,7 @@ void Core::loop(){
             after.tv_usec - before.tv_usec;
 
         if(diff < cycle) {
-            wait(cycle - diff); 
+            wait(cycle - diff);
             if(fd.revents & POLLIN)
                 continue;
             fd.revents = 0;
@@ -289,7 +292,7 @@ int Core::onXError(Display *d, XErrorEvent *xev) {
             << xev->resourceid;
 
         auto x = wins->findWindow(xev->resourceid);
-        if (x != nullptr) 
+        if (x != nullptr)
             x->norender = true;
         return 0;
     }
@@ -306,7 +309,7 @@ int Core::onXError(Display *d, XErrorEvent *xev) {
 void Core::renderAllWindows() {
     OpenGLWorker::preStage();
     wins->renderWindows();
-    GLXWorker::endFrame(overlay);
+    GLXUtils::endFrame(overlay);
 }
 
 void Core::wait(int timeout) {
@@ -314,7 +317,7 @@ void Core::wait(int timeout) {
 }
 
 void Core::moveInitiate(XButtonPressedEvent xev) {
-    auto w = WindowWorker::getAncestor(wins->findWindow(xev.window));
+    auto w = WinUtil::getAncestor(wins->findWindow(xev.window));
     if(w){
         wins->focusWindow(w);
         this->moving = true;
@@ -342,10 +345,10 @@ void Core::moveTerminate(XButtonPressedEvent xev) {
     int nx = operatingWin->attrib.x + dx;
     int ny = operatingWin->attrib.y + dy;
 
-    WindowWorker::moveWindow(operatingWin, nx, ny);
+    WinUtil::moveWindow(operatingWin, nx, ny);
     XUngrabPointer(core->d, CurrentTime);
     wins->focusWindow(operatingWin);
-    redraw = true; 
+    redraw = true;
 }
 
 void Core::moveIntermediate(XMotionEvent xev) {
@@ -359,7 +362,7 @@ void Core::moveIntermediate(XMotionEvent xev) {
 }
 
 void Core::resizeInitiate(XButtonPressedEvent xev) {
-    auto w = WindowWorker::getAncestor(wins->findWindow(xev.window));
+    auto w = WinUtil::getAncestor(wins->findWindow(xev.window));
     if(w){
 
         wins->focusWindow(w);
@@ -393,11 +396,11 @@ void Core::resizeTerminate(XButtonPressedEvent xev) {
 
     int nw = operatingWin->attrib.width  + dw;
     int nh = operatingWin->attrib.height + dh;
-    WindowWorker::resizeWindow(operatingWin, nw, nh);
+    WinUtil::resizeWindow(operatingWin, nw, nh);
 
     XUngrabPointer(core->d, CurrentTime);
     wins->focusWindow(operatingWin);
-    redraw = true; 
+    redraw = true;
 }
 
 void Core::resizeIntermediate(XMotionEvent xev) {
@@ -428,8 +431,18 @@ void Core::resizeIntermediate(XMotionEvent xev) {
                   float(ntly - tly) / float(height / -2.0),
                   0.f));
 
-    operatingWin->transform.scalation = 
+    operatingWin->transform.scalation =
         glm::scale(glm::mat4(), glm::vec3(kW, kH, 1.f));
     redraw = true;
 }
+
+std::tuple<int, int> Core::getWorkspace() {
+    return std::make_tuple(vx, vy);
+}
+
+void Core::switchWorkspace(std::tuple<int, int> nPos) {
+    vx = std::get<0> (nPos);
+    vy = std::get<1> (nPos);
+}
+
 Core *core;

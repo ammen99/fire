@@ -1,15 +1,21 @@
 #include "../include/core.hpp"
 
-typedef GLXContext (*glXCreateContextAttribsARBProc) (Display*, GLXFBConfig, GLXContext, Bool, const int* );
-
-static PFNGLXBINDTEXIMAGEEXTPROC glXBindTexImageEXT_func = NULL;
-static PFNGLXRELEASETEXIMAGEEXTPROC glXReleaseTexImageEXT_func = NULL;
-
-GLXFBConfig GLXWorker::fbconfigs[33];
+namespace GLXUtils {
 
 
+    namespace {
+        typedef GLXContext (*glXCreateContextAttribsARBProc) (Display*,
+                GLXFBConfig, GLXContext,
+                Bool, const int* );
 
-GLuint GLXWorker::loadImage (char* path) {
+        PFNGLXBINDTEXIMAGEEXTPROC glXBindTexImageEXT_func = NULL;
+        PFNGLXRELEASETEXIMAGEEXTPROC glXReleaseTexImageEXT_func = NULL;
+    }
+
+
+GLXFBConfig fbconfigs[33];
+
+GLuint loadImage (char* path) {
     GLuint textureID;
     ILuint imageID;
 
@@ -50,7 +56,7 @@ GLuint GLXWorker::loadImage (char* path) {
 }
 
 
-void GLXWorker::createNewContext(Window win) {
+void createNewContext(Window win) {
     int dummy;
     GLXFBConfig *fbconfig = glXGetFBConfigs(core->d,
             DefaultScreen(core->d), &dummy);
@@ -59,7 +65,7 @@ void GLXWorker::createNewContext(Window win) {
         printf ( "Couldn't get FBConfigs list!\n" ),
                std::exit (-1);
 
-    auto xvi = WindowWorker::getVisualInfoForWindow(win);
+    auto xvi = WinUtil::getVisualInfoForWindow(win);
     int i = 0;
     for (; i < dummy; i++ ) {
         auto id = glXGetVisualFromFBConfig(core->d, fbconfig[i]);
@@ -87,8 +93,8 @@ void GLXWorker::createNewContext(Window win) {
     glXMakeCurrent ( core->d, win, context );
 
 }
-void GLXWorker::createDefaultContext(Window win) {
-    auto xvi = WindowWorker::getVisualInfoForWindow(win);
+void createDefaultContext(Window win) {
+    auto xvi = WinUtil::getVisualInfoForWindow(win);
     GLXContext ctx = glXCreateContext(core->d, xvi, NULL, 0);
     glXMakeCurrent(core->d, win, ctx);
     XFree(xvi);
@@ -98,7 +104,7 @@ void GLXWorker::createDefaultContext(Window win) {
 #define uchar unsigned char
 
 
-void GLXWorker::initGLX() {
+void initGLX() {
 
     auto x = glXGetCurrentContext();
     if ( x == NULL )
@@ -127,7 +133,7 @@ void GLXWorker::initGLX() {
 
 }
 
-GLuint GLXWorker::compileShader(const char *src, GLuint type) {
+GLuint compileShader(const char *src, GLuint type) {
     GLuint shader = glCreateShader(type);
     glShaderSource ( shader, 1, &src, NULL );
 
@@ -156,7 +162,7 @@ GLuint GLXWorker::compileShader(const char *src, GLuint type) {
     return shader;
 }
 
-GLuint GLXWorker::loadShader(const char *path, GLuint type) {
+GLuint loadShader(const char *path, GLuint type) {
 
     err << path;
     std::fstream file(path);
@@ -168,15 +174,15 @@ GLuint GLXWorker::loadShader(const char *path, GLuint type) {
     while(std::getline(file, line))
         str += line, str += '\n';
 
-    return GLXWorker::compileShader(str.c_str(), type);
+    return compileShader(str.c_str(), type);
 }
 
 
-void GLXWorker::endFrame(Window win) {
+void endFrame(Window win) {
     glXSwapBuffers(core->d, win);
 }
 
-GLuint GLXWorker::textureFromPixmap(Pixmap pixmap,
+GLuint textureFromPixmap(Pixmap pixmap,
         int w, int h, XVisualInfo* xvi) {
 
     auto fbconf = fbconfigs[xvi->depth];
@@ -191,26 +197,19 @@ GLuint GLXWorker::textureFromPixmap(Pixmap pixmap,
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-//    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_MIPMAP);
-//    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_MIPMAP);
-
-
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
 
     auto gpix = glxPixmap(pixmap, fbconf, w, h);
-    //err << "generated glxpixmap";
 
     glXBindTexImageEXT_func (core->d, gpix, GLX_FRONT_LEFT_EXT, NULL);
-
-    //err << "bound pixmap to texture";
     glXDestroyPixmap(core->d, gpix);
 
     return tex;
 }
 
-void GLXWorker::initFBConf() {
+void initFBConf() {
     int n;
     auto fbConfigs = glXGetFBConfigs(core->d, DefaultScreen(core->d), &n);
     for (int i = 0; i <= 32; i++)
@@ -296,7 +295,7 @@ void GLXWorker::initFBConf() {
 }
 
 
-GLXPixmap GLXWorker::glxPixmap(Pixmap pixmap, GLXFBConfig config, int w, int h) {
+GLXPixmap glxPixmap(Pixmap pixmap, GLXFBConfig config, int w, int h) {
    const int pixmapAttribs[] = {
       GLX_TEXTURE_TARGET_EXT, GLX_TEXTURE_2D_EXT,
       GLX_TEXTURE_FORMAT_EXT, GLX_TEXTURE_FORMAT_RGB_EXT,
@@ -306,6 +305,6 @@ GLXPixmap GLXWorker::glxPixmap(Pixmap pixmap, GLXFBConfig config, int w, int h) 
    return glXCreatePixmap(core->d, config, pixmap, pixmapAttribs);
 }
 
-
+}
 
 

@@ -13,18 +13,25 @@ void WinStack::addWindow(FireWindow win) {
         wins.push_back(win);
         return;
     }
+
+    err << "1";
     wins.push_front(win);
+    err << "2";
 
-    win->transientFor = WindowWorker::getTransient(win);
-    win->leader = WindowWorker::getClientLeader(win);
-    win->type = WindowWorker::getWindowType(win);
-
-    auto w = WindowWorker::getAncestor(win);
+    win->transientFor = WinUtil::getTransient(win);
+    err << "3";
+    win->leader = WinUtil::getClientLeader(win);
+    err << "4";
+    win->type = WinUtil::getWindowType(win);
+    err << "5";
+    auto w = WinUtil::getAncestor(win);
     if(w)
         activeWin = w;
 
-    WindowWorker::setInputFocusToWindow(win->id);
-    WindowWorker::initWindow(win);
+    err << "6";
+    WinUtil::setInputFocusToWindow(win->id);
+    err << "7";
+    WinUtil::initWindow(win);
 }
 
 int WinStack::getNumOfWindows() {
@@ -32,7 +39,7 @@ int WinStack::getNumOfWindows() {
 }
 
 StackIterator WinStack::getIteratorPositionForWindow(FireWindow win) {
-    auto x = std::find_if(wins.begin(), wins.end(), 
+    auto x = std::find_if(wins.begin(), wins.end(),
             [win] (FireWindow w) {
                 return w->id == win->id;
             });
@@ -41,7 +48,7 @@ StackIterator WinStack::getIteratorPositionForWindow(FireWindow win) {
 }
 
 StackIterator WinStack::getIteratorPositionForWindow(Window win) {
-    auto x = std::find_if(wins.begin(), wins.end(), 
+    auto x = std::find_if(wins.begin(), wins.end(),
             [win] (FireWindow w) {
                 return w->id == win;
             });
@@ -60,18 +67,18 @@ FireWindow WinStack::findWindow(Window win) {
 void WinStack::renderWindows() {
     int num = 0;
     for(auto w : wins)
-        if(!w->norender)
-            w->transform.stackID = num++, WindowWorker::renderWindow(w);
+        if(w && w->shouldBeDrawn())
+            w->transform.stackID = num++, WinUtil::renderWindow(w);
 }
 
 void WinStack::removeWindow(FireWindow win, bool destroy) {
-    auto x = std::find_if(wins.begin(), wins.end(), 
+    auto x = std::find_if(wins.begin(), wins.end(),
             [win] (FireWindow w) {
                 return w->id == win->id;
             });
 
     if(destroy)
-        WindowWorker::finishWindow(*x);
+        WinUtil::finishWindow(*x);
 
     wins.erase(x);
 }
@@ -79,8 +86,8 @@ void WinStack::removeWindow(FireWindow win, bool destroy) {
 StackIterator WinStack::getTopmostTransientPosition(FireWindow win) {
     for(auto it = wins.begin(); it != wins.end(); it++ ) {
         auto w = (*it);
-        if(WindowWorker::getAncestor(w)->id == win->id ||
-           WindowWorker::isAncestorTo(win, w))
+        if(WinUtil::getAncestor(w)->id == win->id ||
+           WinUtil::isAncestorTo(win, w))
             return it;
     }
     return wins.end();
@@ -98,7 +105,7 @@ void WinStack::restackAbove(FireWindow above, FireWindow below) {
     if(val == wins.end()) // if no window to restack, return
         return;
 
-    auto t = WindowWorker::getStackType(above, below);
+    auto t = WinUtil::getStackType(above, below);
 
     err << "Restack Above type " << t;
     if(t == StackTypeAncestor || t == StackTypeNoStacking)
@@ -112,9 +119,9 @@ void WinStack::restackAbove(FireWindow above, FireWindow below) {
 FireWindow WinStack::findTopmostStackingWindow(FireWindow win) {
     auto it = wins.begin();
     while(it != wins.end()) {
-        auto type = WindowWorker::getWindowType((*it));
+        auto type = WinUtil::getWindowType((*it));
         err << "window type is " << type;
-        if(WindowWorker::getWindowType((*it)) == WindowTypeNormal)
+        if(WinUtil::getWindowType((*it)) == WindowTypeNormal)
             return *it;
         ++it;
     }
@@ -125,7 +132,7 @@ void WinStack::restackTransients(FireWindow win) {
 
     std::vector<FireWindow> winsToRestack;
     for(auto w : wins)
-        if(WindowWorker::isAncestorTo(win, w))
+        if(WinUtil::isAncestorTo(win, w))
             winsToRestack.push_back(w);
 
     for(auto w : winsToRestack)
@@ -137,8 +144,8 @@ void WinStack::updateTransientsAttrib(FireWindow win,
         int dw, int dh) {
 
     for(auto w : wins) {
-        if(WindowWorker::isAncestorTo(win, w)) {
-            
+        if(WinUtil::isAncestorTo(win, w)) {
+
             w->attrib.x += dx;
             w->attrib.y += dy;
             w->attrib.width += dw;
@@ -160,7 +167,7 @@ void WinStack::focusWindow(FireWindow win) {
     if(win->type == WindowTypeDesktop)
         return;
 
-    activeWin = WindowWorker::getAncestor(win);
+    activeWin = WinUtil::getAncestor(win);
 
     auto w1 = findTopmostStackingWindow(activeWin);
     auto w2 = activeWin;
@@ -179,9 +186,9 @@ void WinStack::focusWindow(FireWindow win) {
     restackTransients(w1);
     restackTransients(w2);
 //
-    WindowWorker::setInputFocusToWindow(activeWin->id);
+    WinUtil::setInputFocusToWindow(activeWin->id);
 
-    
+
     XWindowChanges xwc;
     xwc.stack_mode = Above;
     xwc.sibling = w1->id;

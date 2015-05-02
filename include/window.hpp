@@ -49,6 +49,10 @@ class __FireWindow {
         char *name;
         WindowType type;
         XWindowAttributes attrib;
+
+        int vx, vy; // viewport position
+        bool shouldBeDrawn();
+        void recalcWorkspace();
 };
 
 typedef std::shared_ptr<__FireWindow> FireWindow;
@@ -66,32 +70,32 @@ extern Atom wmClientLeaderAtom;
 extern Atom wmNameAtom;
 
 
-class WindowWorker {
-    private:
-        static bool recurseIsAncestor(FireWindow parent, FireWindow win);
-    public:
-        static void init();
+namespace WinUtil {
+    bool recurseIsAncestor(FireWindow parent, FireWindow win);
+    void init();
 
-        static void renderWindow(FireWindow win);
-        static int setWindowTexture(FireWindow win);
-        static FireWindow createWindow(int x, int y, int w, int h);
-        static void initWindow(FireWindow win);
-        static void finishWindow(FireWindow win);
+    void renderWindow(FireWindow win);
+    int setWindowTexture(FireWindow win);
+    FireWindow createWindow(int x, int y, int w, int h);
+    void initWindow(FireWindow win);
+    void finishWindow(FireWindow win);
 
-        static void setInputFocusToWindow(Window win);
+    void setInputFocusToWindow(Window win);
 
-        static void moveWindow(FireWindow win, int x, int y);
-        static void resizeWindow(FireWindow win, int w, int h);
-        static void syncWindowAttrib(FireWindow win);
+    void moveWindow(FireWindow win, int x, int y);
+    void resizeWindow(FireWindow win, int w, int h);
+    void syncWindowAttrib(FireWindow win);
 
-        static XVisualInfo *getVisualInfoForWindow(Window win);
-        static FireWindow getTransient(FireWindow win);
-        static FireWindow getClientLeader(FireWindow win);
-        static void getWindowName(FireWindow win, char *name);
-        static bool isTopLevelWindow(FireWindow win);
-        static FireWindow getAncestor(FireWindow win);
-        static WindowType getWindowType(FireWindow win);
+    XVisualInfo *getVisualInfoForWindow(Window win);
+    FireWindow getTransient(FireWindow win);
+    FireWindow getClientLeader(FireWindow win);
+    void getWindowName(FireWindow win, char *name);
+    bool isTopLevelWindow(FireWindow win);
 
-        static bool isAncestorTo(FireWindow parent, FireWindow win);
-        static StackType getStackType(FireWindow win1, FireWindow win2);
+    WindowType getWindowType(FireWindow win);
+
+    FireWindow getAncestor(FireWindow win);
+
+    bool isAncestorTo(FireWindow parent, FireWindow win);
+    StackType getStackType(FireWindow win1, FireWindow win2);
 };

@@ -17,6 +17,26 @@ glm::mat4 Transform::compose() {
     return trans * rotation * scalation;
 }
 
+bool __FireWindow::shouldBeDrawn() {
+    if(norender)
+        return false;
+
+    if(type == WindowTypeOther)
+        return false;
+
+    return true;
+
+    // TODO: to be enabled later
+    auto pos = core->getWorkspace();
+
+    if(std::get<0>(pos) != vx || std::get<1>(pos) != vy)
+        return false;
+
+    return true;
+}
+
+
+
 static int attrListVisual[] = {
     GLX_RGBA, GLX_DOUBLEBUFFER,
     GLX_RED_SIZE, 8,
@@ -40,11 +60,11 @@ Atom wmProtocolsAtom;
 Atom wmClientLeaderAtom;
 Atom wmNameAtom;
 
-
-void WindowWorker::init() {
+namespace WinUtil {
+void init() {
 
     activeWinAtom = XInternAtom(core->d, "_NET_ACTIVE_WINDOW", 0);
-    wmNameAtom    = XInternAtom(core->d, "WM_NAME", 0),    
+    wmNameAtom    = XInternAtom(core->d, "WM_NAME", 0),
 
     wmProtocolsAtom    = XInternAtom (core->d, "WM_PROTOCOLS", 0);
     wmTakeFocusAtom    = XInternAtom (core->d, "WM_TAKE_FOCUS", 0);
@@ -71,7 +91,7 @@ void WindowWorker::init() {
 }
 
 
-int WindowWorker::setWindowTexture(FireWindow win) {
+int setWindowTexture(FireWindow win) {
 
     if(win->attrib.map_state != IsViewable) {
         err << "Invisible window, deny rendering";
@@ -82,7 +102,7 @@ int WindowWorker::setWindowTexture(FireWindow win) {
     auto pix = XCompositeNameWindowPixmap(core->d, win->id);
 
     if(win->pixmap == pix) {
-        glBindTexture(GL_TEXTURE_2D, win->texture); 
+        glBindTexture(GL_TEXTURE_2D, win->texture);
         return 1;
     }
 
@@ -94,20 +114,20 @@ int WindowWorker::setWindowTexture(FireWindow win) {
     win->pixmap = pix;
 
     if(win->xvi == nullptr)
-        win->xvi = WindowWorker::getVisualInfoForWindow(win->id);
+        win->xvi = getVisualInfoForWindow(win->id);
     if (win->xvi == nullptr) {
         err << "No visual info, deny rendering";
         win->norender = true;
         return 0;
     }
 
-    win->texture = GLXWorker::textureFromPixmap(win->pixmap,
+    win->texture = GLXUtils::textureFromPixmap(win->pixmap,
             win->attrib.width, win->attrib.height, win->xvi);
     return 1;
 }
 
-void WindowWorker::initWindow(FireWindow win) {
-   
+void initWindow(FireWindow win) {
+
     XSelectInput(core->d, win->id,   FocusChangeMask  |
                 PropertyChangeMask | EnterWindowMask);
 
@@ -119,7 +139,7 @@ void WindowWorker::initWindow(FireWindow win) {
     XGetWindowAttributes(core->d, win->id, &win->attrib);
 }
 
-void WindowWorker::finishWindow(FireWindow win) {
+void finishWindow(FireWindow win) {
     if(win->pixmap != 0)
         XFreePixmap(core->d, win->pixmap);
 
@@ -143,15 +163,15 @@ void WindowWorker::finishWindow(FireWindow win) {
 
 
 
-void WindowWorker::renderWindow(FireWindow win) {
+void renderWindow(FireWindow win) {
     if(win->type == WindowTypeDesktop){
         OpenGLWorker::renderTransformedTexture(win->texture,
                 win->vao, win->vbo,
-                win->transform.compose()); 
+                win->transform.compose());
         return;
     }
 
-    if(!WindowWorker::setWindowTexture(win)) {
+    if(!setWindowTexture(win)) {
         err <<"failed to paint window " << win->id << " (no texture avail)";
         win->norender = true;
         return;
@@ -166,10 +186,10 @@ void WindowWorker::renderWindow(FireWindow win) {
             win->vao, win->vbo, win->transform.compose());
 
 }
-FireWindow WindowWorker::createWindow(int x, int y, int w, int h) {
+FireWindow createWindow(int x, int y, int w, int h) {
     XVisualInfo *vi;
     Window win;
-    
+
     Colormap cmap;
     XSetWindowAttributes winAttr;
 
@@ -192,7 +212,7 @@ FireWindow WindowWorker::createWindow(int x, int y, int w, int h) {
     return window;
 }
 
-XVisualInfo *WindowWorker::getVisualInfoForWindow(Window win) {
+XVisualInfo *getVisualInfoForWindow(Window win) {
     XVisualInfo *xvi, dummy;
     XWindowAttributes xwa;
     auto stat = XGetWindowAttributes(core->d, win, &xwa);
@@ -206,14 +226,14 @@ XVisualInfo *WindowWorker::getVisualInfoForWindow(Window win) {
     xvi = XGetVisualInfo(core->d, VisualIDMask, &dummy, &dumm);
     if(dumm == 0)
         err << "Cannot get default visual!\n";
-    return xvi; 
+    return xvi;
 }
 
 
-bool WindowWorker::isTopLevelWindow(FireWindow win) {
+bool isTopLevelWindow(FireWindow win) {
     if(win->transientFor) return false;
     if(win->leader) return false;
-    
+
     Window client = XmuClientWindow(core->d, win->id);
     if(!client || client != win->id)
         return false;
@@ -221,13 +241,13 @@ bool WindowWorker::isTopLevelWindow(FireWindow win) {
     return true;
 }
 
-FireWindow WindowWorker::getClientLeader(FireWindow win) {
+FireWindow getClientLeader(FireWindow win) {
     unsigned long nitems = 0;
     unsigned char* data = 0;
     Atom actual_type;
     int actual_format;
     unsigned long bytes;
-    
+
     int status = XGetWindowProperty (core->d, win->id,
                   wmClientLeaderAtom, 0L, 1L, False,
                   XA_WINDOW, &actual_type, &actual_format,
@@ -242,7 +262,7 @@ FireWindow WindowWorker::getClientLeader(FireWindow win) {
 }
 
 
-FireWindow WindowWorker::getTransient(FireWindow win) {
+FireWindow getTransient(FireWindow win) {
 
     Window dumm;
     auto status = XGetTransientForHint(core->d, win->id, &dumm);
@@ -253,7 +273,7 @@ FireWindow WindowWorker::getTransient(FireWindow win) {
 }
 
 
-void WindowWorker::getWindowName(FireWindow win, char *name) {
+void getWindowName(FireWindow win, char *name) {
     Atom type;
     int form;
     unsigned long remain, len;
@@ -264,7 +284,8 @@ void WindowWorker::getWindowName(FireWindow win, char *name) {
         }
 }
 
-FireWindow WindowWorker::getAncestor(FireWindow win) {
+FireWindow getAncestor(FireWindow win) {
+
     if(!win)
         return nullptr;
 
@@ -273,22 +294,27 @@ FireWindow WindowWorker::getAncestor(FireWindow win) {
 
     FireWindow w1, w2;
     w1 = w2 = nullptr;
+
     if(win->transientFor)
         w1 = getAncestor(win->transientFor);
+
     if(win->leader)
         w2 = getAncestor(win->leader);
 
     if(w1 == nullptr && w2 == nullptr)
         return win;
+
     else if(w1)
         return w1;
+
     else if(w2)
         return w2;
+
     else
         return nullptr;
 }
 
-bool WindowWorker::recurseIsAncestor(FireWindow parent, FireWindow win) {
+bool recurseIsAncestor(FireWindow parent, FireWindow win) {
     if(parent->id == win->id)
         return true;
 
@@ -303,27 +329,27 @@ bool WindowWorker::recurseIsAncestor(FireWindow parent, FireWindow win) {
     return mask;
 }
 
-bool WindowWorker::isAncestorTo(FireWindow parent, FireWindow win) {
+bool isAncestorTo(FireWindow parent, FireWindow win) {
     if(win->id == parent->id) // a window is not its own ancestor
         return false;
 
     return recurseIsAncestor(parent, win);
 }
 
-StackType WindowWorker::getStackType(FireWindow win1, FireWindow win2) {
+StackType getStackType(FireWindow win1, FireWindow win2) {
     if(win1->id == win2->id)
         return StackTypeNoStacking;
 
     if(isAncestorTo(win1, win2))
         return StackTypeAncestor;
-    
+
     if(isAncestorTo(win2, win1))
         return StackTypeChild;
 
     return StackTypeSibling;
 }
 
-WindowType WindowWorker::getWindowType(FireWindow win) {
+WindowType getWindowType(FireWindow win) {
     Atom      actual, a = None;
     int       result, format;
     ulong n, left;
@@ -341,7 +367,7 @@ WindowType WindowWorker::getWindowType(FireWindow win) {
     else
         return WindowTypeOther;
 
-    if ( a ) { 
+    if ( a ) {
         if ( a == winTypeNormalAtom )
             return WindowTypeNormal;
         else if ( a == winTypeMenuAtom )
@@ -374,7 +400,7 @@ WindowType WindowWorker::getWindowType(FireWindow win) {
     return WindowTypeOther;
 }
 
-void WindowWorker::setInputFocusToWindow(Window win) {
+void setInputFocusToWindow(Window win) {
 
     XSetInputFocus(core->d, win, RevertToPointerRoot, CurrentTime);
     XChangeProperty ( core->d, core->root, activeWinAtom,
@@ -399,7 +425,7 @@ void WindowWorker::setInputFocusToWindow(Window win) {
 
 }
 
-void WindowWorker::moveWindow(FireWindow win, int x, int y) {
+void moveWindow(FireWindow win, int x, int y) {
     win->attrib.x = x;
     win->attrib.y = y;
     XWindowChanges xwc;
@@ -415,7 +441,7 @@ void WindowWorker::moveWindow(FireWindow win, int x, int y) {
             win->vao, win->vbo);
 }
 
-void WindowWorker::resizeWindow(FireWindow win, int w, int h) {
+void resizeWindow(FireWindow win, int w, int h) {
     win->attrib.width  = w;
     win->attrib.height = h;
 
@@ -431,8 +457,8 @@ void WindowWorker::resizeWindow(FireWindow win, int w, int h) {
             win->attrib.width, win->attrib.height,
             win->vao, win->vbo);
 }
-void WindowWorker::syncWindowAttrib(FireWindow win) {
-    XWindowAttributes xwa; 
+void syncWindowAttrib(FireWindow win) {
+    XWindowAttributes xwa;
     XGetWindowAttributes(core->d, win->id, &xwa);
 
     bool mask = false;
@@ -455,4 +481,5 @@ void WindowWorker::syncWindowAttrib(FireWindow win) {
     OpenGLWorker::generateVAOVBO(win->attrib.x, win->attrib.y,
             win->attrib.width, win->attrib.height,
             win->vao, win->vbo);
+}
 }

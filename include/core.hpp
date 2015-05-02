@@ -17,7 +17,7 @@ class Core {
         void wait(int timeout);
 
         pollfd fd;
-    
+
         bool moving; // are we moving a window?
 
         FireWindow operatingWin; // window which we operate with
@@ -25,22 +25,28 @@ class Core {
         bool resizing;
         int sx, sy; // starting x & y
 
-    public:
-        bool redraw = true; // should we redraw?
-        
-        void setBackground(const char *path);
+        int vwidth, vheight; // viewport size
+        int vx, vy;          // viewport position
 
     public:
-        ~Core();
-        void loop();
-        Core();
-        
         Display *d;
         Window root;
         Window overlay;
 
         int width;
         int height;
+
+        bool redraw = true; // should we redraw?
+
+        void setBackground(const char *path);
+
+        void switchWorkspace(std::tuple<int, int>);
+        std::tuple<int, int> getWorkspace();
+
+    public:
+        ~Core();
+        void loop();
+        Core();
 
         void renderAllWindows();
         void addWindow(XCreateWindowEvent);

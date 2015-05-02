@@ -158,27 +158,27 @@ void OpenGLWorker::initOpenGL(const char *shaderSrcPath) {
     std::string tmp = shaderSrcPath;
 
     GLuint vss =
-        GLXWorker::loadShader(std::string(shaderSrcPath)
+        GLXUtils::loadShader(std::string(shaderSrcPath)
                 .append("/vertex.glsl").c_str(),
                 GL_VERTEX_SHADER);
 
     GLuint fss =
-        GLXWorker::loadShader(std::string(shaderSrcPath)
+        GLXUtils::loadShader(std::string(shaderSrcPath)
                 .append("/frag.glsl").c_str(),
                 GL_FRAGMENT_SHADER);
 
     GLuint tcs =
-        GLXWorker::loadShader(std::string(shaderSrcPath)
+        GLXUtils::loadShader(std::string(shaderSrcPath)
                 .append("/tcs.glsl").c_str(),
                 GL_TESS_CONTROL_SHADER);
 
     GLuint tes =
-        GLXWorker::loadShader(std::string(shaderSrcPath)
+        GLXUtils::loadShader(std::string(shaderSrcPath)
                 .append("/tes.glsl").c_str(),
                 GL_TESS_EVALUATION_SHADER);
 
     GLuint gss =
-        GLXWorker::loadShader(std::string(shaderSrcPath)
+        GLXUtils::loadShader(std::string(shaderSrcPath)
                 .append("/geom.glsl").c_str(),
                 GL_GEOMETRY_SHADER);
 

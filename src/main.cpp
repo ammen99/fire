@@ -6,10 +6,10 @@ int main(int argc, const char **argv ) {
     google::InitGoogleLogging(argv[0]);
 
     core = new Core();    
-    WindowWorker::init();
+    WinUtil::init();
 
-    GLXWorker::createNewContext(core->overlay);
-    GLXWorker::initGLX();
+    GLXUtils::createNewContext(core->overlay);
+    GLXUtils::initGLX();
     OpenGLWorker::initOpenGL("/home/ilex/work/cwork/fire/shaders");
 
     core->setBackground("/tarball/backgrounds/last.jpg");
