@@ -137,8 +137,18 @@ Core::Resize::Resize(Core *c) {
     c->addBut(&release);
 }
 
+#define MAXID (uint)(-1)
+template<class T>
+uint Core::getFreeID(std::unordered_map<uint, T> *map) {
+    for(int i = 0; i < MAXID; i++)
+        if(map->find(i) == map->end())
+            return i;
+
+    return MAXID;
+}
+
 uint Core::addHook(Hook *hook){
-    auto id = hooks.size();
+    auto id = getFreeID(&hooks);
     hooks.insert({id, hook});
     return id;
 }
@@ -151,7 +161,7 @@ uint Core::addKey(KeyBinding *kb, bool grab) {
     if(!kb)
         return -1;
 
-    auto id = keys.size();
+    auto id = getFreeID(&keys);
     keys.insert({id, kb});
 
     if(grab)
@@ -175,7 +185,7 @@ uint Core::addBut(ButtonBinding *bb, bool grab) {
     if(!bb)
         return -1;
 
-    auto id = buttons.size();
+    auto id = getFreeID(&buttons);
     buttons.insert({id, bb});
 
     if(grab)

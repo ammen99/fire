@@ -92,6 +92,9 @@ class Core {
                 void Terminate(Context*);
         }*resize;
 
+        template<class T>
+        uint getFreeID(std::unordered_map<uint, T> *map);
+
     public:
         Display *d;
         Window root;
