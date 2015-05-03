@@ -7,6 +7,44 @@
 
 class WinStack;
 
+struct Context{
+    XEvent xev;
+    Context(XEvent xev);
+};
+
+
+enum BindingType {
+    BindingTypePress,
+    BindingTypeRelease
+};
+
+struct Binding{
+    bool active;
+    BindingType type;
+    uint mod;
+
+    std::function<void(Context*)> action;
+
+};
+
+// keybinding
+struct KeyBinding : Binding {
+    KeyCode key;
+};
+
+// button binding
+
+struct ButtonBinding : Binding {
+    uint button;
+};
+
+
+// hooks are done once a redraw cycle
+struct Hook {
+    bool active;
+    std::function<void(void)> action;
+};
+
 class Core {
     private:
         FireWindow background;
@@ -18,15 +56,41 @@ class Core {
 
         pollfd fd;
 
-        bool moving; // are we moving a window?
-
-        FireWindow operatingWin; // window which we operate with
-
-        bool resizing;
-        int sx, sy; // starting x & y
+        int mousex, mousey; // pointer x, y
 
         int vwidth, vheight; // viewport size
         int vx, vy;          // viewport position
+
+        std::unordered_map<uint, KeyBinding*> keys;
+        std::unordered_map<uint, ButtonBinding*> buttons;
+        std::unordered_map<uint, Hook*> hooks;
+
+        class WindowOperation {
+            protected:
+                int sx, sy; // starting pointer x, y
+                FireWindow win; // window we're operating on
+                uint hid; // id of hook
+            protected:
+                ButtonBinding press;
+                ButtonBinding release;
+                Hook hook;
+        };
+
+        class Move : WindowOperation {
+            public:
+                Move(Core *core);
+                void Initiate(Context*);
+                void Intermediate();
+                void Terminate(Context*);
+        }*move;
+
+        class Resize : WindowOperation {
+            public:
+                Resize(Core *core);
+                void Initiate(Context*);
+                void Intermediate();
+                void Terminate(Context*);
+        }*resize;
 
     public:
         Display *d;
@@ -43,6 +107,16 @@ class Core {
         void switchWorkspace(std::tuple<int, int>);
         std::tuple<int, int> getWorkspace();
 
+
+        uint addKey(KeyBinding *kb, bool grab = false);
+        void remKey(uint id);
+
+        uint addBut(ButtonBinding *bb, bool grab = false);
+        void remBut(uint id);
+
+        uint addHook(Hook*);
+        void remHook(uint);
+
     public:
         ~Core();
         void loop();
@@ -51,15 +125,6 @@ class Core {
         void renderAllWindows();
         void addWindow(XCreateWindowEvent);
         FireWindow findWindow(Window win);
-
-        void moveInitiate(XButtonPressedEvent);
-        void moveIntermediate(XMotionEvent);
-        void moveTerminate(XButtonPressedEvent);
-
-        void resizeInitiate(XButtonPressedEvent);
-        void resizeIntermediate(XMotionEvent);
-        void resizeTerminate(XButtonPressedEvent);
-
 
         static int onXError (Display* d, XErrorEvent* xev);
         static int onOtherWmDetected(Display *d, XErrorEvent *xev);
