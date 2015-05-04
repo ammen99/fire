@@ -38,7 +38,6 @@ struct ButtonBinding : Binding {
     uint button;
 };
 
-
 // hooks are done once a redraw cycle
 struct Hook {
     bool active;
@@ -95,6 +94,16 @@ class Core {
         template<class T>
         uint getFreeID(std::unordered_map<uint, T> *map);
 
+        KeyCode switchWorkspaceBindings[4];
+        class WSSwitch {
+            private:
+                KeyBinding kbs[4];
+            public:
+                WSSwitch(Core *core);
+                void moveWorkspace(int dx, int dy);
+                void handleSwitchWorkspace(Context *ctx);
+        };
+
     public:
         Display *d;
         Window root;
@@ -109,7 +118,6 @@ class Core {
 
         void switchWorkspace(std::tuple<int, int>);
         std::tuple<int, int> getWorkspace();
-
 
         uint addKey(KeyBinding *kb, bool grab = false);
         void remKey(uint id);

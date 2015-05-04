@@ -31,7 +31,6 @@ Core::Core() {
     width = xwa.width;
     height = xwa.height;
 
-
     XSetErrorHandler(&Core::onOtherWmDetected);
 
     XCompositeRedirectSubwindows(d, root, CompositeRedirectManual);
@@ -71,7 +70,6 @@ Core::Core() {
     focus->active = true;
 
     auto f = [] (Context *ctx){
-        err << "focusing window";
         auto xev = ctx->xev.xbutton;
         auto w = wins->findWindow(xev.window);
         if(w)
@@ -81,60 +79,17 @@ Core::Core() {
     focus->action = f;
     addBut(focus);
 
+    switchWorkspaceBindings[0] = XKeysymToKeycode(d, XK_h);
+    switchWorkspaceBindings[1] = XKeysymToKeycode(d, XK_l);
+    switchWorkspaceBindings[2] = XKeysymToKeycode(d, XK_j);
+    switchWorkspaceBindings[3] = XKeysymToKeycode(d, XK_k);
+
     background = std::make_shared<__FireWindow>();
-
-    err << "Init ended";
 }
 
-Core::Move::Move(Core *c) {
-    win = nullptr;
-    hook = Hook{ false,
-            std::bind(std::mem_fn(&Core::Move::Intermediate), this)
-            };
-    hid = c->addHook(&hook);
-
-    using namespace std::placeholders;
-
-    press.active = true;
-    press.type   = BindingTypePress;
-    press.mod    = Mod1Mask;
-    press.button = Button1;
-    press.action = std::bind(std::mem_fn(&Core::Move::Initiate), this, _1);
-    c->addBut(&press);
-
-
-    release.active = false;
-    release.type   = BindingTypeRelease;
-    release.mod    = AnyModifier;
-    release.button = Button1;
-    release.action = std::bind(std::mem_fn(&Core::Move::Terminate), this, _1);
-    c->addBut(&release);
-}
-
-Core::Resize::Resize(Core *c) {
-    win = nullptr;
-
-    hook = Hook{ false,
-            std::bind(std::mem_fn(&Core::Resize::Intermediate), this)
-            };
-    hid = c->addHook(&hook);
-
-    using namespace std::placeholders;
-
-    press.active = true;
-    press.type   = BindingTypePress;
-    press.mod    = ControlMask;
-    press.button = Button1;
-    press.action = std::bind(std::mem_fn(&Core::Resize::Initiate), this, _1);
-    c->addBut(&press);
-
-
-    release.active = false;
-    release.type   = BindingTypeRelease;
-    release.mod    = AnyModifier;
-    release.button = Button1;
-    release.action = std::bind(std::mem_fn(&Core::Resize::Terminate), this,_1);
-    c->addBut(&release);
+Core::~Core(){
+    XCompositeReleaseOverlayWindow(d, overlay);
+    XCloseDisplay(d);
 }
 
 #define MAXID (uint)(-1)
@@ -208,10 +163,6 @@ void Core::remBut(uint id) {
     buttons.erase(it);
 }
 
-Core::~Core(){
-    XCompositeReleaseOverlayWindow(d, overlay);
-    XCloseDisplay(d);
-}
 
 void Core::setBackground(const char *path) {
     background->texture = GLXUtils::loadImage(const_cast<char*>(path));
@@ -219,6 +170,11 @@ void Core::setBackground(const char *path) {
 
     OpenGLWorker::generateVAOVBO(0, height, width, -height,
             background->vao, background->vbo);
+
+    background->attrib.x = 0;
+    background->attrib.y = 0;
+    background->attrib.width  = width;
+    background->attrib.height = height;
 
     background->type = WindowTypeDesktop;
     wins->addWindow(background);
@@ -232,9 +188,6 @@ void Core::addWindow(XCreateWindowEvent xev) {
     FireWindow w = std::make_shared<__FireWindow>();
     w->id = xev.window;
 
-    err << "xev.window = " << xev.window;
-    err << "xev.parent = " << xev.parent;
-
     if(xev.parent != root)
         w->transientFor = findWindow(xev.parent);
 
@@ -242,12 +195,14 @@ void Core::addWindow(XCreateWindowEvent xev) {
     wins->addWindow(w);
 }
 
-float degree = 0;
-void rotate(FireWindow w) {
-    degree += 10;
-    w->transform.rotation = glm::rotate(glm::mat4(),
-            degree * float(M_PI) / 180.0f, glm::vec3(0.0f, 1.0f, 0.0f));
+void Core::renderAllWindows() {
+    OpenGLWorker::preStage();
+    wins->renderWindows();
+    GLXUtils::endFrame(overlay);
+}
 
+void Core::wait(int timeout) {
+    poll(&fd, 1, timeout);
 }
 
 void Core::handleEvent(XEvent xev){
@@ -270,13 +225,11 @@ void Core::handleEvent(XEvent xev){
             if (xev.xcreatewindow.window == overlay)
                 break;
 
-            err << "Crash not";
             XMapWindow(core->d, xev.xcreatewindow.window);
-            err << "Crash not middle";
+            XSync(core->d, 0);
             addWindow(xev.xcreatewindow);
 
             redraw = true;
-            err << "Crash not 2";
             break;
         }
         case DestroyNotify: {
@@ -311,29 +264,16 @@ void Core::handleEvent(XEvent xev){
         }
 
         case ButtonPress: {
-            err << "ButtonPress";
-
-
             mousex = xev.xbutton.x_root;
             mousey = xev.xbutton.y_root;
 
-            for(auto bb : buttons) {
-                err << (xev.xbutton.state & Mod1Mask);
-                err << (xev.xbutton.button == Button1);
-                err << (bb.second->mod & xev.xbutton.state);
-                err << (bb.second->button & xev.xbutton.button);
-                err << (bb.second->type == BindingTypePress);
-                err << (bb.second->active);
-                err << std::endl;
-
+            for(auto bb : buttons)
+                if(bb.second->active)
+                if(bb.second->type == BindingTypePress)
                 if(bb.second->mod & xev.xbutton.state &&
                    bb.second->button == xev.xbutton.button)
-                if(bb.second->type == BindingTypePress)
-                if(bb.second->active)
                     bb.second->action(new Context(xev));
-            }
 
-            err << "Allowing replay";
             XAllowEvents(d, ReplayPointer, xev.xbutton.time);
             break;
         }
@@ -349,7 +289,6 @@ void Core::handleEvent(XEvent xev){
         case MotionNotify:
             mousex = xev.xmotion.x_root;
             mousey = xev.xmotion.y_root;
-
             break;
         default:
             if(xev.type == damage + XDamageNotify)
@@ -431,14 +370,32 @@ int Core::onXError(Display *d, XErrorEvent *xev) {
     return 0;
 }
 
-void Core::renderAllWindows() {
-    OpenGLWorker::preStage();
-    wins->renderWindows();
-    GLXUtils::endFrame(overlay);
-}
 
-void Core::wait(int timeout) {
-    poll(&fd, 1, timeout);
+
+
+Core::Move::Move(Core *c) {
+    win = nullptr;
+    hook = Hook{ false,
+            std::bind(std::mem_fn(&Core::Move::Intermediate), this)
+            };
+    hid = c->addHook(&hook);
+
+    using namespace std::placeholders;
+
+    press.active = true;
+    press.type   = BindingTypePress;
+    press.mod    = Mod1Mask;
+    press.button = Button1;
+    press.action = std::bind(std::mem_fn(&Core::Move::Initiate), this, _1);
+    c->addBut(&press);
+
+
+    release.active = false;
+    release.type   = BindingTypeRelease;
+    release.mod    = AnyModifier;
+    release.button = Button1;
+    release.action = std::bind(std::mem_fn(&Core::Move::Terminate), this, _1);
+    c->addBut(&release);
 }
 
 void Core::Move::Initiate(Context *ctx) {
@@ -496,6 +453,32 @@ void Core::Move::Intermediate() {
                     float(sy - core->mousey) / float(core->height / 2.0),
                     0.f));
     core->redraw = true;
+}
+
+Core::Resize::Resize(Core *c) {
+    win = nullptr;
+
+    hook = Hook{ false,
+            std::bind(std::mem_fn(&Core::Resize::Intermediate), this)
+            };
+    hid = c->addHook(&hook);
+
+    using namespace std::placeholders;
+
+    press.active = true;
+    press.type   = BindingTypePress;
+    press.mod    = ControlMask;
+    press.button = Button1;
+    press.action = std::bind(std::mem_fn(&Core::Resize::Initiate), this, _1);
+    c->addBut(&press);
+
+
+    release.active = false;
+    release.type   = BindingTypeRelease;
+    release.mod    = AnyModifier;
+    release.button = Button1;
+    release.action = std::bind(std::mem_fn(&Core::Resize::Terminate), this,_1);
+    c->addBut(&release);
 }
 
 void Core::Resize::Initiate(Context *ctx) {
@@ -586,8 +569,51 @@ std::tuple<int, int> Core::getWorkspace() {
 }
 
 void Core::switchWorkspace(std::tuple<int, int> nPos) {
-    vx = std::get<0> (nPos);
-    vy = std::get<1> (nPos);
+    auto nx = std::get<0> (nPos);
+    auto ny = std::get<1> (nPos);
+
+    auto dx = (vx - nx) * width;
+    auto dy = (vy - ny) * height;
+
+    for(auto w : wins->wins)
+        WinUtil::moveWindow(w, w->attrib.x + dx, w->attrib.y + dy);
+}
+
+void Core::WSSwitch::moveWorkspace(int dx, int dy) {
+    auto nx = (core->vx - dx + core->vwidth ) % core->vwidth;
+    auto ny = (core->vy - dy + core->vheight) % core->vheight;
+
+    core->switchWorkspace(std::make_tuple(nx, ny));
+}
+
+void Core::WSSwitch::handleSwitchWorkspace(Context *ctx) {
+    if(!ctx)
+        return;
+
+    auto xev = ctx->xev.xkey;
+
+    if(xev.keycode == core->switchWorkspaceBindings[0])
+        moveWorkspace(1,  0);
+    if(xev.keycode == core->switchWorkspaceBindings[1])
+        moveWorkspace(-1, 0);
+    if(xev.keycode == core->switchWorkspaceBindings[2])
+        moveWorkspace(0,  1);
+    if(xev.keycode == core->switchWorkspaceBindings[3])
+        moveWorkspace(0, -1);
+}
+Core::WSSwitch::WSSwitch(Core *core) {
+    using namespace std::placeholders;
+
+    for(int i = 0; i < 4; i++) {
+        kbs[i].type = BindingTypePress;
+        kbs[i].active = true;
+        kbs[i].mod = ControlMask | Mod1Mask;
+        kbs[i].key = core->switchWorkspaceBindings[i];
+
+        kbs[i].action =
+            std::bind(std::mem_fn(&Core::WSSwitch::handleSwitchWorkspace),
+            this, _1);
+    }
 }
 
 Core *core;

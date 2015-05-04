@@ -7,6 +7,7 @@
 
 
 class WinStack {
+    friend class Core;
     private:
         std::list<FireWindow> wins;
     public:

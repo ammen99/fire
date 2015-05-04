@@ -17,6 +17,32 @@ glm::mat4 Transform::compose() {
     return trans * rotation * scalation;
 }
 
+__FireWindow::Rect::Rect() : Rect(0, 0, 0, 0){}
+__FireWindow::Rect::Rect(int tx, int ty, int bx, int by):
+    tlx(tx), tly(ty), brx(bx), bry(by){}
+
+bool __FireWindow::Rect::operator&(const __FireWindow::Rect &other) const {
+    bool result = true;
+
+    if(this->tly > other.bry || this->bry < other.tly)
+        result = false;
+    else if(this->brx < other.tlx || this->tlx > other.brx)
+        result = false;
+
+    return result;
+}
+
+std::ostream& operator<<(std::ostream &stream,
+        const __FireWindow::Rect& rect) {
+
+    stream << "Debug rect\n";
+    stream << rect.tlx << " " << rect.tly << " ";
+    stream << rect.brx << " " << rect.bry;
+    stream << "\n";
+
+    return stream;
+}
+
 bool __FireWindow::shouldBeDrawn() {
     if(norender)
         return false;
@@ -24,15 +50,22 @@ bool __FireWindow::shouldBeDrawn() {
     if(type == WindowTypeOther)
         return false;
 
-    return true;
+    //return true;
 
-    // TODO: to be enabled later
     auto pos = core->getWorkspace();
+    Rect r1(attrib.x, attrib.y,
+            attrib.x + attrib.width,
+            attrib.y + attrib.height);
 
-    if(std::get<0>(pos) != vx || std::get<1>(pos) != vy)
+    auto vx = std::get<0>(pos) * core->width;
+    auto vy = std::get<1>(pos) * core->height;
+
+    Rect r2(vx, vy, vx + core->width, vy + core->height);
+
+    if(r1 & r2)
+        return true;
+    else
         return false;
-
-    return true;
 }
 
 

@@ -29,6 +29,17 @@ class Transform {
 };
 
 class __FireWindow {
+    private:
+        class Rect{
+            public:
+                int tlx, tly;
+                int brx, bry;
+            public:
+                Rect();
+                Rect(int, int, int, int);
+                bool operator &(const Rect &other) const;
+        };
+        friend std::ostream& operator<<(std::ostream& stream, const Rect& rect);
     public:
         XVisualInfo *xvi;
         Pixmap pixmap;
