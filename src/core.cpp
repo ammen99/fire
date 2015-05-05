@@ -89,6 +89,7 @@ Core::Core() {
     wsswitch = new WSSwitch(this);
 
     cntHooks = 0;
+    __FireWindow::output = Rect(0, 0, width, height);
 }
 
 Core::~Core(){
@@ -195,6 +196,7 @@ void Core::setBackground(const char *path) {
             backgrounds[i][j]->attrib.height = height;
 
             backgrounds[i][j]->type = WindowTypeDesktop;
+            backgrounds[i][j]->regenVBOFromAttribs();
             wins->addWindow(backgrounds[i][j]);
             err << "Adding background window" << j * width << " " << i * height;
         }
@@ -381,6 +383,8 @@ int Core::onXError(Display *d, XErrorEvent *xev) {
             << xev->resourceid;
 
         auto x = wins->findWindow(xev->resourceid);
+        if(x && x->type == WindowTypeDesktop)
+            return 0;
         if (x != nullptr)
             x->norender = true;
         return 0;
@@ -615,8 +619,8 @@ void Core::WSSwitch::moveWorkspace(int ddx, int ddy) {
     auto nx = (core->vx - ddx + core->vwidth ) % core->vwidth;
     auto ny = (core->vy - ddy + core->vheight) % core->vheight;
 
-    dirx = dx;
-    diry = dy;
+    dirx = ddx;
+    diry = ddy;
 
     dx = (core->vx - nx) * core->width;
     dy = (core->vy - ny) * core->height;
@@ -627,7 +631,25 @@ void Core::WSSwitch::moveWorkspace(int ddx, int ddy) {
     stepNum = 0;
     hook.active = true;
     core->cntHooks++;
-    //core->switchWorkspace(std::make_tuple(nx, ny));
+
+    int tlx1 = 0;
+    int tly1 = 0;
+    int brx1 = core->width;
+    int bry1 = core->height;
+
+    int tlx2 = -dx;
+    int tly2 = -dy;
+    int brx2 = tlx2 + core->width;
+    int bry2 = tly2 + core->height;
+
+    __FireWindow::output = Rect(std::min(tlx1, tlx2),
+            std::min(tly1, tly2),
+            std::max(brx1, brx2),
+            std::max(bry1, bry2));
+
+    err << "Switching viewport";
+    err << nx << " " << ny;
+    err << __FireWindow::output;
 }
 
 void Core::WSSwitch::handleSwitchWorkspace(Context *ctx) {
@@ -641,9 +663,9 @@ void Core::WSSwitch::handleSwitchWorkspace(Context *ctx) {
     if(xev.keycode == core->switchWorkspaceBindings[1])
         moveWorkspace(-1, 0);
     if(xev.keycode == core->switchWorkspaceBindings[2])
-        moveWorkspace(0,  1);
-    if(xev.keycode == core->switchWorkspaceBindings[3])
         moveWorkspace(0, -1);
+    if(xev.keycode == core->switchWorkspaceBindings[3])
+        moveWorkspace(0,  1);
 }
 
 #define MAXSTEP 60
@@ -654,12 +676,13 @@ void Core::WSSwitch::moveStep() {
         hook.active = false;
         core->cntHooks--;
         core->redraw = true;
+        __FireWindow::output = Rect(0, 0, core->width, core->height);
         return;
     }
     float progress = float(stepNum++) / float(MAXSTEP);
 
-    float offx = 2.f * progress * float(dx) / float(core->width );
-    float offy = 2.f * progress * float(dy) / float(core->height);
+    float offx =  2.f * progress * float(dx) / float(core->width );
+    float offy = -2.f * progress * float(dy) / float(core->height);
 
     if(!dirx)
         offx = 0;

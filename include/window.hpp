@@ -34,18 +34,20 @@ class Transform {
         glm::mat4 compose();
 };
 
+class Rect{
+    public:
+        int tlx, tly;
+        int brx, bry;
+    public:
+        Rect();
+        Rect(int, int, int, int);
+        bool operator &(const Rect &other) const;
+};
+std::ostream& operator<<(std::ostream& stream, const Rect& rect);
+
 class __FireWindow {
-    private:
-        class Rect{
-            public:
-                int tlx, tly;
-                int brx, bry;
-            public:
-                Rect();
-                Rect(int, int, int, int);
-                bool operator &(const Rect &other) const;
-        };
-        friend std::ostream& operator<<(std::ostream& stream, const Rect& rect);
+    public:
+        static Rect output;
     public:
         XVisualInfo *xvi;
         Pixmap pixmap;
@@ -70,6 +72,7 @@ class __FireWindow {
         int vx, vy; // viewport position
         bool shouldBeDrawn();
         void recalcWorkspace();
+        void regenVBOFromAttribs();
 };
 
 typedef std::shared_ptr<__FireWindow> FireWindow;

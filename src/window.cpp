@@ -24,11 +24,11 @@ glm::mat4 Transform::compose() {
         (grot * rotation) * (gscl * scalation);
 }
 
-__FireWindow::Rect::Rect() : Rect(0, 0, 0, 0){}
-__FireWindow::Rect::Rect(int tx, int ty, int bx, int by):
+Rect::Rect() : Rect(0, 0, 0, 0){}
+Rect::Rect(int tx, int ty, int bx, int by):
     tlx(tx), tly(ty), brx(bx), bry(by){}
 
-bool __FireWindow::Rect::operator&(const __FireWindow::Rect &other) const {
+bool Rect::operator&(const Rect &other) const {
     bool result = true;
 
     if(this->tly >= other.bry || this->bry <= other.tly)
@@ -39,8 +39,7 @@ bool __FireWindow::Rect::operator&(const __FireWindow::Rect &other) const {
     return result;
 }
 
-std::ostream& operator<<(std::ostream &stream,
-        const __FireWindow::Rect& rect) {
+std::ostream& operator<<(std::ostream &stream, const Rect& rect) {
 
     stream << "Debug rect\n";
     stream << rect.tlx << " " << rect.tly << " ";
@@ -50,6 +49,8 @@ std::ostream& operator<<(std::ostream &stream,
     return stream;
 }
 
+Rect __FireWindow::output;
+
 bool __FireWindow::shouldBeDrawn() {
     if(norender)
         return false;
@@ -57,16 +58,26 @@ bool __FireWindow::shouldBeDrawn() {
     if(type == WindowTypeOther)
         return false;
 
-    Rect r1(attrib.x, attrib.y,
+    Rect r(attrib.x, attrib.y,
             attrib.x + attrib.width,
             attrib.y + attrib.height);
 
-    Rect r2(0, 0, core->width, core->height);
-
-    if(r1 & r2)
+    if(r & output)
         return true;
     else
         return false;
+}
+
+void __FireWindow::regenVBOFromAttribs() {
+    if(type == WindowTypeDesktop)
+        OpenGLWorker::generateVAOVBO(attrib.x,
+            attrib.y + attrib.height,
+            attrib.width, -attrib.height,
+            vao, vbo);
+    else
+        OpenGLWorker::generateVAOVBO(attrib.x, attrib.y,
+            attrib.width, attrib.height,
+            vao, vbo);
 }
 
 static int attrListVisual[] = {
@@ -461,8 +472,11 @@ void moveWindow(FireWindow win, int x, int y) {
     win->attrib.x = x;
     win->attrib.y = y;
 
-    if(win->type == WindowTypeDesktop)
-        return;
+    if(win->type == WindowTypeDesktop) {
+        glDeleteBuffers(1, &win->vbo);
+        glDeleteVertexArrays(1, &win->vao);
+        win->regenVBOFromAttribs();
+    }
 
     XWindowChanges xwc;
     xwc.x = x;
@@ -472,9 +486,7 @@ void moveWindow(FireWindow win, int x, int y) {
     glDeleteVertexArrays(1, &win->vao);
 
     XConfigureWindow(core->d, win->id, CWX | CWY, &xwc);
-    OpenGLWorker::generateVAOVBO(x, y,
-            win->attrib.width, win->attrib.height,
-            win->vao, win->vbo);
+    win->regenVBOFromAttribs();
 }
 
 void resizeWindow(FireWindow win, int w, int h) {
@@ -489,9 +501,8 @@ void resizeWindow(FireWindow win, int w, int h) {
     glDeleteVertexArrays(1, &win->vao);
 
     XConfigureWindow(core->d, win->id, CWWidth | CWHeight, &xwc);
-    OpenGLWorker::generateVAOVBO(win->attrib.x, win->attrib.y,
-            win->attrib.width, win->attrib.height,
-            win->vao, win->vbo);
+    win->regenVBOFromAttribs();
+
 }
 void syncWindowAttrib(FireWindow win) {
     XWindowAttributes xwa;
@@ -513,9 +524,6 @@ void syncWindowAttrib(FireWindow win) {
 
     glDeleteBuffers(1, &win->vbo);
     glDeleteVertexArrays(1, &win->vao);
-
-    OpenGLWorker::generateVAOVBO(win->attrib.x, win->attrib.y,
-            win->attrib.width, win->attrib.height,
-            win->vao, win->vbo);
+    win->regenVBOFromAttribs();
 }
 }
