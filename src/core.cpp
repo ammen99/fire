@@ -84,6 +84,10 @@ Core::Core() {
     switchWorkspaceBindings[2] = XKeysymToKeycode(d, XK_j);
     switchWorkspaceBindings[3] = XKeysymToKeycode(d, XK_k);
 
+    vwidth = vheight = 3;
+    vx = vy = 0;
+    wsswitch = new WSSwitch(this);
+
     background = std::make_shared<__FireWindow>();
 }
 
@@ -577,11 +581,16 @@ void Core::switchWorkspace(std::tuple<int, int> nPos) {
 
     for(auto w : wins->wins)
         WinUtil::moveWindow(w, w->attrib.x + dx, w->attrib.y + dy);
+
+    vx = nx;
+    vy = ny;
 }
 
 void Core::WSSwitch::moveWorkspace(int dx, int dy) {
     auto nx = (core->vx - dx + core->vwidth ) % core->vwidth;
     auto ny = (core->vy - dy + core->vheight) % core->vheight;
+
+    err << nx << " " << ny;
 
     core->switchWorkspace(std::make_tuple(nx, ny));
 }
@@ -589,6 +598,8 @@ void Core::WSSwitch::moveWorkspace(int dx, int dy) {
 void Core::WSSwitch::handleSwitchWorkspace(Context *ctx) {
     if(!ctx)
         return;
+
+    err << "handleSwitchWorkspace";
 
     auto xev = ctx->xev.xkey;
 
@@ -613,6 +624,8 @@ Core::WSSwitch::WSSwitch(Core *core) {
         kbs[i].action =
             std::bind(std::mem_fn(&Core::WSSwitch::handleSwitchWorkspace),
             this, _1);
+
+        core->addKey(&kbs[i], true);
     }
 }
 

@@ -102,7 +102,7 @@ class Core {
                 WSSwitch(Core *core);
                 void moveWorkspace(int dx, int dy);
                 void handleSwitchWorkspace(Context *ctx);
-        };
+        }*wsswitch;
 
     public:
         Display *d;

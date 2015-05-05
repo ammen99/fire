@@ -461,6 +461,10 @@ void setInputFocusToWindow(Window win) {
 void moveWindow(FireWindow win, int x, int y) {
     win->attrib.x = x;
     win->attrib.y = y;
+
+    if(win->type == WindowTypeDesktop)
+        return;
+
     XWindowChanges xwc;
     xwc.x = x;
     xwc.y = y;

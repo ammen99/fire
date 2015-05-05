@@ -14,23 +14,17 @@ void WinStack::addWindow(FireWindow win) {
         return;
     }
 
-    err << "1";
     wins.push_front(win);
-    err << "2";
 
     win->transientFor = WinUtil::getTransient(win);
-    err << "3";
     win->leader = WinUtil::getClientLeader(win);
-    err << "4";
     win->type = WinUtil::getWindowType(win);
-    err << "5";
     auto w = WinUtil::getAncestor(win);
+
     if(w)
         activeWin = w;
 
-    err << "6";
     WinUtil::setInputFocusToWindow(win->id);
-    err << "7";
     WinUtil::initWindow(win);
 }
 
