@@ -87,8 +87,6 @@ Core::Core() {
     vwidth = vheight = 3;
     vx = vy = 0;
     wsswitch = new WSSwitch(this);
-
-    background = std::make_shared<__FireWindow>();
 }
 
 Core::~Core(){
@@ -169,19 +167,37 @@ void Core::remBut(uint id) {
 
 
 void Core::setBackground(const char *path) {
-    background->texture = GLXUtils::loadImage(const_cast<char*>(path));
-    background->norender = false;
+    auto texture = GLXUtils::loadImage(const_cast<char*>(path));
 
-    OpenGLWorker::generateVAOVBO(0, height, width, -height,
-            background->vao, background->vbo);
+    uint vao, vbo;
+    OpenGLWorker::generateVAOVBO(0, height, width, -height, vao, vbo);
 
-    background->attrib.x = 0;
-    background->attrib.y = 0;
-    background->attrib.width  = width;
-    background->attrib.height = height;
+    backgrounds.clear();
+    backgrounds.resize(vheight);
+    for(int i = 0; i < vheight; i++)
+        backgrounds[i].resize(vwidth);
 
-    background->type = WindowTypeDesktop;
-    wins->addWindow(background);
+    for(int i = 0; i < vheight; i++){
+        for(int j = 0; j < vwidth; j++) {
+
+            backgrounds[i][j] = std::make_shared<__FireWindow>();
+
+            backgrounds[i][j]->vao = vao;
+            backgrounds[i][j]->vbo = vbo;
+            backgrounds[i][j]->norender = false;
+            backgrounds[i][j]->texture  = texture;
+
+            backgrounds[i][j]->attrib.x = j * width;
+            backgrounds[i][j]->attrib.y = i * height;
+            backgrounds[i][j]->attrib.width  = width;
+            backgrounds[i][j]->attrib.height = height;
+
+            backgrounds[i][j]->type = WindowTypeDesktop;
+            wins->addWindow(backgrounds[i][j]);
+            err << "Adding background window" << j * width << " " << i * height;
+        }
+    }
+
 }
 
 FireWindow Core::findWindow(Window win) {

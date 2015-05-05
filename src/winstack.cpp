@@ -11,6 +11,7 @@ WinStack::WinStack() {
 void WinStack::addWindow(FireWindow win) {
     if(win->type == WindowTypeDesktop) {
         wins.push_back(win);
+        err << "Pushed a win";
         return;
     }
 

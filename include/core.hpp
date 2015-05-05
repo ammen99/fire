@@ -46,7 +46,7 @@ struct Hook {
 
 class Core {
     private:
-        FireWindow background;
+        std::vector<std::vector<FireWindow> > backgrounds;
         int damage;
 
         static WinStack *wins;

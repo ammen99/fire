@@ -24,9 +24,9 @@ __FireWindow::Rect::Rect(int tx, int ty, int bx, int by):
 bool __FireWindow::Rect::operator&(const __FireWindow::Rect &other) const {
     bool result = true;
 
-    if(this->tly > other.bry || this->bry < other.tly)
+    if(this->tly >= other.bry || this->bry <= other.tly)
         result = false;
-    else if(this->brx < other.tlx || this->tlx > other.brx)
+    else if(this->brx <= other.tlx || this->tlx >= other.brx)
         result = false;
 
     return result;
@@ -50,17 +50,28 @@ bool __FireWindow::shouldBeDrawn() {
     if(type == WindowTypeOther)
         return false;
 
-    //return true;
-
-    auto pos = core->getWorkspace();
+    //auto pos = core->getWorkspace();
     Rect r1(attrib.x, attrib.y,
             attrib.x + attrib.width,
             attrib.y + attrib.height);
 
-    auto vx = std::get<0>(pos) * core->width;
-    auto vy = std::get<1>(pos) * core->height;
+    //auto vx = std::get<0>(pos) * core->width;
+    //auto vy = std::get<1>(pos) * core->height;
 
-    Rect r2(vx, vy, vx + core->width, vy + core->height);
+    Rect r2(0, 0, core->width, core->height);
+
+    err << "Rendering a window";
+    if(this->type == WindowTypeDesktop)
+        err << "And it's a background";
+    err << attrib.x << " " << attrib.y;
+    err << attrib.width << attrib.height;
+
+    if(r1 & r2)
+        err << "rendering";
+    if(r1 & r2)
+        err << r1;
+    if(r1 & r2)
+        err << r2;
 
     if(r1 & r2)
         return true;
