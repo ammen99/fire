@@ -5,7 +5,11 @@
 int main(int argc, const char **argv ) {
     google::InitGoogleLogging(argv[0]);
 
-    core = new Core();    
+    Transform::proj = Transform::view =
+    Transform::grot = Transform::gscl =
+    Transform::gtrs = glm::mat4();
+
+    core = new Core();
     WinUtil::init();
 
     GLXUtils::createNewContext(core->overlay);

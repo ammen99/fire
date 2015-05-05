@@ -87,6 +87,8 @@ Core::Core() {
     vwidth = vheight = 3;
     vx = vy = 0;
     wsswitch = new WSSwitch(this);
+
+    cntHooks = 0;
 }
 
 Core::~Core(){
@@ -222,7 +224,7 @@ void Core::renderAllWindows() {
 }
 
 void Core::wait(int timeout) {
-    poll(&fd, 1, timeout);
+    poll(&fd, 1, timeout / 1000);
 }
 
 void Core::handleEvent(XEvent xev){
@@ -317,13 +319,15 @@ void Core::handleEvent(XEvent xev){
     }
 }
 
-#define RefreshRate 60
+#define RefreshRate 200
+#define Second 1000000
+
 void Core::loop(){
 
     std::lock_guard<std::mutex> lock(wmMutex);
     redraw = true;
 
-    int cycle = 1000000 / RefreshRate;
+    int cycle = Second / RefreshRate;
     cycle -= 50;
     timeval before, after;
     gettimeofday(&before, 0);
@@ -348,13 +352,14 @@ void Core::loop(){
             fd.revents = 0;
         }
         else {
+            if(cntHooks)
             for (auto hook : hooks)
                 if(hook.second->active)
                     hook.second->action();
 
             if(redraw)
                 renderAllWindows(),
-                    redraw = false;
+                redraw = false;
             before = after;
         }
     }
@@ -428,6 +433,7 @@ void Core::Move::Initiate(Context *ctx) {
 
         release.active = true;
         hook.active = true;
+        core->cntHooks++;
 
         this->sx = xev.x_root;
         this->sy = xev.y_root;
@@ -446,6 +452,7 @@ void Core::Move::Terminate(Context *ctx) {
         return;
 
     hook.active = false;
+    core->cntHooks--;
     release.active = false;
 
     auto xev = ctx->xev.xbutton;
@@ -514,6 +521,7 @@ void Core::Resize::Initiate(Context *ctx) {
         win = w;
         hook.active = true;
         release.active = true;
+        core->cntHooks++;
 
         if(w->attrib.width == 0)
             w->attrib.width = 1;
@@ -536,6 +544,7 @@ void Core::Resize::Terminate(Context *ctx) {
         return;
 
     hook.active = false;
+    core->cntHooks--;
     release.active = false;
 
     win->transform.scalation = glm::mat4();
@@ -602,20 +611,28 @@ void Core::switchWorkspace(std::tuple<int, int> nPos) {
     vy = ny;
 }
 
-void Core::WSSwitch::moveWorkspace(int dx, int dy) {
-    auto nx = (core->vx - dx + core->vwidth ) % core->vwidth;
-    auto ny = (core->vy - dy + core->vheight) % core->vheight;
+void Core::WSSwitch::moveWorkspace(int ddx, int ddy) {
+    auto nx = (core->vx - ddx + core->vwidth ) % core->vwidth;
+    auto ny = (core->vy - ddy + core->vheight) % core->vheight;
 
-    err << nx << " " << ny;
+    dirx = dx;
+    diry = dy;
 
-    core->switchWorkspace(std::make_tuple(nx, ny));
+    dx = (core->vx - nx) * core->width;
+    dy = (core->vy - ny) * core->height;
+
+    this->nx = nx;
+    this->ny = ny;
+
+    stepNum = 0;
+    hook.active = true;
+    core->cntHooks++;
+    //core->switchWorkspace(std::make_tuple(nx, ny));
 }
 
 void Core::WSSwitch::handleSwitchWorkspace(Context *ctx) {
     if(!ctx)
         return;
-
-    err << "handleSwitchWorkspace";
 
     auto xev = ctx->xev.xkey;
 
@@ -628,6 +645,32 @@ void Core::WSSwitch::handleSwitchWorkspace(Context *ctx) {
     if(xev.keycode == core->switchWorkspaceBindings[3])
         moveWorkspace(0, -1);
 }
+
+#define MAXSTEP 60
+void Core::WSSwitch::moveStep() {
+    if(stepNum == MAXSTEP){
+        Transform::gtrs = glm::mat4();
+        core->switchWorkspace(std::make_tuple(nx, ny));
+        hook.active = false;
+        core->cntHooks--;
+        core->redraw = true;
+        return;
+    }
+    float progress = float(stepNum++) / float(MAXSTEP);
+
+    float offx = 2.f * progress * float(dx) / float(core->width );
+    float offy = 2.f * progress * float(dy) / float(core->height);
+
+    if(!dirx)
+        offx = 0;
+    if(!diry)
+        offy = 0;
+
+    Transform::gtrs = glm::translate(glm::mat4(), glm::vec3(offx, offy, 0.0));
+    core->redraw = true;
+}
+
+
 Core::WSSwitch::WSSwitch(Core *core) {
     using namespace std::placeholders;
 
@@ -643,6 +686,11 @@ Core::WSSwitch::WSSwitch(Core *core) {
 
         core->addKey(&kbs[i], true);
     }
+
+    hook.active = false;
+    core->cntHooks--;
+    hook.action = std::bind(std::mem_fn(&Core::WSSwitch::moveStep), this);
+    core->addHook(&hook);
 }
 
 Core *core;

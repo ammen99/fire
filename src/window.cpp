@@ -2,6 +2,12 @@
 #include "../include/opengl.hpp"
 
 
+glm::mat4 Transform::proj;
+glm::mat4 Transform::view;
+glm::mat4 Transform::grot;
+glm::mat4 Transform::gscl;
+glm::mat4 Transform::gtrs;
+
 Transform::Transform() {
     this->translation = glm::mat4();
     this->rotation = glm::mat4();
@@ -14,7 +20,8 @@ glm::mat4 Transform::compose() {
         glm::translate(translation,
                 glm::vec3(0.f, 0.f, stackID * 1e-2));
 
-    return trans * rotation * scalation;
+    return proj * view * (gtrs * trans) *
+        (grot * rotation) * (gscl * scalation);
 }
 
 __FireWindow::Rect::Rect() : Rect(0, 0, 0, 0){}
@@ -50,36 +57,17 @@ bool __FireWindow::shouldBeDrawn() {
     if(type == WindowTypeOther)
         return false;
 
-    //auto pos = core->getWorkspace();
     Rect r1(attrib.x, attrib.y,
             attrib.x + attrib.width,
             attrib.y + attrib.height);
 
-    //auto vx = std::get<0>(pos) * core->width;
-    //auto vy = std::get<1>(pos) * core->height;
-
     Rect r2(0, 0, core->width, core->height);
-
-    err << "Rendering a window";
-    if(this->type == WindowTypeDesktop)
-        err << "And it's a background";
-    err << attrib.x << " " << attrib.y;
-    err << attrib.width << attrib.height;
-
-    if(r1 & r2)
-        err << "rendering";
-    if(r1 & r2)
-        err << r1;
-    if(r1 & r2)
-        err << r2;
 
     if(r1 & r2)
         return true;
     else
         return false;
 }
-
-
 
 static int attrListVisual[] = {
     GLX_RGBA, GLX_DOUBLEBUFFER,

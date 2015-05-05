@@ -98,16 +98,24 @@ class Core {
         class WSSwitch {
             private:
                 KeyBinding kbs[4];
+                Hook hook;
+                int stepNum;
+                int dirx, diry;
+                int dx, dy;
+                int nx, ny;
             public:
                 WSSwitch(Core *core);
                 void moveWorkspace(int dx, int dy);
                 void handleSwitchWorkspace(Context *ctx);
+                void moveStep();
         }*wsswitch;
 
     public:
         Display *d;
         Window root;
         Window overlay;
+
+        int cntHooks;
 
         int width;
         int height;
