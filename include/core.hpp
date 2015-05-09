@@ -42,8 +42,14 @@ struct ButtonBinding : Binding {
 
 // hooks are done once a redraw cycle
 struct Hook {
-    bool active;
-    std::function<void(void)> action;
+    private:
+        bool active;
+    public:
+        std::function<void(void)> action;
+        void enable();
+        void disable();
+        bool getState();
+        Hook();
 };
 
 class Core {

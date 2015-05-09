@@ -17,6 +17,25 @@ namespace {
 WinStack *Core::wins;
 
 Context::Context(XEvent ev) : xev(ev){}
+Hook::Hook() : active(false) {}
+
+void Hook::enable() {
+    if(this->active)
+        return;
+    this->active = true;
+    core->cntHooks++;
+}
+
+void Hook::disable() {
+    if(!this->active)
+        return;
+    this->active = false;
+    core->cntHooks--;
+}
+
+bool Hook::getState() {
+    return this->active;
+}
 
 Core::Core() {
 
@@ -407,10 +426,13 @@ void Core::loop(){
     std::lock_guard<std::mutex> lock(wmMutex);
     redraw = true;
 
-    int cycle = Second / RefreshRate;
-    cycle -= 50;
+    int currentCycle = Second / RefreshRate;
+    currentCycle -= 50;
+    int baseCycle = currentCycle;
+
     timeval before, after;
     gettimeofday(&before, 0);
+    bool hadEvents = false;
 
     XEvent xev;
 
@@ -425,22 +447,32 @@ void Core::loop(){
         int diff = (after.tv_sec - before.tv_sec) * 1000000 +
             after.tv_usec - before.tv_usec;
 
-        if(diff < cycle) {
-            wait(cycle - diff);
-            if(fd.revents & POLLIN)
+        if(diff < currentCycle) {
+            wait(currentCycle - diff);
+            if(fd.revents & POLLIN) {
+                hadEvents = true;
+                currentCycle = baseCycle;
                 continue;
+            }
             fd.revents = 0;
         }
         else {
-            if(cntHooks)
-            for (auto hook : hooks)
-                if(hook.second->active)
-                    hook.second->action();
+            if(cntHooks) {
+                for (auto hook : hooks)
+                    if(hook.second->getState())
+                        hook.second->action();
+            }
 
             if(redraw)
                 renderAllWindows(),
-                redraw = false;
+                    redraw = false;
+
+            /* optimisation when idle */
+            if(!cntHooks && !hadEvents && currentCycle < Second)
+                currentCycle *= 2;
+
             before = after;
+            hadEvents = false;
         }
     }
 }
@@ -484,9 +516,7 @@ int Core::onXError(Display *d, XErrorEvent *xev) {
 
 Core::Move::Move(Core *c) {
     win = nullptr;
-    hook = Hook{ false,
-            std::bind(std::mem_fn(&Core::Move::Intermediate), this)
-            };
+    hook.action = std::bind(std::mem_fn(&Core::Move::Intermediate), this);
     hid = c->addHook(&hook);
 
     using namespace std::placeholders;
@@ -517,8 +547,8 @@ void Core::Move::Initiate(Context *ctx) {
         win = w;
 
         release.active = true;
-        hook.active = true;
-        core->cntHooks++;
+        hook.enable();
+
 
         this->sx = xev.x_root;
         this->sy = xev.y_root;
@@ -536,8 +566,7 @@ void Core::Move::Terminate(Context *ctx) {
     if(!ctx)
         return;
 
-    hook.active = false;
-    core->cntHooks--;
+    hook.disable();
     release.active = false;
 
     auto xev = ctx->xev.xbutton;
@@ -570,9 +599,7 @@ void Core::Move::Intermediate() {
 Core::Resize::Resize(Core *c) {
     win = nullptr;
 
-    hook = Hook{ false,
-            std::bind(std::mem_fn(&Core::Resize::Intermediate), this)
-            };
+    hook.action = std::bind(std::mem_fn(&Core::Resize::Intermediate), this);
     hid = c->addHook(&hook);
 
     using namespace std::placeholders;
@@ -604,9 +631,8 @@ void Core::Resize::Initiate(Context *ctx) {
 
         wins->focusWindow(w);
         win = w;
-        hook.active = true;
+        hook.enable();
         release.active = true;
-        core->cntHooks++;
 
         if(w->attrib.width == 0)
             w->attrib.width = 1;
@@ -627,9 +653,8 @@ void Core::Resize::Initiate(Context *ctx) {
 void Core::Resize::Terminate(Context *ctx) {
     if(!ctx)
         return;
-
-    hook.active = false;
-    core->cntHooks--;
+    
+    hook.disable();
     release.active = false;
 
     win->transform.scalation = glm::mat4();
@@ -710,8 +735,8 @@ void Core::WSSwitch::moveWorkspace(int ddx, int ddy) {
     this->ny = ny;
 
     stepNum = 0;
-    hook.active = true;
-    core->cntHooks++;
+    hook.enable();
+
 
     int tlx1 = 0;
     int tly1 = 0;
@@ -754,8 +779,7 @@ void Core::WSSwitch::moveStep() {
     if(stepNum == MAXSTEP){
         Transform::gtrs = glm::mat4();
         core->switchWorkspace(std::make_tuple(nx, ny));
-        hook.active = false;
-        core->cntHooks--;
+        hook.disable();
         core->redraw = true;
         output = Rect(0, 0, core->width, core->height);
         return;
@@ -791,8 +815,6 @@ Core::WSSwitch::WSSwitch(Core *core) {
         core->addKey(&kbs[i], true);
     }
 
-    hook.active = false;
-    core->cntHooks--;
     hook.action = std::bind(std::mem_fn(&Core::WSSwitch::moveStep), this);
     core->addHook(&hook);
 }
