@@ -141,9 +141,9 @@ void errorHandler(GLenum src, GLenum type,
 
 void OpenGLWorker::initOpenGL(const char *shaderSrcPath) {
 
-    glEnable(GL_DEBUG_OUTPUT);
-    glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-    glDebugMessageCallback(errorHandler, (void*)0);
+    //glEnable(GL_DEBUG_OUTPUT);
+    //glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+    //glDebugMessageCallback(errorHandler, (void*)0);
 
     glClearColor ( .0f, .0f, .0f, 0.0f );
     glClearDepth ( 1.f );

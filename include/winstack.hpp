@@ -33,6 +33,7 @@ class WinStack {
 
         void focusWindow(FireWindow win);
         void restackAbove(FireWindow win, FireWindow above);
+        FireWindow findWindowAtCursorPosition(Point p);
 
         void updateTransientsAttrib(FireWindow win, int, int, int, int);
 };

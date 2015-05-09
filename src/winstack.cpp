@@ -11,21 +11,13 @@ WinStack::WinStack() {
 void WinStack::addWindow(FireWindow win) {
     if(win->type == WindowTypeDesktop) {
         wins.push_back(win);
-        err << "Pushed a win";
         return;
     }
 
+    if(getIteratorPositionForWindow(win->id) != wins.end())
+        return;
+
     wins.push_front(win);
-
-    win->transientFor = WinUtil::getTransient(win);
-    win->leader = WinUtil::getClientLeader(win);
-    win->type = WinUtil::getWindowType(win);
-    auto w = WinUtil::getAncestor(win);
-
-    if(w)
-        activeWin = w;
-
-    WinUtil::setInputFocusToWindow(win->id);
     WinUtil::initWindow(win);
 }
 
@@ -62,8 +54,9 @@ FireWindow WinStack::findWindow(Window win) {
 void WinStack::renderWindows() {
     int num = 0;
     for(auto w : wins)
-        if(w && w->shouldBeDrawn())
+        if(w && w->shouldBeDrawn()) {
             w->transform.stackID = num++, WinUtil::renderWindow(w);
+        }
 }
 
 void WinStack::removeWindow(FireWindow win, bool destroy) {
@@ -162,7 +155,8 @@ void WinStack::focusWindow(FireWindow win) {
     if(win->type == WindowTypeDesktop)
         return;
 
-    activeWin = WinUtil::getAncestor(win);
+    //activeWin = WinUtil::getAncestor(win);
+    activeWin = win;
 
     auto w1 = findTopmostStackingWindow(activeWin);
     auto w2 = activeWin;
@@ -180,8 +174,6 @@ void WinStack::focusWindow(FireWindow win) {
     restackAbove(w2, w1);
     restackTransients(w1);
     restackTransients(w2);
-//
-    WinUtil::setInputFocusToWindow(activeWin->id);
 
 
     XWindowChanges xwc;
@@ -189,5 +181,17 @@ void WinStack::focusWindow(FireWindow win) {
     xwc.sibling = w1->id;
     XConfigureWindow(core->d, activeWin->id, CWSibling|CWStackMode, &xwc);
 
+    WinUtil::setInputFocusToWindow(activeWin->id);
+
     core->redraw = true;
+}
+
+FireWindow WinStack::findWindowAtCursorPosition(Point p) {
+    for(auto w : wins)
+        if(w->attrib.map_state == IsViewable &&
+           !w->norender                      &&
+          (w->getRect() & p))
+            return w;
+
+    return nullptr;
 }

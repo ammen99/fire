@@ -7,6 +7,12 @@
 
 bool wmDetected;
 std::mutex wmMutex;
+namespace {
+    bool inMapping;   //  used to determine whether
+    bool ignoreWindow;//  a BadWindow    has arised
+                      //  from a XMapWindow request
+                      // when receiving CreateNotify
+}
 
 WinStack *Core::wins;
 
@@ -14,6 +20,7 @@ Context::Context(XEvent ev) : xev(ev){}
 
 Core::Core() {
 
+    inMapping = false;
     err << "init start";
     d = XOpenDisplay(NULL);
 
@@ -21,6 +28,7 @@ Core::Core() {
         err << "Failed to open display!";
 
 
+    XSynchronize(d, 1);
     root = DefaultRootWindow(d);
     fd.fd = ConnectionNumber(d);
     fd.events = POLLIN;
@@ -65,13 +73,16 @@ Core::Core() {
 
     ButtonBinding *focus = new ButtonBinding();
     focus->type = BindingTypePress;
-    focus->button = Button1Mask | Button2Mask | Button3Mask;
+    focus->button = Button1;
     focus->mod = AnyModifier;
     focus->active = true;
 
     auto f = [] (Context *ctx){
         auto xev = ctx->xev.xbutton;
-        auto w = wins->findWindow(xev.window);
+        auto w =
+            wins->findWindowAtCursorPosition
+            (Point(xev.x_root, xev.y));
+
         if(w)
             wins->focusWindow(w);
     };
@@ -89,12 +100,52 @@ Core::Core() {
     wsswitch = new WSSwitch(this);
 
     cntHooks = 0;
-    __FireWindow::output = Rect(0, 0, width, height);
+    output = Rect(0, 0, width, height);
+
+    KeyBinding *run = new KeyBinding();
+    auto dmenu = [](Context *ctx){
+        core->run(const_cast<char*>("gmrun"));
+    };
+
+    run->active = true;
+    run->mod = Mod1Mask;
+    run->type = BindingTypePress;
+    run->key = XKeysymToKeycode(d, XK_r);
+    run->action = dmenu;
+
+    addKey(run, true);
+
+    KeyBinding *close = new KeyBinding();
+    auto exit = [](Context *ctx){
+        std::exit(0);
+    };
+
+    close->active = true;
+    close->mod = ControlMask;
+    close->type = BindingTypePress;
+    close->key = XKeysymToKeycode(d, XK_q);
+    close->action = exit;
+
+    addKey(close, true);
 }
 
 Core::~Core(){
     XCompositeReleaseOverlayWindow(d, overlay);
     XCloseDisplay(d);
+}
+
+void Core::run(char *command) {
+    err << "Running";
+    auto pid = fork();
+    if(!pid) {
+        std::string str("DISPLAY=");
+        str = str.append(XDisplayString(d));
+
+        putenv(const_cast<char*>(str.c_str()));
+
+        std::exit(execl("/bin/sh", "/bin/sh", "-c", command, NULL));
+    }
+
 }
 
 #define MAXID (uint)(-1)
@@ -198,7 +249,6 @@ void Core::setBackground(const char *path) {
             backgrounds[i][j]->type = WindowTypeDesktop;
             backgrounds[i][j]->regenVBOFromAttribs();
             wins->addWindow(backgrounds[i][j]);
-            err << "Adding background window" << j * width << " " << i * height;
         }
     }
 
@@ -216,6 +266,7 @@ void Core::addWindow(XCreateWindowEvent xev) {
         w->transientFor = findWindow(xev.parent);
 
     w->xvi = nullptr;
+    //w->attrib.map_state = IsViewable;
     wins->addWindow(w);
 }
 
@@ -249,8 +300,19 @@ void Core::handleEvent(XEvent xev){
             if (xev.xcreatewindow.window == overlay)
                 break;
 
+            err << "CreateNotify";
+
+            err << "WinID = " << xev.xcreatewindow.window;
+            inMapping = true;
             XMapWindow(core->d, xev.xcreatewindow.window);
+            err << "Request sent, syncing";
             XSync(core->d, 0);
+            inMapping = false;
+            if(ignoreWindow){
+                ignoreWindow = false;
+                err << "Ignoring window";
+                break;
+            }
             addWindow(xev.xcreatewindow);
 
             redraw = true;
@@ -265,6 +327,18 @@ void Core::handleEvent(XEvent xev){
             redraw = true;
             break;
         }
+        case MapRequest: {
+
+            auto w = wins->findWindow(xev.xmaprequest.window);
+            if(w == nullptr)
+                break;
+
+            w->norender = false;
+            WinUtil::syncWindowAttrib(w);
+            auto parent = WinUtil::getAncestor(w);
+            wins->restackTransients(parent);
+            redraw = true;
+        }
         case MapNotify: {
 
             auto w = wins->findWindow(xev.xmap.window);
@@ -273,6 +347,9 @@ void Core::handleEvent(XEvent xev){
 
             w->norender = false;
             WinUtil::syncWindowAttrib(w);
+            auto parent = WinUtil::getAncestor(w);
+            wins->restackTransients(parent);
+            w->attrib.map_state = IsViewable;
             redraw = true;
             break;
         }
@@ -283,6 +360,7 @@ void Core::handleEvent(XEvent xev){
                 break;
 
             w->norender = true;
+            w->attrib.map_state = IsUnmapped;
             redraw = true;
             break;
         }
@@ -372,8 +450,14 @@ int Core::onOtherWmDetected(Display* d, XErrorEvent *xev) {
     wmDetected = true;
     return 0;
 }
+bool inRenderWindow = false;
 
 int Core::onXError(Display *d, XErrorEvent *xev) {
+
+    if(inMapping)
+        ignoreWindow = true;
+    if(inRenderWindow)
+        err << "Exception in render windowing";
 
     if(xev->error_code == BadMatch    ||
        xev->error_code == BadDrawable ||
@@ -383,10 +467,9 @@ int Core::onXError(Display *d, XErrorEvent *xev) {
             << xev->resourceid;
 
         auto x = wins->findWindow(xev->resourceid);
-        if(x && x->type == WindowTypeDesktop)
-            return 0;
         if (x != nullptr)
             x->norender = true;
+
         return 0;
     }
 
@@ -398,9 +481,6 @@ int Core::onXError(Display *d, XErrorEvent *xev) {
     err << "____________________________";
     return 0;
 }
-
-
-
 
 Core::Move::Move(Core *c) {
     win = nullptr;
@@ -429,7 +509,8 @@ Core::Move::Move(Core *c) {
 
 void Core::Move::Initiate(Context *ctx) {
     auto xev = ctx->xev.xbutton;
-    auto w = WinUtil::getAncestor(wins->findWindow(xev.window));
+    auto w = wins->findWindowAtCursorPosition(Point(xev.x_root, xev.y_root));
+
     if(w){
         err << "moving";
         core->wins->focusWindow(w);
@@ -642,14 +723,14 @@ void Core::WSSwitch::moveWorkspace(int ddx, int ddy) {
     int brx2 = tlx2 + core->width;
     int bry2 = tly2 + core->height;
 
-    __FireWindow::output = Rect(std::min(tlx1, tlx2),
+    output = Rect(std::min(tlx1, tlx2),
             std::min(tly1, tly2),
             std::max(brx1, brx2),
             std::max(bry1, bry2));
 
-    err << "Switching viewport";
-    err << nx << " " << ny;
-    err << __FireWindow::output;
+    //err << "Switching viewport";
+    //err << nx << " " << ny;
+    //err << __FireWindow::output;
 }
 
 void Core::WSSwitch::handleSwitchWorkspace(Context *ctx) {
@@ -676,7 +757,7 @@ void Core::WSSwitch::moveStep() {
         hook.active = false;
         core->cntHooks--;
         core->redraw = true;
-        __FireWindow::output = Rect(0, 0, core->width, core->height);
+        output = Rect(0, 0, core->width, core->height);
         return;
     }
     float progress = float(stepNum++) / float(MAXSTEP);

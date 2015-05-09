@@ -5,6 +5,8 @@
 #include "window.hpp"
 #include "glx.hpp"
 
+
+extern bool inRenderWindow;
 class WinStack;
 
 struct Context{
@@ -140,6 +142,8 @@ class Core {
         ~Core();
         void loop();
         Core();
+
+        void run(char *command);
 
         void renderAllWindows();
         void addWindow(XCreateWindowEvent);

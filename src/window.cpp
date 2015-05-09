@@ -24,6 +24,9 @@ glm::mat4 Transform::compose() {
         (grot * rotation) * (gscl * scalation);
 }
 
+Point::Point() : Point(0, 0){}
+Point::Point(int _x, int _y) : x(_x), y(_y) {}
+
 Rect::Rect() : Rect(0, 0, 0, 0){}
 Rect::Rect(int tx, int ty, int bx, int by):
     tlx(tx), tly(ty), brx(bx), bry(by){}
@@ -39,6 +42,14 @@ bool Rect::operator&(const Rect &other) const {
     return result;
 }
 
+bool Rect::operator&(const Point &other) const {
+    if(this->tlx <= other.x && other.x <= this->brx &&
+       this->tly <= other.y && other.y <= this->bry)
+        return true;
+    else
+        return false;
+}
+
 std::ostream& operator<<(std::ostream &stream, const Rect& rect) {
 
     stream << "Debug rect\n";
@@ -49,18 +60,13 @@ std::ostream& operator<<(std::ostream &stream, const Rect& rect) {
     return stream;
 }
 
-Rect __FireWindow::output;
+Rect output;
 
 bool __FireWindow::shouldBeDrawn() {
     if(norender)
         return false;
 
-    if(type == WindowTypeOther)
-        return false;
-
-    Rect r(attrib.x, attrib.y,
-            attrib.x + attrib.width,
-            attrib.y + attrib.height);
+    auto r = getRect();
 
     if(r & output)
         return true;
@@ -78,6 +84,12 @@ void __FireWindow::regenVBOFromAttribs() {
         OpenGLWorker::generateVAOVBO(attrib.x, attrib.y,
             attrib.width, attrib.height,
             vao, vbo);
+}
+
+Rect __FireWindow::getRect() {
+    return Rect(this->attrib.x, this->attrib.y,
+                this->attrib.x + this->attrib.width,
+                this->attrib.y + this->attrib.height);
 }
 
 static int attrListVisual[] = {
@@ -135,10 +147,17 @@ void init() {
 
 
 int setWindowTexture(FireWindow win) {
+    XGrabServer(core->d);
 
+    if(win->mapTryNum --> 8) {
+        XMapWindow(core->d, win->id);
+        syncWindowAttrib(win);
+        XSync(core->d, 0);
+    }
     if(win->attrib.map_state != IsViewable) {
-        err << "Invisible window, deny rendering";
+        err << "Invisible window";
         win->norender = true;
+        XUngrabServer(core->d);
         return 0;
     }
 
@@ -146,6 +165,7 @@ int setWindowTexture(FireWindow win) {
 
     if(win->pixmap == pix) {
         glBindTexture(GL_TEXTURE_2D, win->texture);
+        XUngrabServer(core->d);
         return 1;
     }
 
@@ -161,15 +181,31 @@ int setWindowTexture(FireWindow win) {
     if (win->xvi == nullptr) {
         err << "No visual info, deny rendering";
         win->norender = true;
+        XUngrabServer(core->d);
         return 0;
     }
 
     win->texture = GLXUtils::textureFromPixmap(win->pixmap,
             win->attrib.width, win->attrib.height, win->xvi);
+
+    XUngrabServer(core->d);
     return 1;
 }
 
 void initWindow(FireWindow win) {
+
+    XGetWindowAttributes(core->d, win->id, &win->attrib);
+
+    if(win->attrib.c_class != InputOnly)
+        win->damage =
+            XDamageCreate(core->d, win->id, XDamageReportRawRectangles);
+    else
+        win->attrib.map_state = IsUnmapped,
+        win->damage = None;
+
+    win->transientFor = WinUtil::getTransient(win);
+    win->leader = WinUtil::getClientLeader(win);
+    win->type = WinUtil::getWindowType(win);
 
     XSelectInput(core->d, win->id,   FocusChangeMask  |
                 PropertyChangeMask | EnterWindowMask);
@@ -177,9 +213,6 @@ void initWindow(FireWindow win) {
     XGrabButton ( core->d, AnyButton, AnyModifier, win->id, TRUE,
             ButtonPressMask | ButtonReleaseMask | Button1MotionMask,
             GrabModeSync, GrabModeSync, None, None );
-
-    win->damage = XDamageCreate(core->d, win->id, XDamageReportRawRectangles);
-    XGetWindowAttributes(core->d, win->id, &win->attrib);
 }
 
 void finishWindow(FireWindow win) {
@@ -216,7 +249,6 @@ void renderWindow(FireWindow win) {
 
     if(!setWindowTexture(win)) {
         err <<"failed to paint window " << win->id << " (no texture avail)";
-        win->norender = true;
         return;
     }
 
@@ -263,6 +295,7 @@ XVisualInfo *getVisualInfoForWindow(Window win) {
         err << "attempting to get visual info failed!" << win;
         return nullptr;
     }
+
     dummy.visualid = XVisualIDFromVisual(xwa.visual);
 
     int dumm;
@@ -476,6 +509,7 @@ void moveWindow(FireWindow win, int x, int y) {
         glDeleteBuffers(1, &win->vbo);
         glDeleteVertexArrays(1, &win->vao);
         win->regenVBOFromAttribs();
+        return;
     }
 
     XWindowChanges xwc;
@@ -514,6 +548,9 @@ void syncWindowAttrib(FireWindow win) {
     mask |= (xwa.y != win->attrib.y);
     mask |= (xwa.width != win->attrib.width);
     mask |= (xwa.height != win->attrib.height);
+
+    win->attrib.map_state = xwa.map_state;
+    win->attrib.c_class   = xwa.c_class;
 
     if(!mask)
         return;

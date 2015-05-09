@@ -34,6 +34,12 @@ class Transform {
         glm::mat4 compose();
 };
 
+class Point {
+    public:
+        int x, y;
+        Point();
+        Point(int, int);
+};
 class Rect{
     public:
         int tlx, tly;
@@ -41,13 +47,14 @@ class Rect{
     public:
         Rect();
         Rect(int, int, int, int);
-        bool operator &(const Rect &other) const;
+        bool operator &(const Rect  &other) const;
+        bool operator &(const Point &other) const;
 };
 std::ostream& operator<<(std::ostream& stream, const Rect& rect);
 
+extern Rect output;
+
 class __FireWindow {
-    public:
-        static Rect output;
     public:
         XVisualInfo *xvi;
         Pixmap pixmap;
@@ -55,6 +62,7 @@ class __FireWindow {
         GLuint texture; // image on screen
 
         bool norender = false; // should we draw window?
+        int mapTryNum = 10; // how many times have we tried to map this window?
         Transform transform;
 
         GLuint vbo = -1;
@@ -73,6 +81,7 @@ class __FireWindow {
         bool shouldBeDrawn();
         void recalcWorkspace();
         void regenVBOFromAttribs();
+        Rect getRect();
 };
 
 typedef std::shared_ptr<__FireWindow> FireWindow;
