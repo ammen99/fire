@@ -52,7 +52,10 @@ struct Hook {
         Hook();
 };
 
+class Focus;
+
 class Core {
+    friend class Focus;
     private:
         std::vector<std::vector<FireWindow> > backgrounds;
         int damage;
@@ -129,6 +132,10 @@ class Core {
                 void Toggle(Context *ctx);
                 FireWindow findWindow(Point p);
         }*expo;
+
+        Focus *focus;
+        Exit *exit;
+        Run *runn;
 
     public:
         Display *d;

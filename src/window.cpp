@@ -567,3 +567,31 @@ void syncWindowAttrib(FireWindow win) {
     win->regenVBOFromAttribs();
 }
 }
+
+Run::Run(Core *core) {
+    KeyBinding *run = new KeyBinding();
+    run->action = [core](Context *ctx){
+        core->run(const_cast<char*>("dmenu_run"));
+    };
+
+    run->active = true;
+    run->mod = Mod1Mask;
+    run->type = BindingTypePress;
+    run->key = XKeysymToKeycode(core->d, XK_r);
+
+    core->addKey(run, true);
+}
+
+Exit::Exit(Core *core) {
+    KeyBinding *close = new KeyBinding();
+    close->action = [](Context *ctx){
+        std::exit(0);
+    };
+
+    close->active = true;
+    close->mod = ControlMask;
+    close->type = BindingTypePress;
+    close->key = XKeysymToKeycode(core->d, XK_q);
+
+    core->addKey(close, true);
+}

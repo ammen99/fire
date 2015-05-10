@@ -87,67 +87,16 @@ Core::Core() {
     int dummy;
     XDamageQueryExtension(d, &damage, &dummy);
 
-    move = new Move(this);
-    resize = new Resize(this);
-
-    ButtonBinding *focus = new ButtonBinding();
-    focus->type = BindingTypePress;
-    focus->button = Button1;
-    focus->mod = NoMods;
-    focus->active = true;
-
-    focus->action = [] (Context *ctx){
-        err << "Focusing window";
-        auto xev = ctx->xev.xbutton;
-        auto w =
-            wins->findWindowAtCursorPosition
-            (Point(xev.x_root, xev.y_root));
-
-        if(w)
-            wins->focusWindow(w);
-    };
-    addBut(focus);
-
-    switchWorkspaceBindings[0] = XKeysymToKeycode(d, XK_h);
-    switchWorkspaceBindings[1] = XKeysymToKeycode(d, XK_l);
-    switchWorkspaceBindings[2] = XKeysymToKeycode(d, XK_j);
-    switchWorkspaceBindings[3] = XKeysymToKeycode(d, XK_k);
-
-    vwidth = vheight = 3;
-    vx = vy = 0;
+    move     = new Move(this);
+    resize   = new Resize(this);
     wsswitch = new WSSwitch(this);
+    expo     = new Expo(this);
+    focus    = new Focus(this);
+    exit     = new Exit(this);
+    runn     = new Run(this);
 
     cntHooks = 0;
     output = Rect(0, 0, width, height);
-
-    KeyBinding *run = new KeyBinding();
-    run->action = [](Context *ctx){
-        core->run(const_cast<char*>("dmenu_run"));
-    };
-
-    run->active = true;
-    run->mod = Mod1Mask;
-    run->type = BindingTypePress;
-    run->key = XKeysymToKeycode(d, XK_r);
-
-    addKey(run, true);
-
-    KeyBinding *close = new KeyBinding();
-    auto exit = [](Context *ctx){
-        std::exit(0);
-    };
-
-    close->active = true;
-    close->mod = ControlMask;
-    close->type = BindingTypePress;
-    close->key = XKeysymToKeycode(d, XK_q);
-    close->action = exit;
-
-    addKey(close, true);
-
-    err << "Before expo";
-    expo = new Expo(this);
-    err << "After expo";
 }
 
 Core::~Core(){

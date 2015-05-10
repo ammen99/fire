@@ -78,6 +78,14 @@ void Core::WSSwitch::moveStep() {
 Core::WSSwitch::WSSwitch(Core *core) {
     using namespace std::placeholders;
 
+    core->switchWorkspaceBindings[0] = XKeysymToKeycode(core->d, XK_h);
+    core->switchWorkspaceBindings[1] = XKeysymToKeycode(core->d, XK_l);
+    core->switchWorkspaceBindings[2] = XKeysymToKeycode(core->d, XK_j);
+    core->switchWorkspaceBindings[3] = XKeysymToKeycode(core->d, XK_k);
+
+    core->vwidth = core->vheight = 3;
+    core->vx = core->vy = 0;
+
     for(int i = 0; i < 4; i++) {
         kbs[i].type = BindingTypePress;
         kbs[i].active = true;

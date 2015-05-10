@@ -127,3 +127,14 @@ namespace WinUtil {
     bool isAncestorTo(FireWindow parent, FireWindow win);
     StackType getStackType(FireWindow win1, FireWindow win2);
 };
+
+class Core;
+class Run {
+    public:
+        Run(Core *core);
+};
+
+class Exit {
+    public:
+        Exit(Core *core);
+};
