@@ -2,10 +2,12 @@
 #include "../include/opengl.hpp"
 #include <algorithm>
 
-
 typedef std::list<FireWindow>::iterator StackIterator;
-
 WinStack::WinStack() {
+    using namespace std::placeholders;
+    findWindowAtCursorPosition =
+        std::bind(std::mem_fn(&WinStack::__findWindowAtCursorPosition),
+                this, _1);
 }
 
 void WinStack::addWindow(FireWindow win) {
@@ -83,36 +85,26 @@ StackIterator WinStack::getTopmostTransientPosition(FireWindow win) {
 
 void WinStack::restackAbove(FireWindow above, FireWindow below) {
 
-    err << "restackAbove begin";
     auto pos = getIteratorPositionForWindow(below);
     auto val = getIteratorPositionForWindow(above);
 
-    if(pos == wins.end()) // if no window to restack above, add to the beginning
-        pos = wins.begin();
+    if(pos == wins.end())  // if no window to restack above
+        pos = wins.begin();// add to the beginning of the stack
 
     if(val == wins.end()) // if no window to restack, return
         return;
 
     auto t = WinUtil::getStackType(above, below);
-
-    err << "Restack Above type " << t;
     if(t == StackTypeAncestor || t == StackTypeNoStacking)
         return;
 
     wins.splice(pos, wins, val);
-
-    err << "RestackAbove end";
 }
 
 FireWindow WinStack::findTopmostStackingWindow(FireWindow win) {
-    auto it = wins.begin();
-    while(it != wins.end()) {
-        auto type = WinUtil::getWindowType((*it));
-        err << "window type is " << type;
-        if(WinUtil::getWindowType((*it)) == WindowTypeNormal)
-            return *it;
-        ++it;
-    }
+    for(auto w : wins)
+        if(WinUtil::getWindowType(w) == WindowTypeNormal)
+            return w;
     return nullptr;
 }
 
@@ -139,8 +131,6 @@ void WinStack::updateTransientsAttrib(FireWindow win,
             w->attrib.width += dw;
             w->attrib.height += dh;
 
-            err << "Foudn ";
-
             glDeleteBuffers(1, &w->vbo);
             glDeleteVertexArrays(1, &w->vao);
 
@@ -155,21 +145,13 @@ void WinStack::focusWindow(FireWindow win) {
     if(win->type == WindowTypeDesktop)
         return;
 
-    //activeWin = WinUtil::getAncestor(win);
     activeWin = win;
 
     auto w1 = findTopmostStackingWindow(activeWin);
     auto w2 = activeWin;
 
-    if(w1 == nullptr)
-        err << "caught nullptr";
-    if(w1 && w1->id == w2->id)
-        err << "no changes needed";
-
     if(w1 == nullptr || w1->id == w2->id)
         return;
-
-    err << "Check passed, found window to lower";
 
     restackAbove(w2, w1);
     restackTransients(w1);
@@ -186,11 +168,13 @@ void WinStack::focusWindow(FireWindow win) {
     core->redraw = true;
 }
 
-FireWindow WinStack::findWindowAtCursorPosition(Point p) {
+FireWindow WinStack::__findWindowAtCursorPosition(Point p) {
     for(auto w : wins)
-        if(w->attrib.map_state == IsViewable &&
-           !w->norender                      &&
-          (w->getRect() & p))
+        if(w->attrib.map_state == IsViewable && // desktop and invisible
+           w->type != WindowTypeDesktop      && // windows should be
+           !w->norender                      && // ignored
+           (w->getRect() & p))
+
             return w;
 
     return nullptr;

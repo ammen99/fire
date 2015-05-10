@@ -66,9 +66,12 @@ bool __FireWindow::shouldBeDrawn() {
     if(norender)
         return false;
 
-    auto r = getRect();
+    if(attrib.width < 11 && attrib.height < 11) {
+        norender = true;
+        return false;
+    }
 
-    if(r & output)
+    if(getRect() & output)
         return true;
     else
         return false;
@@ -149,10 +152,10 @@ void init() {
 int setWindowTexture(FireWindow win) {
     XGrabServer(core->d);
 
-    if(win->mapTryNum --> 8) {
-        XMapWindow(core->d, win->id);
-        syncWindowAttrib(win);
-        XSync(core->d, 0);
+    if(win->mapTryNum --> 0) {        // we try five times
+        XMapWindow(core->d, win->id); // to map a window
+        syncWindowAttrib(win);        // in order to get a
+        XSync(core->d, 0);            // pixmap
     }
     if(win->attrib.map_state != IsViewable) {
         err << "Invisible window";

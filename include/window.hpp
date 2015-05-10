@@ -62,7 +62,7 @@ class __FireWindow {
         GLuint texture; // image on screen
 
         bool norender = false; // should we draw window?
-        int mapTryNum = 10; // how many times have we tried to map this window?
+        int mapTryNum = 5; // how many times have we tried to map this window?
         Transform transform;
 
         GLuint vbo = -1;
@@ -77,7 +77,6 @@ class __FireWindow {
         WindowType type;
         XWindowAttributes attrib;
 
-        int vx, vy; // viewport position
         bool shouldBeDrawn();
         void recalcWorkspace();
         void regenVBOFromAttribs();

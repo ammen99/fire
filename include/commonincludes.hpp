@@ -45,6 +45,8 @@
 #define private public
 #endif
 
+#define AllModifiers ControlMask | Mod1Mask | Mod2Mask | Mod3Mask | Mod4Mask
+#define NoMods (1<<31)
 
 #endif
 

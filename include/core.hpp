@@ -118,6 +118,18 @@ class Core {
                 void moveStep();
         }*wsswitch;
 
+        class Expo {
+            KeyBinding keys[4];
+            KeyBinding toggle;
+            bool active;
+            std::function<FireWindow(Point)> save; // used to restore
+            public:                                // WinStack::find...Position
+                Expo(Core *core);
+                void handleKey(Context *ctx);
+                void Toggle(Context *ctx);
+                FireWindow findWindow(Point p);
+        }*expo;
+
     public:
         Display *d;
         Window root;
@@ -130,6 +142,9 @@ class Core {
 
         bool redraw = true; // should we redraw?
 
+        float scaleX = 1, scaleY = 1; // used for operations which
+                              // depend on mouse moving
+                              // for ex. when using expo
         void setBackground(const char *path);
 
         void switchWorkspace(std::tuple<int, int>);

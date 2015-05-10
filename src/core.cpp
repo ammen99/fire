@@ -40,7 +40,6 @@ bool Hook::getState() {
 Core::Core() {
 
     inMapping = false;
-    err << "init start";
     d = XOpenDisplay(NULL);
 
     if ( d == nullptr )
@@ -93,20 +92,19 @@ Core::Core() {
     ButtonBinding *focus = new ButtonBinding();
     focus->type = BindingTypePress;
     focus->button = Button1;
-    focus->mod = AnyModifier;
+    focus->mod = NoMods;
     focus->active = true;
 
-    auto f = [] (Context *ctx){
+    focus->action = [] (Context *ctx){
+        err << "Focusing window";
         auto xev = ctx->xev.xbutton;
         auto w =
             wins->findWindowAtCursorPosition
-            (Point(xev.x_root, xev.y));
+            (Point(xev.x_root, xev.y_root));
 
         if(w)
             wins->focusWindow(w);
     };
-
-    focus->action = f;
     addBut(focus);
 
     switchWorkspaceBindings[0] = XKeysymToKeycode(d, XK_h);
@@ -122,15 +120,14 @@ Core::Core() {
     output = Rect(0, 0, width, height);
 
     KeyBinding *run = new KeyBinding();
-    auto dmenu = [](Context *ctx){
-        core->run(const_cast<char*>("gmrun"));
+    run->action = [](Context *ctx){
+        core->run(const_cast<char*>("dmenu_run"));
     };
 
     run->active = true;
     run->mod = Mod1Mask;
     run->type = BindingTypePress;
     run->key = XKeysymToKeycode(d, XK_r);
-    run->action = dmenu;
 
     addKey(run, true);
 
@@ -146,6 +143,10 @@ Core::Core() {
     close->action = exit;
 
     addKey(close, true);
+
+    err << "Before expo";
+    expo = new Expo(this);
+    err << "After expo";
 }
 
 Core::~Core(){
@@ -154,7 +155,6 @@ Core::~Core(){
 }
 
 void Core::run(char *command) {
-    err << "Running";
     auto pid = fork();
     if(!pid) {
         std::string str("DISPLAY=");
@@ -164,7 +164,6 @@ void Core::run(char *command) {
 
         std::exit(execl("/bin/sh", "/bin/sh", "-c", command, NULL));
     }
-
 }
 
 #define MAXID (uint)(-1)
@@ -195,7 +194,7 @@ uint Core::addKey(KeyBinding *kb, bool grab) {
     keys.insert({id, kb});
 
     if(grab)
-    XGrabKey(d, kb->key, kb->mod, root,
+    XGrabKey(d, kb->key, (kb->mod == NoMods ? AnyModifier : kb->mod), root,
             false, GrabModeAsync, GrabModeAsync);
 
     return id;
@@ -285,7 +284,6 @@ void Core::addWindow(XCreateWindowEvent xev) {
         w->transientFor = findWindow(xev.parent);
 
     w->xvi = nullptr;
-    //w->attrib.map_state = IsViewable;
     wins->addWindow(w);
 }
 
@@ -296,7 +294,7 @@ void Core::renderAllWindows() {
 }
 
 void Core::wait(int timeout) {
-    poll(&fd, 1, timeout / 1000);
+    poll(&fd, 1, timeout / 1000); // convert from usec to msec
 }
 
 void Core::handleEvent(XEvent xev){
@@ -304,7 +302,7 @@ void Core::handleEvent(XEvent xev){
         case Expose:
             redraw = true;
         case KeyPress: {
-
+            // check keybindings
             for(auto kb : keys)
                 if(kb.second->key == xev.xkey.keycode &&
                    kb.second->mod == xev.xkey.state)
@@ -320,16 +318,13 @@ void Core::handleEvent(XEvent xev){
                 break;
 
             err << "CreateNotify";
-
-            err << "WinID = " << xev.xcreatewindow.window;
             inMapping = true;
             XMapWindow(core->d, xev.xcreatewindow.window);
-            err << "Request sent, syncing";
             XSync(core->d, 0);
             inMapping = false;
+
             if(ignoreWindow){
                 ignoreWindow = false;
-                err << "Ignoring window";
                 break;
             }
             addWindow(xev.xcreatewindow);
@@ -347,7 +342,6 @@ void Core::handleEvent(XEvent xev){
             break;
         }
         case MapRequest: {
-
             auto w = wins->findWindow(xev.xmaprequest.window);
             if(w == nullptr)
                 break;
@@ -391,14 +385,19 @@ void Core::handleEvent(XEvent xev){
             for(auto bb : buttons)
                 if(bb.second->active)
                 if(bb.second->type == BindingTypePress)
-                if(bb.second->mod & xev.xbutton.state &&
-                   bb.second->button == xev.xbutton.button)
-                    bb.second->action(new Context(xev));
+                if((bb.second->mod & xev.xbutton.state) ||
+                   (bb.second->mod == NoMods            && // check if there
+                    xev.xbutton.state == 0))               // are no mods
+                if(bb.second->button == xev.xbutton.button)// and we're
+                    bb.second->action(new Context(xev));   // listening for it
 
             XAllowEvents(d, ReplayPointer, xev.xbutton.time);
             break;
         }
-        case ButtonRelease:
+        case ButtonRelease: // release bindings should be enabled
+                            // only after some press binding has been
+                            // activated => there is no need to check
+                            // for buttons
             for(auto bb : this->buttons)
                 if(bb.second->type == BindingTypeRelease)
                 if(bb.second->active)
@@ -411,6 +410,11 @@ void Core::handleEvent(XEvent xev){
             mousex = xev.xmotion.x_root;
             mousey = xev.xmotion.y_root;
             break;
+        case EnterNotify: {
+            auto w = wins->findWindow(xev.xcrossing.window);
+            if(w)
+                wins->focusWindow(w);
+        }
         default:
             if(xev.type == damage + XDamageNotify)
                 redraw = true;
@@ -449,7 +453,7 @@ void Core::loop(){
 
         if(diff < currentCycle) {
             wait(currentCycle - diff);
-            if(fd.revents & POLLIN) {
+            if(fd.revents & POLLIN) { /* disable optimisation */
                 hadEvents = true;
                 currentCycle = baseCycle;
                 continue;
@@ -482,14 +486,10 @@ int Core::onOtherWmDetected(Display* d, XErrorEvent *xev) {
     wmDetected = true;
     return 0;
 }
-bool inRenderWindow = false;
 
 int Core::onXError(Display *d, XErrorEvent *xev) {
-
-    if(inMapping)
-        ignoreWindow = true;
-    if(inRenderWindow)
-        err << "Exception in render windowing";
+    if(xev->resourceid == 0) // invalid window
+        return 0;
 
     if(xev->error_code == BadMatch    ||
        xev->error_code == BadDrawable ||
@@ -573,8 +573,8 @@ void Core::Move::Terminate(Context *ctx) {
 
     win->transform.translation = glm::mat4();
 
-    int dx = xev.x_root - sx;
-    int dy = xev.y_root - sy;
+    int dx = (xev.x_root - sx) * core->scaleX;
+    int dy = (xev.y_root - sy) * core->scaleY;
 
     int nx = win->attrib.x + dx;
     int ny = win->attrib.y + dy;
@@ -653,15 +653,15 @@ void Core::Resize::Initiate(Context *ctx) {
 void Core::Resize::Terminate(Context *ctx) {
     if(!ctx)
         return;
-    
+
     hook.disable();
     release.active = false;
 
     win->transform.scalation = glm::mat4();
     win->transform.translation = glm::mat4();
 
-    int dw = core->mousex - sx;
-    int dh = core->mousey - sy;
+    int dw = (core->mousex - sx) * core->scaleX;
+    int dh = (core->mousey - sy) * core->scaleY;
 
     int nw = win->attrib.width  + dw;
     int nh = win->attrib.height + dh;
@@ -817,6 +817,101 @@ Core::WSSwitch::WSSwitch(Core *core) {
 
     hook.action = std::bind(std::mem_fn(&Core::WSSwitch::moveStep), this);
     core->addHook(&hook);
+}
+
+Core::Expo::Expo(Core *core) {
+    using namespace std::placeholders;
+    for(int i = 0; i < 4; i++) {
+        err << "Beginning";
+        keys[i].key = core->switchWorkspaceBindings[i];
+        keys[i].active = false;
+        keys[i].mod = NoMods;
+        keys[i].action =
+            std::bind(std::mem_fn(&Core::Expo::handleKey), this, _1);
+        core->addKey(&keys[i]);
+        err << "Exnd";
+    }
+
+    err << "Added keys";
+
+    toggle.key = XKeysymToKeycode(core->d, XK_e);
+    toggle.mod = Mod4Mask;
+    toggle.active = true;
+    toggle.action =
+        std::bind(std::mem_fn(&Core::Expo::Toggle), this, _1);
+
+    core->addKey(&toggle, true);
+
+    active = false;
+}
+
+void Core::Expo::Toggle(Context *ctx) {
+    using namespace std::placeholders;
+    if(!active) {
+        active = !active;
+
+        save = core->wins->findWindowAtCursorPosition;
+        core->wins->findWindowAtCursorPosition =
+            std::bind(std::mem_fn(&Core::Expo::findWindow), this, _1);
+
+        int midx = core->vwidth / 2;
+        int midy = core->vheight / 2;
+
+        float offX = float(core->vx - midx) * 2.f / float(core->vwidth );
+        float offY = float(midy - core->vy) * 2.f / float(core->vheight);
+
+        float scaleX = 1.f / float(core->vwidth);
+        float scaleY = 1.f / float(core->vheight);
+        core->scaleX = core->vwidth;
+        core->scaleY = core->vheight;
+
+        Transform::gtrs = glm::translate(Transform::gtrs,
+                          glm::vec3(offX, offY, 0.f));
+        Transform::gscl = glm::scale(Transform::gscl,
+                          glm::vec3(scaleX, scaleY, 0.f));
+
+        output = Rect(-core->vx * core->width, // output everything
+                      -core->vy * core->height,
+                      (core->vwidth  - core->vx) * core->width,
+                      (core->vheight - core->vy) * core->height);
+
+        core->redraw = true;
+    }else {
+        active = !active;
+        Transform::gtrs = glm::mat4();
+        Transform::gscl = glm::mat4();
+
+        output = Rect(0, 0, core->width, core->height);
+
+        core->scaleX = 1;
+        core->scaleY = 1;
+
+        core->redraw = true;
+        core->wins->findWindowAtCursorPosition = save;
+    }
+}
+
+FireWindow Core::Expo::findWindow(Point p) {
+    int vpw = core->width / core->vwidth;
+    int vph = core->height / core->vheight;
+
+    int vx = p.x / vpw;
+    int vy = p.y / vph;
+    int x =  p.x % vpw;
+    int y =  p.y % vph;
+
+    err << "Finding winodw";
+    err << vpw << " " << vph;
+    err << vx << " " << vy;
+    err << x  << " " << y ;
+
+    int realx = (core->vx - vx) * core->width  + x * core->vwidth;
+    int realy = (core->vy - vy) * core->height + y * core->vheight;
+    err << realx << " " << realy;
+
+    return save(Point(realx, realy));
+}
+void Core::Expo::handleKey(Context *ctx) {
 }
 
 Core *core;
