@@ -1,22 +1,24 @@
 #include "../include/core.hpp"
 #include "../include/winstack.hpp"
 
-void Core::WSSwitch::moveWorkspace(int ddx, int ddy) {
+void WSSwitch::beginSwitch() {
+    auto tup = dirs.front();
+    dirs.pop();
+
+    int ddx = std::get<0> (tup);
+    int ddy = std::get<1> (tup);
+
     auto nx = (core->vx - ddx + core->vwidth ) % core->vwidth;
     auto ny = (core->vy - ddy + core->vheight) % core->vheight;
+
+    this->nx = nx;
+    this->ny = ny;
 
     dirx = ddx;
     diry = ddy;
 
     dx = (core->vx - nx) * core->width;
     dy = (core->vy - ny) * core->height;
-
-    this->nx = nx;
-    this->ny = ny;
-
-    stepNum = 0;
-    hook.enable();
-
 
     int tlx1 = 0;
     int tly1 = 0;
@@ -32,9 +34,19 @@ void Core::WSSwitch::moveWorkspace(int ddx, int ddy) {
             std::min(tly1, tly2),
             std::max(brx1, brx2),
             std::max(bry1, bry2));
+    stepNum = 0;
 }
 
-void Core::WSSwitch::handleSwitchWorkspace(Context *ctx) {
+void WSSwitch::moveWorkspace(int ddx, int ddy) {
+    if(!hook.getState())
+        hook.enable(),
+        dirs.push(std::make_tuple(ddx, ddy)),
+        beginSwitch();
+    else
+        dirs.push(std::make_tuple(ddx, ddy));
+}
+
+void WSSwitch::handleSwitchWorkspace(Context *ctx) {
     if(!ctx)
         return;
 
@@ -51,13 +63,17 @@ void Core::WSSwitch::handleSwitchWorkspace(Context *ctx) {
 }
 
 #define MAXSTEP 60
-void Core::WSSwitch::moveStep() {
+void WSSwitch::moveStep() {
     if(stepNum == MAXSTEP){
         Transform::gtrs = glm::mat4();
         core->switchWorkspace(std::make_tuple(nx, ny));
-        hook.disable();
         core->redraw = true;
         output = Rect(0, 0, core->width, core->height);
+
+        if(dirs.size() == 0)
+            hook.disable();
+        else
+            beginSwitch();
         return;
     }
     float progress = float(stepNum++) / float(MAXSTEP);
@@ -75,7 +91,7 @@ void Core::WSSwitch::moveStep() {
 }
 
 
-Core::WSSwitch::WSSwitch(Core *core) {
+WSSwitch::WSSwitch(Core *core) {
     using namespace std::placeholders;
 
     core->switchWorkspaceBindings[0] = XKeysymToKeycode(core->d, XK_h);
@@ -93,50 +109,46 @@ Core::WSSwitch::WSSwitch(Core *core) {
         kbs[i].key = core->switchWorkspaceBindings[i];
 
         kbs[i].action =
-            std::bind(std::mem_fn(&Core::WSSwitch::handleSwitchWorkspace),
+            std::bind(std::mem_fn(&WSSwitch::handleSwitchWorkspace),
             this, _1);
 
         core->addKey(&kbs[i], true);
     }
 
-    hook.action = std::bind(std::mem_fn(&Core::WSSwitch::moveStep), this);
+    hook.action = std::bind(std::mem_fn(&WSSwitch::moveStep), this);
     core->addHook(&hook);
 }
 
-Core::Expo::Expo(Core *core) {
+Expo::Expo(Core *core) {
     using namespace std::placeholders;
     for(int i = 0; i < 4; i++) {
-        err << "Beginning";
         keys[i].key = core->switchWorkspaceBindings[i];
         keys[i].active = false;
         keys[i].mod = NoMods;
         keys[i].action =
-            std::bind(std::mem_fn(&Core::Expo::handleKey), this, _1);
+            std::bind(std::mem_fn(&Expo::handleKey), this, _1);
         core->addKey(&keys[i]);
-        err << "Exnd";
     }
-
-    err << "Added keys";
 
     toggle.key = XKeysymToKeycode(core->d, XK_e);
     toggle.mod = Mod4Mask;
     toggle.active = true;
     toggle.action =
-        std::bind(std::mem_fn(&Core::Expo::Toggle), this, _1);
+        std::bind(std::mem_fn(&Expo::Toggle), this, _1);
 
     core->addKey(&toggle, true);
 
     active = false;
 }
 
-void Core::Expo::Toggle(Context *ctx) {
+void Expo::Toggle(Context *ctx) {
     using namespace std::placeholders;
     if(!active) {
         active = !active;
 
         save = core->wins->findWindowAtCursorPosition;
         core->wins->findWindowAtCursorPosition =
-            std::bind(std::mem_fn(&Core::Expo::findWindow), this, _1);
+            std::bind(std::mem_fn(&Expo::findWindow), this, _1);
 
         int midx = core->vwidth / 2;
         int midy = core->vheight / 2;
@@ -175,7 +187,7 @@ void Core::Expo::Toggle(Context *ctx) {
     }
 }
 
-FireWindow Core::Expo::findWindow(Point p) {
+FireWindow Expo::findWindow(Point p) {
     int vpw = core->width / core->vwidth;
     int vph = core->height / core->vheight;
 
@@ -184,16 +196,10 @@ FireWindow Core::Expo::findWindow(Point p) {
     int x =  p.x % vpw;
     int y =  p.y % vph;
 
-    err << "Finding winodw";
-    err << vpw << " " << vph;
-    err << vx << " " << vy;
-    err << x  << " " << y ;
-
     int realx = (vx - core->vx) * core->width  + x * core->vwidth;
     int realy = (vy - core->vy) * core->height + y * core->vheight;
-    err << realx << " " << realy;
 
     return save(Point(realx, realy));
 }
-void Core::Expo::handleKey(Context *ctx) {
+void Expo::handleKey(Context *ctx) {
 }

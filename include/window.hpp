@@ -138,3 +138,8 @@ class Exit {
     public:
         Exit(Core *core);
 };
+
+class Close{
+    public:
+        Close(Core *core);
+};

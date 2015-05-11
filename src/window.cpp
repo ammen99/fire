@@ -583,15 +583,28 @@ Run::Run(Core *core) {
 }
 
 Exit::Exit(Core *core) {
-    KeyBinding *close = new KeyBinding();
-    close->action = [](Context *ctx){
+    KeyBinding *exit = new KeyBinding();
+    exit->action = [](Context *ctx){
         std::exit(0);
     };
 
-    close->active = true;
-    close->mod = ControlMask;
-    close->type = BindingTypePress;
-    close->key = XKeysymToKeycode(core->d, XK_q);
+    exit->active = true;
+    exit->mod = ControlMask;
+    exit->type = BindingTypePress;
+    exit->key = XKeysymToKeycode(core->d, XK_q);
 
+    core->addKey(exit, true);
+}
+
+Close::Close(Core *core) {
+    KeyBinding *close = new KeyBinding();
+    close->active = true;
+    close->mod = Mod1Mask;
+    close->type = BindingTypePress;
+    close->key = XKeysymToKeycode(core->d, XK_F4);
+    close->action = [core](Context *ctx) {
+        err << "Triggered close";
+        core->destroyWindow(core->getActiveWindow());
+    };
     core->addKey(close, true);
 }

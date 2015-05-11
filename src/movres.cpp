@@ -1,9 +1,9 @@
 #include "../include/core.hpp"
 #include "../include/winstack.hpp"
 
-Core::Move::Move(Core *c) {
+Move::Move(Core *c) {
     win = nullptr;
-    hook.action = std::bind(std::mem_fn(&Core::Move::Intermediate), this);
+    hook.action = std::bind(std::mem_fn(&Move::Intermediate), this);
     hid = c->addHook(&hook);
 
     using namespace std::placeholders;
@@ -12,7 +12,7 @@ Core::Move::Move(Core *c) {
     press.type   = BindingTypePress;
     press.mod    = Mod1Mask;
     press.button = Button1;
-    press.action = std::bind(std::mem_fn(&Core::Move::Initiate), this, _1);
+    press.action = std::bind(std::mem_fn(&Move::Initiate), this, _1);
     c->addBut(&press);
 
 
@@ -20,13 +20,14 @@ Core::Move::Move(Core *c) {
     release.type   = BindingTypeRelease;
     release.mod    = AnyModifier;
     release.button = Button1;
-    release.action = std::bind(std::mem_fn(&Core::Move::Terminate), this, _1);
+    release.action = std::bind(std::mem_fn(&Move::Terminate), this, _1);
     c->addBut(&release);
 }
 
-void Core::Move::Initiate(Context *ctx) {
+void Move::Initiate(Context *ctx) {
     auto xev = ctx->xev.xbutton;
-    auto w = wins->findWindowAtCursorPosition(Point(xev.x_root, xev.y_root));
+    auto w = core->wins-> findWindowAtCursorPosition
+        (Point(xev.x_root, xev.y_root));
 
     if(w){
         err << "moving";
@@ -48,7 +49,7 @@ void Core::Move::Initiate(Context *ctx) {
     }
 }
 
-void Core::Move::Terminate(Context *ctx) {
+void Move::Terminate(Context *ctx) {
 
     if(!ctx)
         return;
@@ -73,7 +74,7 @@ void Core::Move::Terminate(Context *ctx) {
     core->redraw = true;
 }
 
-void Core::Move::Intermediate() {
+void Move::Intermediate() {
 
     win->transform.translation =
         glm::translate(glm::mat4(), glm::vec3(
@@ -83,10 +84,10 @@ void Core::Move::Intermediate() {
     core->redraw = true;
 }
 
-Core::Resize::Resize(Core *c) {
+Resize::Resize(Core *c) {
     win = nullptr;
 
-    hook.action = std::bind(std::mem_fn(&Core::Resize::Intermediate), this);
+    hook.action = std::bind(std::mem_fn(&Resize::Intermediate), this);
     hid = c->addHook(&hook);
 
     using namespace std::placeholders;
@@ -95,7 +96,7 @@ Core::Resize::Resize(Core *c) {
     press.type   = BindingTypePress;
     press.mod    = ControlMask;
     press.button = Button1;
-    press.action = std::bind(std::mem_fn(&Core::Resize::Initiate), this, _1);
+    press.action = std::bind(std::mem_fn(&Resize::Initiate), this, _1);
     c->addBut(&press);
 
 
@@ -103,11 +104,11 @@ Core::Resize::Resize(Core *c) {
     release.type   = BindingTypeRelease;
     release.mod    = AnyModifier;
     release.button = Button1;
-    release.action = std::bind(std::mem_fn(&Core::Resize::Terminate), this,_1);
+    release.action = std::bind(std::mem_fn(&Resize::Terminate), this,_1);
     c->addBut(&release);
 }
 
-void Core::Resize::Initiate(Context *ctx) {
+void Resize::Initiate(Context *ctx) {
     if(!ctx)
         return;
 
@@ -116,7 +117,7 @@ void Core::Resize::Initiate(Context *ctx) {
 
     if(w){
 
-        wins->focusWindow(w);
+        core->wins->focusWindow(w);
         win = w;
         hook.enable();
         release.active = true;
@@ -137,7 +138,7 @@ void Core::Resize::Initiate(Context *ctx) {
     }
 }
 
-void Core::Resize::Terminate(Context *ctx) {
+void Resize::Terminate(Context *ctx) {
     if(!ctx)
         return;
 
@@ -159,7 +160,7 @@ void Core::Resize::Terminate(Context *ctx) {
     core->redraw = true;
 }
 
-void Core::Resize::Intermediate() {
+void Resize::Intermediate() {
 
     int dw = core->mousex - sx;
     int dh = core->mousey - sy;

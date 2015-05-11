@@ -4,6 +4,7 @@
 #include "commonincludes.hpp"
 #include "window.hpp"
 #include "glx.hpp"
+#include <queue>
 
 
 extern bool inRenderWindow;
@@ -53,9 +54,72 @@ struct Hook {
 };
 
 class Focus;
+class WindowOperation {
+    protected:
+        int sx, sy; // starting pointer x, y
+        FireWindow win; // window we're operating on
+        uint hid; // id of hook
+    protected:
+        ButtonBinding press;
+        ButtonBinding release;
+        Hook hook;
+};
+
+class Move : WindowOperation {
+    public:
+        Move(Core *core);
+        void Initiate(Context*);
+        void Intermediate();
+        void Terminate(Context*);
+};
+
+class Resize : WindowOperation {
+    public:
+        Resize(Core *core);
+        void Initiate(Context*);
+        void Intermediate();
+        void Terminate(Context*);
+};
+
+class WSSwitch {
+    private:
+        KeyBinding kbs[4];
+        Hook hook;
+        int stepNum;
+        int dirx, diry;
+        int dx, dy;
+        int nx, ny;
+        std::queue<std::tuple<int, int> >dirs; // series of moves we have to do
+        void beginSwitch();
+    public:
+        WSSwitch(Core *core);
+        void moveWorkspace(int dx, int dy);
+        void handleSwitchWorkspace(Context *ctx);
+        void moveStep();
+};
+
+class Expo {
+    KeyBinding keys[4];
+    KeyBinding toggle;
+    bool active;
+    std::function<FireWindow(Point)> save; // used to restore
+    public:                                // WinStack::find...Position
+    Expo(Core *core);
+    void handleKey(Context *ctx);
+    void Toggle(Context *ctx);
+    FireWindow findWindow(Point p);
+};
+
+class Close;
 
 class Core {
     friend class Focus;
+    friend class Move;
+    friend class Resize;
+    friend class WSSwitch;
+    friend class Expo;
+    friend class Close;
+
     private:
         std::vector<std::vector<FireWindow> > backgrounds;
         int damage;
@@ -75,67 +139,19 @@ class Core {
         std::unordered_map<uint, ButtonBinding*> buttons;
         std::unordered_map<uint, Hook*> hooks;
 
-        class WindowOperation {
-            protected:
-                int sx, sy; // starting pointer x, y
-                FireWindow win; // window we're operating on
-                uint hid; // id of hook
-            protected:
-                ButtonBinding press;
-                ButtonBinding release;
-                Hook hook;
-        };
-
-        class Move : WindowOperation {
-            public:
-                Move(Core *core);
-                void Initiate(Context*);
-                void Intermediate();
-                void Terminate(Context*);
-        }*move;
-
-        class Resize : WindowOperation {
-            public:
-                Resize(Core *core);
-                void Initiate(Context*);
-                void Intermediate();
-                void Terminate(Context*);
-        }*resize;
-
         template<class T>
         uint getFreeID(std::unordered_map<uint, T> *map);
 
         KeyCode switchWorkspaceBindings[4];
-        class WSSwitch {
-            private:
-                KeyBinding kbs[4];
-                Hook hook;
-                int stepNum;
-                int dirx, diry;
-                int dx, dy;
-                int nx, ny;
-            public:
-                WSSwitch(Core *core);
-                void moveWorkspace(int dx, int dy);
-                void handleSwitchWorkspace(Context *ctx);
-                void moveStep();
-        }*wsswitch;
-
-        class Expo {
-            KeyBinding keys[4];
-            KeyBinding toggle;
-            bool active;
-            std::function<FireWindow(Point)> save; // used to restore
-            public:                                // WinStack::find...Position
-                Expo(Core *core);
-                void handleKey(Context *ctx);
-                void Toggle(Context *ctx);
-                FireWindow findWindow(Point p);
-        }*expo;
 
         Focus *focus;
         Exit *exit;
         Run *runn;
+        Expo *expo;
+        WSSwitch *wsswitch;
+        Move *move;
+        Resize *resize;
+        Close *close;
 
     public:
         Display *d;
@@ -176,6 +192,8 @@ class Core {
         void renderAllWindows();
         void addWindow(XCreateWindowEvent);
         FireWindow findWindow(Window win);
+        FireWindow getActiveWindow();
+        void destroyWindow(FireWindow win);
 
         static int onXError (Display* d, XErrorEvent* xev);
         static int onOtherWmDetected(Display *d, XErrorEvent *xev);
