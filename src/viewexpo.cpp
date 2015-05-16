@@ -139,52 +139,173 @@ Expo::Expo(Core *core) {
     core->addKey(&toggle, true);
 
     active = false;
+
+    release.active = false;
+    release.action =
+        std::bind(std::mem_fn(&Expo::buttonRelease), this, _1);
+    release.type = BindingTypeRelease;
+    release.mod = AnyModifier;
+    release.button = Button1;
+    core->addBut(&release);
+
+    press.active = false;
+    press.action =
+        std::bind(std::mem_fn(&Expo::buttonPress), this, _1);
+    press.type = BindingTypePress;
+    press.mod = Mod4Mask;
+    press.button = Button1;
+    core->addBut(&press);
+
+    hook.action = std::bind(std::mem_fn(&Expo::zoom), this);
+    core->addHook(&hook);
 }
+
+void Expo::buttonRelease(Context *ctx) {
+
+    auto xev = ctx->xev.xbutton;
+
+    int vpw = core->width / core->vwidth;
+    int vph = core->height / core->vheight;
+
+    int vx = xev.x_root / vpw;
+    int vy = xev.y_root / vph;
+
+    core->switchWorkspace(std::make_tuple(vx, vy));
+
+    recalc();
+    finalizeZoom();
+}
+
+void Expo::buttonPress(Context *ctx) {
+    //err << "Button Press from expo wird gecallt";
+    buttonRelease(ctx);
+    Toggle(ctx);
+}
+
+void Expo::recalc() {
+
+    int midx = core->vwidth / 2;
+    int midy = core->vheight / 2;
+
+    float offX = float(core->vx - midx) * 2.f / float(core->vwidth );
+    float offY = float(midy - core->vy) * 2.f / float(core->vheight);
+
+    float scaleX = 1.f / float(core->vwidth);
+    float scaleY = 1.f / float(core->vheight);
+    core->scaleX = core->vwidth;
+    core->scaleY = core->vheight;
+
+    offXtarget = offX;
+    offYtarget = offY;
+    sclXtarget = scaleX;
+    sclYtarget = scaleY;
+
+    output = Rect(-core->vx * core->width, // output everything
+            -core->vy * core->height,
+            (core->vwidth  - core->vx) * core->width,
+            (core->vheight - core->vy) * core->height);
+}
+
+void Expo::finalizeZoom() {
+    err << "Finalizing zoom";
+    err << offXtarget << " " << offYtarget;
+    err << sclXtarget << " " << sclYtarget;
+    Transform::gtrs = glm::translate(glm::mat4(),
+            glm::vec3(offXtarget, offYtarget, 0.f));
+    Transform::gscl = glm::scale(glm::mat4(),
+            glm::vec3(sclXtarget, sclYtarget, 0.f));
+}
+
+#define MAXSTEP 60
 
 void Expo::Toggle(Context *ctx) {
     using namespace std::placeholders;
     if(!active) {
+        err << "Activating expo";
         active = !active;
+
+        press.active = true;
+        release.active = true;
+        XGrabPointer(core->d, core->overlay, TRUE,
+                ButtonPressMask | ButtonReleaseMask |
+                PointerMotionMask,
+                GrabModeAsync, GrabModeAsync,
+                core->root, None, CurrentTime);
 
         save = core->wins->findWindowAtCursorPosition;
         core->wins->findWindowAtCursorPosition =
             std::bind(std::mem_fn(&Expo::findWindow), this, _1);
 
-        int midx = core->vwidth / 2;
-        int midy = core->vheight / 2;
+        hook.enable();
+        stepNum = MAXSTEP;
+        recalc();
 
-        float offX = float(core->vx - midx) * 2.f / float(core->vwidth );
-        float offY = float(midy - core->vy) * 2.f / float(core->vheight);
-
-        float scaleX = 1.f / float(core->vwidth);
-        float scaleY = 1.f / float(core->vheight);
-        core->scaleX = core->vwidth;
-        core->scaleY = core->vheight;
-
-        Transform::gtrs = glm::translate(Transform::gtrs,
-                          glm::vec3(offX, offY, 0.f));
-        Transform::gscl = glm::scale(Transform::gscl,
-                          glm::vec3(scaleX, scaleY, 0.f));
-
-        output = Rect(-core->vx * core->width, // output everything
-                      -core->vy * core->height,
-                      (core->vwidth  - core->vx) * core->width,
-                      (core->vheight - core->vy) * core->height);
+        offXcurrent = 0;
+        offYcurrent = 0;
+        sclXcurrent = 1;
+        sclYcurrent = 1;
 
         core->redraw = true;
     }else {
         active = !active;
-        Transform::gtrs = glm::mat4();
-        Transform::gscl = glm::mat4();
 
-        output = Rect(0, 0, core->width, core->height);
+        press.active = false;
+        release.active = false;
+        XUngrabPointer(core->d, CurrentTime);
 
         core->scaleX = 1;
         core->scaleY = 1;
 
         core->redraw = true;
         core->wins->findWindowAtCursorPosition = save;
+
+
+
+        hook.enable();
+        stepNum = MAXSTEP;
+
+        sclXcurrent = sclXtarget;
+        sclYcurrent = sclYtarget;
+        offXcurrent = offXtarget;
+        offYcurrent = offYtarget;
+
+        sclXtarget = 1;
+        sclYtarget = 1;
+        offXtarget = 0;
+        offYtarget = 0;
     }
+}
+
+void Expo::zoom() {
+
+    err << "Running, stepNum = " << stepNum;
+    err << offXcurrent << " " << offYcurrent;
+    err << sclXcurrent << " " << sclYcurrent;
+    if(stepNum == MAXSTEP) {
+        stepoffX = (offXtarget - offXcurrent) / float(MAXSTEP);
+        stepoffY = (offYtarget - offYcurrent) / float(MAXSTEP);
+        stepsclX = (sclXtarget - sclXcurrent) / float(MAXSTEP);
+        stepsclY = (sclYtarget - sclYcurrent) / float(MAXSTEP);
+    }
+
+    if(stepNum--) {
+        offXcurrent += stepoffX;
+        offYcurrent += stepoffY;
+        sclYcurrent += stepsclY;
+        sclXcurrent += stepsclX;
+
+        Transform::gtrs = glm::translate(glm::mat4(),
+                glm::vec3(offXcurrent, offYcurrent, 0.f));
+        Transform::gscl = glm::scale(glm::mat4(),
+                glm::vec3(sclXcurrent, sclYcurrent, 0.f));
+    }
+    else {
+        finalizeZoom();
+        hook.disable();
+        if(!active)
+            output = Rect(0, 0, core->width, core->height);
+    }
+    core->redraw = true;
 }
 
 FireWindow Expo::findWindow(Point p) {

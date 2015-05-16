@@ -99,15 +99,33 @@ class WSSwitch {
 };
 
 class Expo {
-    KeyBinding keys[4];
-    KeyBinding toggle;
-    bool active;
-    std::function<FireWindow(Point)> save; // used to restore
+    private:
+        KeyBinding keys[4];
+        KeyBinding toggle;
+        ButtonBinding press, release;
+
+        int stepNum;
+
+        float offXtarget, offYtarget;
+        float offXcurrent, offYcurrent;
+        float sclXtarget, sclYtarget;
+        float sclXcurrent, sclYcurrent;
+
+        float stepoffX, stepoffY, stepsclX, stepsclY;
+
+        Hook hook;
+        bool active;
+        std::function<FireWindow(Point)> save; // used to restore
     public:                                // WinStack::find...Position
-    Expo(Core *core);
-    void handleKey(Context *ctx);
-    void Toggle(Context *ctx);
-    FireWindow findWindow(Point p);
+        Expo(Core *core);
+        void handleKey(Context *ctx);
+        void Toggle(Context *ctx);
+        FireWindow findWindow(Point p);
+        void buttonRelease(Context *ctx);
+        void buttonPress(Context *ctx);
+        void recalc();
+        void zoom();
+        void finalizeZoom();
 };
 
 class Close;

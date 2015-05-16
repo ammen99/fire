@@ -87,8 +87,8 @@ Core::Core() {
     int dummy;
     XDamageQueryExtension(d, &damage, &dummy);
 
-    move     = new Move(this);
-    resize   = new Resize(this);
+    move     = new Move(this); // we have to make sure that
+    resize   = new Resize(this);// move and resize are before expo
     wsswitch = new WSSwitch(this);
     expo     = new Expo(this);
     focus    = new Focus(this);
@@ -398,8 +398,10 @@ void Core::handleEvent(XEvent xev){
                 if((bb.second->mod & xev.xbutton.state) ||
                    (bb.second->mod == NoMods            && // check if there
                     xev.xbutton.state == 0))               // are no mods
-                if(bb.second->button == xev.xbutton.button)// and we're
-                    bb.second->action(new Context(xev));   // listening for it
+                if(bb.second->button == xev.xbutton.button) {// and we're
+                    bb.second->action(new Context(xev));
+                    break;
+                }
 
             XAllowEvents(d, ReplayPointer, xev.xbutton.time);
             break;
