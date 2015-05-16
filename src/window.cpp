@@ -279,8 +279,10 @@ void renderWindow(FireWindow win) {
                 win->attrib.width, win->attrib.height,
                 win->vao, win->vbo);
 
-    //win->opacity = readProp(win->id, winOpacityAtom, 0xffff);
+    win->opacity = readProp(win->id, winOpacityAtom, 0xffff);
     OpenGLWorker::opacity = float(win->opacity) / float(0xffff);
+    OpenGLWorker::depth = win->xvi->depth;
+   
     OpenGLWorker::renderTransformedTexture(win->texture,
             win->vao, win->vbo, win->transform.compose());
 

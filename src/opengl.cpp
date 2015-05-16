@@ -7,6 +7,7 @@ GLuint OpenGLWorker::mvpID;
 GLuint OpenGLWorker::transformID;
 GLuint OpenGLWorker::normalID;
 GLuint OpenGLWorker::opacityID;
+GLuint OpenGLWorker::depthID;
 
 glm::mat4 OpenGLWorker::MVP;
 glm::mat4 OpenGLWorker::View;
@@ -14,6 +15,7 @@ glm::mat4 OpenGLWorker::Proj;
 glm::mat3 OpenGLWorker::NM;
 
 float OpenGLWorker::opacity;
+int   OpenGLWorker::depth;
 
 void OpenGLWorker::generateVAOVBO(int x, int y, int w, int h,
         GLuint &vao, GLuint &vbo) {
@@ -82,6 +84,7 @@ void OpenGLWorker::renderTransformedTexture(GLuint tex,
 
     glUniformMatrix4fv(mvpID, 1, GL_FALSE, &MVP[0][0]);
     glUniform1f(opacityID, opacity);
+    glUniform1i(depthID, depth);
     renderTexture(tex, vao, vbo);
 
     MVP = Proj * View;
@@ -210,6 +213,7 @@ void OpenGLWorker::initOpenGL(const char *shaderSrcPath) {
     mvpID = glGetUniformLocation(program, "MVP");
     normalID = glGetUniformLocation(program, "NormalMatrix");
     opacityID = glGetUniformLocation(program, "opacity");
+    depthID = glGetUniformLocation(program, "depth");
 
     View = glm::lookAt(glm::vec3(0., 1., 1 ),
                        glm::vec3(0., 0., 0.),

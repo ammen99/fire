@@ -6,7 +6,7 @@ class OpenGLWorker {
     private:
         static GLuint program;
         static GLuint mvpID, transformID, normalID;
-        static GLuint opacityID;
+        static GLuint opacityID, depthID;
         static glm::mat4 View;
         static glm::mat4 Proj;
         static glm::mat4 MVP;
@@ -14,6 +14,7 @@ class OpenGLWorker {
     public:
         static bool transformed;
         static float opacity;
+        static int  depth;
 
         static void initOpenGL(const char *shaderSrcPath);
         static void renderTransformedTexture(GLuint text, GLuint vao, GLuint vbo, glm::mat4 t);

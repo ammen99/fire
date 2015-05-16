@@ -13,6 +13,7 @@ out vec4 outColor;
 
 uniform sampler2D smp;
 uniform float     opacity;
+uniform int       depth;
 
 float amplify(float d, float scale, float offset) {
     d = scale * d + offset;
@@ -28,11 +29,9 @@ void main() {
 //    vec3 color = vec3(0.2, 0.2, 0.2) + df * vec3(0.7, 0.7, 0.7);
 //
     //outColor = texture (smp, guv) * vec4(color, 1.0);
-    float t;
-//    if(opacity > 0.7)
-        t = opacity;
- //   else
- //       t = 0.5;
-    outColor = vec4(texture(smp, guv).xyz, t);
+    if(depth == 32)
+        outColor = texture(smp, guv);
+    else
+        outColor = vec4(texture(smp, guv).xyz, opacity);
     //outColor = texture(smp, uvpos);
 }
