@@ -104,7 +104,6 @@ namespace WinUtil {
 
     void renderWindow(FireWindow win);
     int setWindowTexture(FireWindow win);
-    FireWindow createWindow(int x, int y, int w, int h);
     void initWindow(FireWindow win);
     void finishWindow(FireWindow win);
 

@@ -127,6 +127,7 @@ class Core {
         static WinStack *wins;
         void handleEvent(XEvent xev);
         void wait(int timeout);
+        void enableInputPass(Window win);
 
         pollfd fd;
 
@@ -157,6 +158,7 @@ class Core {
         Display *d;
         Window root;
         Window overlay;
+        Window outputwin;
 
         int cntHooks;
 

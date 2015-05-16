@@ -101,6 +101,76 @@ void createDefaultContext(Window win) {
 }
 
 
+static int attrListDbl[] = {
+     GLX_DOUBLEBUFFER, True,
+     GLX_RED_SIZE, 8,
+     GLX_GREEN_SIZE, 8,
+     GLX_BLUE_SIZE, 8,
+     GLX_DEPTH_SIZE, 8,
+     GLX_STENCIL_SIZE, 8,
+     GLX_ALPHA_SIZE, 8,
+     None
+ };
+static int attrListVisual[] = {
+     GLX_RGBA, GLX_DOUBLEBUFFER,
+     GLX_RED_SIZE, 8,
+     GLX_BLUE_SIZE, 8,
+     GLX_GREEN_SIZE, 8,
+     GLX_DEPTH_SIZE, 8,
+     GLX_STENCIL_SIZE, 8,
+     GLX_ALPHA_SIZE, 8,
+     None
+ };
+
+Window createNewWindowWithContext(Window parent, Core *core) {
+    XVisualInfo *vi;
+    Colormap cmap;
+    XSetWindowAttributes winAttr;
+
+    vi = glXChooseVisual ( core->d, DefaultScreen(core->d), attrListVisual );
+    if ( vi == NULL )
+        err << "Couldn't get visual!", std::exit (1);
+
+    cmap = XCreateColormap ( core->d, core->root, vi->visual, AllocNone );
+    winAttr.colormap = cmap;
+    winAttr.border_pixel = 0;
+    winAttr.event_mask = ExposureMask;
+
+    auto window = XCreateWindow ( core->d,core->root,
+            0, 0, core->width, core->height, 0,
+            vi->depth, InputOutput, vi->visual,
+            CWBorderPixel | CWColormap | CWEventMask,
+            &winAttr );
+
+
+    XReparentWindow(core->d, window, core->overlay, 0, 0);
+    XMapRaised ( core->d, window );
+
+    int dummy;
+    GLXFBConfig *fbconfig = glXChooseFBConfig (core->d,
+            DefaultScreen(core->d), attrListDbl, &dummy );
+
+    if ( fbconfig == NULL )
+        err << "Couldn't get FBConfig!", std::exit (1);
+
+    int ogl44[]= {
+        GLX_CONTEXT_MAJOR_VERSION_ARB, 4,
+        GLX_CONTEXT_MINOR_VERSION_ARB, 4,
+        GLX_CONTEXT_FLAGS_ARB, GLX_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB, None
+    };
+
+    glXCreateContextAttribsARBProc glXCreateContextAttribsARB =
+        (glXCreateContextAttribsARBProc) glXGetProcAddressARB(
+                (const GLubyte *) "glXCreateContextAttribsARB" );
+
+    GLXContext context = glXCreateContextAttribsARB ( core->d,
+            fbconfig[0], NULL, true, ogl44 );
+
+    glXMakeCurrent ( core->d, window, context );
+    return window;
+}
+
+
 #define uchar unsigned char
 
 

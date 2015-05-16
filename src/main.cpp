@@ -12,7 +12,6 @@ int main(int argc, const char **argv ) {
     core = new Core();
     WinUtil::init();
 
-    GLXUtils::createNewContext(core->overlay);
     GLXUtils::initGLX();
     OpenGLWorker::initOpenGL("/home/ilex/work/cwork/fire/shaders");
 

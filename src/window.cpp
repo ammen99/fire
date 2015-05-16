@@ -95,17 +95,6 @@ Rect __FireWindow::getRect() {
                 this->attrib.y + this->attrib.height);
 }
 
-static int attrListVisual[] = {
-    GLX_RGBA, GLX_DOUBLEBUFFER,
-    GLX_RED_SIZE, 8,
-    GLX_BLUE_SIZE, 8,
-    GLX_GREEN_SIZE, 8,
-    GLX_DEPTH_SIZE, 8,
-    GLX_STENCIL_SIZE, 8,
-    GLX_ALPHA_SIZE, 8,
-    None
-};
-
 Atom winTypeAtom, winTypeDesktopAtom, winTypeDockAtom,
      winTypeToolbarAtom, winTypeMenuAtom, winTypeUtilAtom,
      winTypeSplashAtom, winTypeDialogAtom, winTypeNormalAtom,
@@ -263,31 +252,6 @@ void renderWindow(FireWindow win) {
     OpenGLWorker::renderTransformedTexture(win->texture,
             win->vao, win->vbo, win->transform.compose());
 
-}
-FireWindow createWindow(int x, int y, int w, int h) {
-    XVisualInfo *vi;
-    Window win;
-
-    Colormap cmap;
-    XSetWindowAttributes winAttr;
-
-    vi = glXChooseVisual ( core->d, DefaultScreen(core->d), attrListVisual );
-    if ( vi == NULL )
-        printf ( "Couldn't get visual!\n" ), std::exit ( 1 );
-    cmap = XCreateColormap ( core->d, RootWindow ( core->d, vi->screen ),
-                             vi->visual, AllocNone );
-
-    winAttr.colormap = cmap;
-    winAttr.border_pixel = 0;
-    win = XCreateWindow ( core->d, RootWindow ( core->d, vi->screen ),
-                   x, y, w, h, 0, vi->depth, InputOutput, vi->visual,
-                   CWBorderPixel | CWColormap, &winAttr );
-    XReparentWindow(core->d, win, core->overlay, 0, 0);
-    XMapRaised ( core->d, win );
-
-    FireWindow window = std::make_shared<__FireWindow>();
-    window->id = win;
-    return window;
 }
 
 XVisualInfo *getVisualInfoForWindow(Window win) {

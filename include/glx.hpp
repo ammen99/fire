@@ -10,6 +10,7 @@ namespace GLXUtils {
 
     void createNewContext(Window win);
     void createDefaultContext(Window win);
+    Window createNewWindowWithContext(Window parent, Core *core);
 
     GLuint loadImage(char *path);
     GLuint loadShader(const char *path, GLuint type);

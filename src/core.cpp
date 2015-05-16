@@ -75,14 +75,14 @@ Core::Core() {
 
     wins = new WinStack();
 
+    err << "Setting windows";
     XSetErrorHandler(&Core::onXError);
     overlay = XCompositeGetOverlayWindow(d, root);
+    outputwin = GLXUtils::createNewWindowWithContext(overlay, this);
 
-    XserverRegion region;
-    region = XFixesCreateRegion(d, NULL, 0);
-    XFixesSetWindowShapeRegion(d, overlay, ShapeBounding, 0, 0, 0);
-    XFixesSetWindowShapeRegion(d, overlay, ShapeInput, 0, 0, region);
-    XFixesDestroyRegion(d, region);
+    err << "Created output window";
+    enableInputPass(overlay);
+    enableInputPass(outputwin);
 
     int dummy;
     XDamageQueryExtension(d, &damage, &dummy);
@@ -98,6 +98,14 @@ Core::Core() {
 
     cntHooks = 0;
     output = Rect(0, 0, width, height);
+}
+
+void Core::enableInputPass(Window win) {
+    XserverRegion region;
+    region = XFixesCreateRegion(d, NULL, 0);
+    XFixesSetWindowShapeRegion(d, win, ShapeBounding, 0, 0, 0);
+    XFixesSetWindowShapeRegion(d, win, ShapeInput, 0, 0, region);
+    XFixesDestroyRegion(d, region);
 }
 
 Core::~Core(){
@@ -277,7 +285,7 @@ void Core::destroyWindow(FireWindow win) {
 void Core::renderAllWindows() {
     OpenGLWorker::preStage();
     wins->renderWindows();
-    GLXUtils::endFrame(overlay);
+    GLXUtils::endFrame(outputwin);
 }
 
 void Core::wait(int timeout) {
@@ -302,6 +310,9 @@ void Core::handleEvent(XEvent xev){
 
         case CreateNotify: {
             if (xev.xcreatewindow.window == overlay)
+                break;
+
+            if(xev.xcreatewindow.window == outputwin)
                 break;
 
             err << "CreateNotify";
