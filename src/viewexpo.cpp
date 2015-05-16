@@ -62,7 +62,7 @@ void WSSwitch::handleSwitchWorkspace(Context *ctx) {
         moveWorkspace(0,  1);
 }
 
-#define MAXSTEP 60
+#define MAXSTEP 20
 void WSSwitch::moveStep() {
     if(stepNum == MAXSTEP){
         Transform::gtrs = glm::mat4();
@@ -215,8 +215,6 @@ void Expo::finalizeZoom() {
     Transform::gscl = glm::scale(glm::mat4(),
             glm::vec3(sclXtarget, sclYtarget, 0.f));
 }
-
-#define MAXSTEP 60
 
 void Expo::Toggle(Context *ctx) {
     using namespace std::placeholders;

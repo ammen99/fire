@@ -601,7 +601,6 @@ Close::Close(Core *core) {
     close->type = BindingTypePress;
     close->key = XKeysymToKeycode(core->d, XK_F4);
     close->action = [core](Context *ctx) {
-        err << "Triggered close";
         core->destroyWindow(core->getActiveWindow());
     };
     core->addKey(close, true);

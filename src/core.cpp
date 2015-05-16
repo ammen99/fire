@@ -436,6 +436,7 @@ void Core::handleEvent(XEvent xev){
 
 #define RefreshRate 200
 #define Second 1000000
+#define MaxDelay 1000
 
 void Core::loop(){
 
@@ -482,6 +483,9 @@ void Core::loop(){
             if(redraw)
                 renderAllWindows(),
                     redraw = false;
+
+            if(diff - currentCycle > MaxDelay && Second / 61 <= currentCycle)
+                currentCycle /= 2;
 
             /* optimisation when idle */
             if(!cntHooks && !hadEvents && currentCycle < Second)
