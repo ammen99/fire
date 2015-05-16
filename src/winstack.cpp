@@ -73,10 +73,14 @@ FireWindow WinStack::findWindow(Window win) {
 
 void WinStack::renderWindows() {
     int num = 0;
-    for(auto w : wins)
-        if(w && w->shouldBeDrawn()) {
-            w->transform.stackID = num++, WinUtil::renderWindow(w);
-        }
+    auto it = wins.rbegin();
+    while(it != wins.rend()) {
+        auto w = *it;
+        if(w && w->shouldBeDrawn())
+            w->transform.stackID = num++,
+            WinUtil::renderWindow(w);
+        ++it;
+    }
 }
 
 void WinStack::removeWindow(FireWindow win, bool destroy) {

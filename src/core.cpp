@@ -98,6 +98,14 @@ Core::Core() {
 
     cntHooks = 0;
     output = Rect(0, 0, width, height);
+
+    Window w;
+    Atom a;
+
+    w = XCreateSimpleWindow (d, root, 0, 0, 1, 1, 0, None, None);
+    Xutf8SetWMProperties (d, w, "xcompmgr", "xcompmgr",NULL,0,NULL,NULL,NULL);
+    a = XInternAtom (d, "_NET_WM_CM_S0", False);
+    XSetSelectionOwner (d, a, w, 0);
 }
 
 void Core::enableInputPass(Window win) {
@@ -198,6 +206,10 @@ void Core::remBut(uint id) {
 
 
 void Core::setBackground(const char *path) {
+
+    this->run(const_cast<char*>(std::string("feh --bg-scale ")
+                .append(path).c_str()));
+
     auto texture = GLXUtils::loadImage(const_cast<char*>(path));
 
     uint vao, vbo;

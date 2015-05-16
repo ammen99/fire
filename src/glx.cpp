@@ -1,4 +1,5 @@
 #include "../include/core.hpp"
+#include <X11/extensions/Xrender.h>
 
 namespace GLXUtils {
 
@@ -254,6 +255,7 @@ void endFrame(Window win) {
 GLuint textureFromPixmap(Pixmap pixmap,
         int w, int h, XVisualInfo* xvi) {
 
+    err << "rendering with depth = " << xvi->depth;
     auto fbconf = fbconfigs[xvi->depth];
     if (fbconf == nullptr)
         return -1;
@@ -279,86 +281,45 @@ GLuint textureFromPixmap(Pixmap pixmap,
 }
 
 void initFBConf() {
-    int n;
-    auto fbConfigs = glXGetFBConfigs(core->d, DefaultScreen(core->d), &n);
-    for (int i = 0; i <= 32; i++)
-    {
-        int db, stencil, depth = 0, alpha = 0;
-        int value;
 
-        fbconfigs[i] = nullptr;
+    int nfbs;
+    auto fbs = glXGetFBConfigs (core->d, DefaultScreen(core->d), &nfbs);
+    int value;
 
-        db      = 10000;
-        stencil = 10000;
-        depth   = 10000;
+    for(int d = 0; d < 33; d++) {
+        for (int i = 0; i < nfbs; i++) {
 
-        for (int j = 0; j < n; j++)
-        {
-            XVisualInfo *vi;
-            int     visualDepth;
-
-            vi = glXGetVisualFromFBConfig (core->d, fbConfigs[j]);
-            if (vi == NULL)
+            auto visinfo = glXGetVisualFromFBConfig (core->d, fbs[i]);
+            if (!visinfo || visinfo->depth != d)
                 continue;
 
-            visualDepth = vi->depth;
+            glXGetFBConfigAttrib (core->d, fbs[i],
+                    GLX_DRAWABLE_TYPE, &value);
 
-            XFree (vi);
-
-            if (visualDepth != i)
+            if (!(value & GLX_PIXMAP_BIT))
                 continue;
 
-            glXGetFBConfigAttrib (core->d, fbConfigs[j],
-                    GLX_ALPHA_SIZE, &alpha);
-            glXGetFBConfigAttrib (core->d, fbConfigs[j],
-                    GLX_BUFFER_SIZE, &value);
-            if (value != i && (value - alpha) != i)
-                continue;
-
-            value = 0;
-            if (i == 32) {
-                glXGetFBConfigAttrib (core->d, fbConfigs[j],
-                        GLX_BIND_TO_TEXTURE_RGBA_EXT, &value);
-
-                if (!value) {
-
-                    glXGetFBConfigAttrib (core->d, fbConfigs[j],
-                            GLX_BIND_TO_TEXTURE_RGB_EXT, &value);
-                    if (!value)
-                        continue;
-                }
-            }
-
-            glXGetFBConfigAttrib (core->d, fbConfigs[j],
-                    GLX_DOUBLEBUFFER, &value);
-            if (value > db)
-                continue;
-
-            db = value;
-
-            glXGetFBConfigAttrib (core->d, fbConfigs[j],
-                    GLX_STENCIL_SIZE, &value);
-            if (value > stencil)
-                continue;
-
-            stencil = value;
-
-            glXGetFBConfigAttrib (core->d, fbConfigs[j],
-                    GLX_DEPTH_SIZE, &value);
-            if (value > depth)
-                continue;
-
-            depth = value;
-
-
-            glXGetFBConfigAttrib (core->d,
-                    fbConfigs[j],
+            glXGetFBConfigAttrib (core->d, fbs[i],
                     GLX_BIND_TO_TEXTURE_TARGETS_EXT,
                     &value);
-            if(!value)
+            if (!(value & GLX_TEXTURE_2D_BIT_EXT))
                 continue;
 
-            fbconfigs[i] = fbConfigs[j];
+            glXGetFBConfigAttrib (core->d, fbs[i],
+                    GLX_BIND_TO_TEXTURE_RGBA_EXT,
+                    &value);
+            if (value == FALSE && d != 32) {
+                glXGetFBConfigAttrib (core->d, fbs[i],
+                        GLX_BIND_TO_TEXTURE_RGB_EXT,
+                        &value);
+                if (value == FALSE)
+                    continue;
+            }
+
+            else if (value == FALSE)
+                continue;
+
+            fbconfigs[d] = fbs[i];
         }
     }
 }
@@ -367,7 +328,7 @@ void initFBConf() {
 GLXPixmap glxPixmap(Pixmap pixmap, GLXFBConfig config, int w, int h) {
    const int pixmapAttribs[] = {
       GLX_TEXTURE_TARGET_EXT, GLX_TEXTURE_2D_EXT,
-      GLX_TEXTURE_FORMAT_EXT, GLX_TEXTURE_FORMAT_RGB_EXT,
+      GLX_TEXTURE_FORMAT_EXT, GLX_TEXTURE_FORMAT_RGBA_EXT,
       None
    };
 
@@ -375,5 +336,4 @@ GLXPixmap glxPixmap(Pixmap pixmap, GLXFBConfig config, int w, int h) {
 }
 
 }
-
 

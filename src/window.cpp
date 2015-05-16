@@ -18,7 +18,7 @@ Transform::Transform() {
 glm::mat4 Transform::compose() {
     auto trans =
         glm::translate(translation,
-                glm::vec3(0.f, 0.f, stackID * 1e-2));
+                glm::vec3(0.f, 0.f, -stackID * 1e-2));
 
     return proj * view * (gtrs * trans) *
         (grot * rotation) * (gscl * scalation);
@@ -106,12 +106,14 @@ Atom wmTakeFocusAtom;
 Atom wmProtocolsAtom;
 Atom wmClientLeaderAtom;
 Atom wmNameAtom;
+Atom winOpacityAtom;
 
 namespace WinUtil {
 void init() {
 
     activeWinAtom = XInternAtom(core->d, "_NET_ACTIVE_WINDOW", 0);
-    wmNameAtom    = XInternAtom(core->d, "WM_NAME", 0),
+    wmNameAtom    = XInternAtom(core->d, "WM_NAME", 0);
+    winOpacityAtom = XInternAtom(core->d, "_NET_WM_WINDOW_OPACITY", 0);
 
     wmProtocolsAtom    = XInternAtom (core->d, "WM_PROTOCOLS", 0);
     wmTakeFocusAtom    = XInternAtom (core->d, "WM_TAKE_FOCUS", 0);
@@ -205,7 +207,34 @@ void initWindow(FireWindow win) {
     XGrabButton ( core->d, AnyButton, AnyModifier, win->id, TRUE,
             ButtonPressMask | ButtonReleaseMask | Button1MotionMask,
             GrabModeSync, GrabModeSync, None, None );
+
+    win->opacity = readProp(win->id, winOpacityAtom, 0xffff);
 }
+
+#define uchar unsigned char
+int readProp(Window win, Atom prop, int def) {
+    Atom      actual;
+    int       result, format;
+    ulong n, left;
+    uchar *data;
+
+    result = XGetWindowProperty ( core->d, win, prop,
+            0L, 1L, FALSE, XA_CARDINAL, &actual, &format,
+            &n, &left, &data );
+
+    if ( result == Success && data ) {
+        if ( n ) {
+            result = *(int *)data;
+            result >>= 16;
+        }
+
+        XFree ( data );
+    }
+    else
+        result = def;
+    return result;
+}
+
 
 void finishWindow(FireWindow win) {
     if(win->pixmap != 0)
@@ -232,6 +261,7 @@ void finishWindow(FireWindow win) {
 
 
 void renderWindow(FireWindow win) {
+    OpenGLWorker::opacity = 1;
     if(win->type == WindowTypeDesktop){
         OpenGLWorker::renderTransformedTexture(win->texture,
                 win->vao, win->vbo,
@@ -249,6 +279,8 @@ void renderWindow(FireWindow win) {
                 win->attrib.width, win->attrib.height,
                 win->vao, win->vbo);
 
+    //win->opacity = readProp(win->id, winOpacityAtom, 0xffff);
+    OpenGLWorker::opacity = float(win->opacity) / float(0xffff);
     OpenGLWorker::renderTransformedTexture(win->texture,
             win->vao, win->vbo, win->transform.compose());
 

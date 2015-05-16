@@ -60,6 +60,7 @@ class __FireWindow {
         Pixmap pixmap;
         Window id;
         GLuint texture; // image on screen
+        int opacity;
 
         bool norender = false; // should we draw window?
         int mapTryNum = 5; // how many times have we tried to map this window?
@@ -96,6 +97,7 @@ extern Atom wmTakeFocusAtom;
 extern Atom wmProtocolsAtom;
 extern Atom wmClientLeaderAtom;
 extern Atom wmNameAtom;
+extern Atom winOpacityAtom;
 
 
 namespace WinUtil {
@@ -125,6 +127,8 @@ namespace WinUtil {
 
     bool isAncestorTo(FireWindow parent, FireWindow win);
     StackType getStackType(FireWindow win1, FireWindow win2);
+
+    int readProp(Window win, Atom prop, int def);
 };
 
 class Core;
