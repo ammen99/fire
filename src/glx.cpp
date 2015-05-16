@@ -255,7 +255,6 @@ void endFrame(Window win) {
 GLuint textureFromPixmap(Pixmap pixmap,
         int w, int h, XVisualInfo* xvi) {
 
-    err << "rendering with depth = " << xvi->depth;
     auto fbconf = fbconfigs[xvi->depth];
     if (fbconf == nullptr)
         return -1;
@@ -263,7 +262,6 @@ GLuint textureFromPixmap(Pixmap pixmap,
     GLuint tex;
     glGenTextures(1, &tex);
     glBindTexture(GL_TEXTURE_2D, tex);
-//    glGenerateTextureMipmap(tex);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
