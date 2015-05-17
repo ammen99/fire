@@ -128,6 +128,26 @@ class Expo {
         void finalizeZoom();
 };
 
+class ATSwitcher {
+    KeyBinding initiate;
+    KeyBinding forward;
+    KeyBinding backward;
+    KeyBinding terminate;
+    std::vector<FireWindow> windows;
+    FireWindow background;
+    bool active;
+    int index;
+    Hook rnd; // used to render windows
+    public:
+        ATSwitcher(Core *core);
+        void handleKey(Context *ctx);
+        void moveLeft();
+        void moveRight();
+        void Initiate();
+        void Terminate();
+        void render();
+};
+
 class Close;
 
 class Core {
@@ -137,6 +157,7 @@ class Core {
     friend class WSSwitch;
     friend class Expo;
     friend class Close;
+    friend class ATSwitcher;
 
     private:
         std::vector<std::vector<FireWindow> > backgrounds;
@@ -171,6 +192,7 @@ class Core {
         Move *move;
         Resize *resize;
         Close *close;
+        ATSwitcher *at;
 
     public:
         Display *d;
@@ -214,6 +236,7 @@ class Core {
         FireWindow findWindow(Window win);
         FireWindow getActiveWindow();
         void destroyWindow(FireWindow win);
+        std::vector<FireWindow> getWindowsOnViewport(int x, int y);
 
         static int onXError (Display* d, XErrorEvent* xev);
         static int onOtherWmDetected(Display *d, XErrorEvent *xev);

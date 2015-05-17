@@ -95,6 +95,7 @@ Core::Core() {
     exit     = new Exit(this);
     runn     = new Run(this);
     close    = new Close(this);
+    at       = new ATSwitcher(this);
 
     cntHooks = 0;
     output = Rect(0, 0, width, height);
@@ -546,4 +547,16 @@ void Core::switchWorkspace(std::tuple<int, int> nPos) {
 
     vx = nx;
     vy = ny;
+}
+
+std::vector<FireWindow> Core::getWindowsOnViewport(int x, int y) {
+    Rect view((x - vx    ) * width, (y - vy    ) * height,
+              (x - vx + 1) * width, (y - vy + 1) * height);
+
+    std::vector<FireWindow> ret;
+    for(auto w : wins->wins)
+        if(w->getRect() & view && !w->norender)
+            ret.push_back(w);
+
+    return ret;
 }

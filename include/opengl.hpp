@@ -6,15 +6,16 @@ class OpenGLWorker {
     private:
         static GLuint program;
         static GLuint mvpID, transformID, normalID;
-        static GLuint opacityID, depthID;
+        static GLuint opacityID, depthID, colorID;
         static glm::mat4 View;
         static glm::mat4 Proj;
         static glm::mat4 MVP;
         static glm::mat3 NM;
     public:
-        static bool transformed;
-        static float opacity;
-        static int  depth;
+        static bool      transformed;
+        static float     opacity;
+        static int       depth;
+        static glm::vec4 color;
 
         static void initOpenGL(const char *shaderSrcPath);
         static void renderTransformedTexture(GLuint text, GLuint vao, GLuint vbo, glm::mat4 t);
@@ -22,5 +23,6 @@ class OpenGLWorker {
         static void rotate(float x, float y, float z, float direction);
         static void preStage();
         static void generateVAOVBO(int, int, int, int, GLuint&, GLuint&);
+        static void generateVAOVBO(int, int, GLuint&, GLuint&);
 };
 #endif
