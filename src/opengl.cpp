@@ -70,6 +70,9 @@ void OpenGLWorker::generateVAOVBO(int w, int h, GLuint &vao, GLuint &vbo) {
     int mx = core->width  / 2;
     int my = core->height / 2;
 
+
+    err << "Generating special VBO " << mx - w / 2 << " " << my - h / 2
+        << " " << w << " " << h;
     generateVAOVBO(mx - w / 2, my - h / 2, w, h, vao, vbo);
 }
 
@@ -95,6 +98,7 @@ void OpenGLWorker::renderTransformedTexture(GLuint tex,
     glUniform1f(opacityID, opacity);
     glUniform1i(depthID, depth);
     glUniform4fv(colorID, 1, &color[0]);
+
     renderTexture(tex, vao, vbo);
 
     MVP = Proj * View;

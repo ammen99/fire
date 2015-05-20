@@ -238,6 +238,7 @@ void Core::setBackground(const char *path) {
 
             backgrounds[i][j]->type = WindowTypeDesktop;
             backgrounds[i][j]->regenVBOFromAttribs();
+            backgrounds[i][j]->transform.color = glm::vec4(1,1,1,1);
             wins->addWindow(backgrounds[i][j]);
         }
     }

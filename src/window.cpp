@@ -209,6 +209,7 @@ void initWindow(FireWindow win) {
             GrabModeSync, GrabModeSync, None, None );
 
     win->opacity = readProp(win->id, winOpacityAtom, 0xffff);
+    win->transform.color = glm::vec4(1., 1., 1., 1.);
 }
 
 #define uchar unsigned char
@@ -262,6 +263,8 @@ void finishWindow(FireWindow win) {
 
 void renderWindow(FireWindow win) {
     OpenGLWorker::opacity = 1;
+    OpenGLWorker::color = win->transform.color;
+
     if(win->type == WindowTypeDesktop){
         OpenGLWorker::renderTransformedTexture(win->texture,
                 win->vao, win->vbo,
@@ -282,7 +285,6 @@ void renderWindow(FireWindow win) {
     win->opacity = readProp(win->id, winOpacityAtom, 0xffff);
     OpenGLWorker::opacity = float(win->opacity) / float(0xffff);
     OpenGLWorker::depth = win->xvi->depth;
-    OpenGLWorker::color = win->transform.color;
 
     OpenGLWorker::renderTransformedTexture(win->texture,
             win->vao, win->vbo, win->transform.compose());

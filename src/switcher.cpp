@@ -1,8 +1,11 @@
 #include "../include/core.hpp"
 #include "../include/winstack.hpp"
+#include "../include/opengl.hpp"
 
 ATSwitcher::ATSwitcher(Core *core) {
     using namespace std::placeholders;
+
+    active = false;
 
     initiate.mod = Mod1Mask;
     initiate.key = XKeysymToKeycode(core->d, XK_Tab);
@@ -32,17 +35,19 @@ ATSwitcher::ATSwitcher(Core *core) {
     terminate.active = false;
     core->addKey(&terminate);
 
-    rnd.action = std::bind(std::mem_fn(&ATSwitcher::render), this);
-    core->addHook(&rnd);
+    //rnd.action = std::bind(std::mem_fn(&ATSwitcher::render), this);
+    //core->addHook(&rnd);
 
 }
 
 void ATSwitcher::handleKey(Context *ctx) {
     auto xev = ctx->xev.xkey;
+    err << "In handle Key";
 
     if(xev.keycode == XKeysymToKeycode(core->d, XK_Tab)) {
         if(active)
-            moveLeft();
+            Terminate();
+            //moveLeft();
         else
             Initiate();
     }
@@ -58,76 +63,112 @@ void ATSwitcher::handleKey(Context *ctx) {
 }
 
 void ATSwitcher::Initiate() {
-    rnd.enable();
+    //rnd.enable();
     windows.clear();
     windows = core->getWindowsOnViewport(core->vx, core->vy);
     active = true;
+
+    err << "got window list" << windows.size();
     for(auto w : windows)
-        w->norender = true,
         w->transform.scalation =
-            glm::scale(glm::mat4(), glm::vec3(0.5, 0.5, 0.5));
+            glm::scale(glm::mat4(), glm::vec3(0.8, 0.8, 1)),
+        OpenGLWorker::generateVAOVBO(w->attrib.width,
+                                     w->attrib.height,
+                                     w->vao, w->vbo);
 
-
+    err << "searching for background";
     background = nullptr;
     auto it = windows.begin();
     while(it != windows.end()) { // find background window
         if((*it)->type == WindowTypeDesktop) {
+            err << "found background";
             background = (*it),
-            (*it)->norender = false, // we don't render background
             windows.erase(it);
             break;
         }
         ++it;
     }
 
+    err << "After background";
+    err << background->id << std::endl;
+
     if(background)
-        background->transform.color = glm::vec4(0.5, 0.5, 0.5, 1.);
+        background->transform.color = glm::vec4(0.5, 0.5, 0.5, 1.),
+        background->transform.scalation = glm::mat4(),
+        OpenGLWorker::generateVAOVBO(0,
+                                    core->height,
+                                    core->width,
+                                    -core->height,
+                                    background->vao, background->vbo);
+
+    backward.active  = true;
+    forward.active   = true;
+    terminate.active = true;
+
+    XGrabKeyboard(core->d, core->overlay, True,
+            GrabModeAsync, GrabModeAsync, CurrentTime);
 
     index = 0;
+    err << "end of init";
 }
 
 void ATSwitcher::Terminate() {
-    if(background)
-        windows.push_back(background);
 
     active = false;
-    rnd.disable();
     for(auto w : windows)
-        w->norender = false,
-        w->transform.scalation = glm::mat4();
+        w->transform.scalation = glm::mat4(),
+        w->transform.translation =
+        w->transform.translation = glm::mat4(),
+        OpenGLWorker::generateVAOVBO(w->attrib.x,
+                w->attrib.y,
+                w->attrib.width,
+                w->attrib.height,
+                w->vao, w->vbo);
 
     core->wins->focusWindow(windows[index]);
+    XUngrabKeyboard(core->d, CurrentTime);
+
+    backward.active  = false;
+    forward.active   = false;
+    terminate.active = false;
+
+
+    background->transform.color = glm::vec4(1, 1, 1, 1);
 }
 
 void ATSwitcher::render() {
     auto size = windows.size();
+    if(size < 1)
+        return;
+
+    err << "rendering";
     auto prev = (index + size - 1) % size;
     auto next = (index + size + 1) % size;
-
-    WinUtil::renderWindow(windows[index]);
 
     if(prev == index) { // we have one window
         return; // so nothing more to render
     }
+    core->redraw = true;
 
     windows[prev]->transform.translation =
         glm::translate(glm::mat4(), glm::vec3(-1.f, 0.f, -1));
-    WinUtil::renderWindow(windows[prev]);
 
     windows[next]->transform.translation =
         glm::translate(glm::mat4(), glm::vec3(+1.f, 0.f, -1));
-    WinUtil::renderWindow(windows[next]);
 
-    windows[prev]->transform.translation =
-    windows[next]->transform.translation = glm::mat4();
+//    windows[prev]->transform.translation =
+//    windows[next]->transform.translation = glm::mat4();
+
 }
 
 void ATSwitcher::moveLeft() {
     index = (index - 1 + windows.size()) % windows.size();
+    render();
     core->redraw = true;
 }
 
 void ATSwitcher::moveRight() {
     index = (index + 1) % windows.size();
+    render();
     core->redraw = true;
 }
