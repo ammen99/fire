@@ -117,7 +117,7 @@ void ATSwitcher::Terminate() {
     active = false;
     for(auto w : windows)
         w->transform.scalation = glm::mat4(),
-        w->transform.translation =
+        w->transform.trnslation =
         w->transform.translation = glm::mat4(),
         OpenGLWorker::generateVAOVBO(w->attrib.x,
                 w->attrib.y,
