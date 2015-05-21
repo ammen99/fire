@@ -109,6 +109,7 @@ void ATSwitcher::Initiate() {
             GrabModeAsync, GrabModeAsync, CurrentTime);
 
     index = 0;
+    render();
     err << "end of init";
 }
 
@@ -131,7 +132,6 @@ void ATSwitcher::Terminate() {
     backward.active  = false;
     forward.active   = false;
     terminate.active = false;
-
 
     background->transform.color = glm::vec4(1, 1, 1, 1);
 }
