@@ -47,7 +47,6 @@ void ATSwitcher::handleKey(Context *ctx) {
     if(xev.keycode == XKeysymToKeycode(core->d, XK_Tab)) {
         if(active)
             Terminate();
-            //moveLeft();
         else
             Initiate();
     }
@@ -68,20 +67,10 @@ void ATSwitcher::Initiate() {
     windows = core->getWindowsOnViewport(core->vx, core->vy);
     active = true;
 
-    err << "got window list" << windows.size();
-    for(auto w : windows)
-        w->transform.scalation =
-            glm::scale(glm::mat4(), glm::vec3(0.8, 0.8, 1)),
-        OpenGLWorker::generateVAOVBO(w->attrib.width,
-                                     w->attrib.height,
-                                     w->vao, w->vbo);
-
-    err << "searching for background";
     background = nullptr;
     auto it = windows.begin();
     while(it != windows.end()) { // find background window
         if((*it)->type == WindowTypeDesktop) {
-            err << "found background";
             background = (*it),
             windows.erase(it);
             break;
@@ -89,17 +78,23 @@ void ATSwitcher::Initiate() {
         ++it;
     }
 
-    err << "After background";
-    err << background->id << std::endl;
+    for(auto w : windows)
+        w->norender = true,
+        w->transform.scalation =
+            glm::scale(glm::mat4(), glm::vec3(0.5, 0.5, 1)),
+        OpenGLWorker::generateVAOVBO(w->attrib.width,
+                                     w->attrib.height,
+                                     w->vao, w->vbo);
 
-    if(background)
-        background->transform.color = glm::vec4(0.5, 0.5, 0.5, 1.),
-        background->transform.scalation = glm::mat4(),
-        OpenGLWorker::generateVAOVBO(0,
-                                    core->height,
-                                    core->width,
-                                    -core->height,
-                                    background->vao, background->vbo);
+
+    OpenGLWorker::transformed = true;
+    if(background) {
+        background->transform.color = glm::vec4(0.5, 0.5, 0.5, 1.);
+        background->transform.translation = glm::translate(glm::mat4(),
+                glm::vec3(0.f, 0.f, -1.0f));
+        background->transform.scalation   = glm::scale(glm::mat4(),
+                glm::vec3(1.49f, 1.49f, 1.f));
+    }
 
     backward.active  = true;
     forward.active   = true;
@@ -113,27 +108,65 @@ void ATSwitcher::Initiate() {
     err << "end of init";
 }
 
+void ATSwitcher::reset() {
+    auto size = windows.size();
+    auto prev = (index + size - 1) % size;
+    auto next = (index + size + 1) % size;
+
+    windows[prev]->transform.translation  = glm::mat4();
+    windows[next]->transform.translation  = glm::mat4();
+    windows[index]->transform.translation = glm::mat4();
+
+    windows[prev]->transform.rotation     = glm::mat4();
+    windows[next]->transform.rotation     = glm::mat4();
+    windows[index]->transform.rotation    = glm::mat4();
+
+    windows[prev]->transform.scalation    = glm::mat4();
+    windows[next]->transform.scalation    = glm::mat4();
+    windows[index]->transform.scalation   = glm::mat4();
+
+    windows[index]->norender = true;
+    windows[next ]->norender = true;
+    windows[prev ]->norender = true;
+}
+
 void ATSwitcher::Terminate() {
 
     active = false;
+    reset();
     for(auto w : windows)
-        w->transform.scalation = glm::mat4(),
-        w->transform.trnslation =
-        w->transform.translation = glm::mat4(),
+        w->norender = false,
+        w->transform.scalation   =
+        w->transform.translation =
+        w->transform.rotation    = glm::mat4(),
         OpenGLWorker::generateVAOVBO(w->attrib.x,
                 w->attrib.y,
                 w->attrib.width,
                 w->attrib.height,
                 w->vao, w->vbo);
 
-    core->wins->focusWindow(windows[index]);
     XUngrabKeyboard(core->d, CurrentTime);
+    OpenGLWorker::transformed = false;
 
     backward.active  = false;
     forward.active   = false;
     terminate.active = false;
 
+
     background->transform.color = glm::vec4(1, 1, 1, 1);
+    if(background)
+        background->transform.translation = glm::mat4(),
+        background->transform.scalation   = glm::mat4();
+}
+
+float ATSwitcher::getFactor(int x, int y, float percent) {
+    float d = std::sqrt(x * x + y * y);
+    float d1 = std::sqrt(core->width * core->width +
+                         core->height * core->height);
+    if(d != 0)
+        return percent * d1 / d;
+    else
+        return 0;
 }
 
 void ATSwitcher::render() {
@@ -141,9 +174,13 @@ void ATSwitcher::render() {
     if(size < 1)
         return;
 
-    err << "rendering";
     auto prev = (index + size - 1) % size;
     auto next = (index + size + 1) % size;
+
+    windows[index]->norender = false;
+    windows[next ]->norender = false;
+    windows[prev ]->norender = false;
+
 
     if(prev == index) { // we have one window
         return; // so nothing more to render
@@ -151,23 +188,47 @@ void ATSwitcher::render() {
     core->redraw = true;
 
     windows[prev]->transform.translation =
-        glm::translate(glm::mat4(), glm::vec3(-1.f, 0.f, -1));
+        glm::translate(glm::mat4(), glm::vec3(-.6f, 0.f, -0.3f));
+    windows[prev]->transform.rotation    =
+        glm::rotate(glm::mat4(), float(M_PI / 6.), glm::vec3(0, 1, 0));
 
     windows[next]->transform.translation =
-        glm::translate(glm::mat4(), glm::vec3(+1.f, 0.f, -1));
+        glm::translate(glm::mat4(), glm::vec3( .6f, 0.f, -0.3f));
+    windows[next]->transform.rotation    =
+        glm::rotate(glm::mat4(), float(-M_PI / 6.), glm::vec3(0, 1, 0));
 
-//    windows[prev]->transform.translation =
-//    windows[next]->transform.translation = glm::mat4();
 
+    float c1 = getFactor(windows[index]->attrib.width,
+                         windows[index]->attrib.height,
+                         0.5);
+
+    float c2 = getFactor(windows[prev ]->attrib.width,
+                         windows[prev ]->attrib.height,
+                         0.4);
+
+    float c3 = getFactor(windows[next ]->attrib.width,
+                         windows[next ]->attrib.height,
+                         0.4);
+
+    windows[index]->transform.scalation = glm::scale(glm::mat4(),
+            glm::vec3(c1, c1, 1.0));
+    windows[prev ]->transform.scalation = glm::scale(glm::mat4(),
+            glm::vec3(c2, c2, 1.0));
+    windows[next ]->transform.scalation = glm::scale(glm::mat4(),
+            glm::vec3(c3, c3, 1.0));
+
+    core->wins->focusWindow(windows[index]);
 }
 
 void ATSwitcher::moveLeft() {
+    reset();
     index = (index - 1 + windows.size()) % windows.size();
     render();
     core->redraw = true;
 }
 
 void ATSwitcher::moveRight() {
+    reset();
     index = (index + 1) % windows.size();
     render();
     core->redraw = true;

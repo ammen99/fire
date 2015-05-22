@@ -231,7 +231,7 @@ void OpenGLWorker::initOpenGL(const char *shaderSrcPath) {
     colorID = glGetUniformLocation(program, "color");
     color = glm::vec4(1.f, 1.f, 1.f, 1.f);
 
-    View = glm::lookAt(glm::vec3(0., 1., 1 ),
+    View = glm::lookAt(glm::vec3(0., 0., 1.67),
                        glm::vec3(0., 0., 0.),
                        glm::vec3(0., 1., 0.));
     Proj = glm::perspective(45.f, 1.f, .1f, 100.f);

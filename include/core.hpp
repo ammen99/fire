@@ -146,6 +146,8 @@ class ATSwitcher {
         void Initiate();
         void Terminate();
         void render();
+        void reset();
+        float getFactor(int x, int y, float percent);
 };
 
 class Close;

@@ -16,9 +16,12 @@ Transform::Transform() {
 }
 
 glm::mat4 Transform::compose() {
+    float c = -1;
+    if(OpenGLWorker::transformed)
+        c = 1;
     auto trans =
         glm::translate(translation,
-                glm::vec3(0.f, 0.f, -stackID * 1e-2));
+                glm::vec3(0.f, 0.f, c * stackID * 1e-2));
 
     return proj * view * (gtrs * trans) *
         (grot * rotation) * (gscl * scalation);
