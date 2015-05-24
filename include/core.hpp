@@ -150,6 +150,25 @@ class ATSwitcher {
         float getFactor(int x, int y, float percent);
 };
 
+class Grid{
+
+    struct GridWindow {
+        Window id;
+        XWindowAttributes size;
+        GridWindow(Window id, int x, int y, int w, int h);
+    };
+
+    std::vector<GridWindow> wins;
+    KeyBinding keys[10];
+    KeyCode codes[10];
+
+    public:
+        Grid(Core *core);
+        void handleKey(Context*);
+        void toggleMaxim(FireWindow win);
+        void getSlot(int n, int &x, int &y, int &w, int &h);
+};
+
 class Close;
 
 class Core {
@@ -160,6 +179,7 @@ class Core {
     friend class Expo;
     friend class Close;
     friend class ATSwitcher;
+    friend class Grid;
 
     private:
         std::vector<std::vector<FireWindow> > backgrounds;
@@ -195,6 +215,7 @@ class Core {
         Resize *resize;
         Close *close;
         ATSwitcher *at;
+        Grid *grid;
 
     public:
         Display *d;

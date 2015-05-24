@@ -96,6 +96,8 @@ Core::Core() {
     runn     = new Run(this);
     close    = new Close(this);
     at       = new ATSwitcher(this);
+    err << "Creating grid";
+    grid     = new Grid(this);
 
     cntHooks = 0;
     output = Rect(0, 0, width, height);
@@ -155,6 +157,7 @@ void Core::remHook(uint id) {
 }
 
 uint Core::addKey(KeyBinding *kb, bool grab) {
+    err << "Adding keys";
     if(!kb)
         return -1;
 
