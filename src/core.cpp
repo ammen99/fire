@@ -75,12 +75,10 @@ Core::Core() {
 
     wins = new WinStack();
 
-    err << "Setting windows";
     XSetErrorHandler(&Core::onXError);
     overlay = XCompositeGetOverlayWindow(d, root);
     outputwin = GLXUtils::createNewWindowWithContext(overlay, this);
 
-    err << "Created output window";
     enableInputPass(overlay);
     enableInputPass(outputwin);
 
@@ -96,19 +94,22 @@ Core::Core() {
     runn     = new Run(this);
     close    = new Close(this);
     at       = new ATSwitcher(this);
-    err << "Creating grid";
     grid     = new Grid(this);
 
     cntHooks = 0;
     output = Rect(0, 0, width, height);
 
+
+    // enable compositing to be recognized by other programs
     Window w;
     Atom a;
-
     w = XCreateSimpleWindow (d, root, 0, 0, 1, 1, 0, None, None);
     Xutf8SetWMProperties (d, w, "xcompmgr", "xcompmgr",NULL,0,NULL,NULL,NULL);
     a = XInternAtom (d, "_NET_WM_CM_S0", False);
     XSetSelectionOwner (d, a, w, 0);
+
+    run(const_cast<char*>("setxkbmap -model pc104 -layout us,bg -variant ,phonetic -option grp:alt_shift_toggle"));
+
 }
 
 void Core::enableInputPass(Window win) {

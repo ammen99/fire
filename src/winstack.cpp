@@ -172,6 +172,17 @@ void WinStack::focusWindow(FireWindow win) {
     auto w1 = findTopmostStackingWindow(activeWin);
     auto w2 = activeWin;
 
+    if(w2->id == (*wins.begin())->id){
+        WinUtil::setInputFocusToWindow(w2->id);
+        return;
+    }
+
+    if(w1 == nullptr) {
+        restackAbove(w1, (*wins.begin()));
+        restackTransients(w1);
+        return;
+    }
+
     if(w1 == nullptr || w1->id == w2->id)
         return;
 
@@ -186,7 +197,6 @@ void WinStack::focusWindow(FireWindow win) {
     XConfigureWindow(core->d, activeWin->id, CWSibling|CWStackMode, &xwc);
 
     WinUtil::setInputFocusToWindow(activeWin->id);
-
     core->redraw = true;
 }
 
@@ -197,7 +207,7 @@ FireWindow WinStack::__findWindowAtCursorPosition(Point p) {
            !w->norender                      && // ignored
            (w->getRect() & p))
 
-            return w;
+               return w;
 
     return nullptr;
 }

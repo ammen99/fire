@@ -26,7 +26,7 @@ Move::Move(Core *c) {
 
 void Move::Initiate(Context *ctx) {
     auto xev = ctx->xev.xbutton;
-    auto w = core->wins-> findWindowAtCursorPosition
+    auto w = core->wins->findWindowAtCursorPosition
         (Point(xev.x_root, xev.y_root));
 
     if(w){
