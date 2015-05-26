@@ -14,3 +14,7 @@ clean:
 	$(call colorecho, "Cleaning garbage")
 	@make -C $(SRC) clean
 
+install:
+	$(call colorecho "Installing fireman executable in /usr/bin")
+	@sudo cp src/manager /usr/bin/fireman
+

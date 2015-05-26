@@ -64,6 +64,7 @@ class __FireWindow {
         int opacity;
 
         bool norender = false; // should we draw window?
+        bool destroyed = false;
         int mapTryNum = 5; // how many times have we tried to map this window?
         Transform transform;
 

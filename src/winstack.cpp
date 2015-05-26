@@ -163,8 +163,15 @@ void WinStack::updateTransientsAttrib(FireWindow win,
 }
 
 void WinStack::focusWindow(FireWindow win) {
+    if(win == nullptr)
+        return;
 
     if(win->type == WindowTypeDesktop)
+        return;
+
+    if(win->attrib.c_class == InputOnly)
+        return;
+    if(!win->shouldBeDrawn())
         return;
 
     activeWin = win;
@@ -172,18 +179,18 @@ void WinStack::focusWindow(FireWindow win) {
     auto w1 = findTopmostStackingWindow(activeWin);
     auto w2 = activeWin;
 
-    if(w2->id == (*wins.begin())->id){
+    if(w2 && w2->id == (*wins.begin())->id){
         WinUtil::setInputFocusToWindow(w2->id);
         return;
     }
 
     if(w1 == nullptr) {
-        restackAbove(w1, (*wins.begin()));
-        restackTransients(w1);
+        restackAbove(w2, (*wins.begin()));
+        restackTransients(w2);
         return;
     }
 
-    if(w1 == nullptr || w1->id == w2->id)
+    if(w1->id == w2->id)
         return;
 
     restackAbove(w2, w1);
@@ -205,9 +212,19 @@ FireWindow WinStack::__findWindowAtCursorPosition(Point p) {
         if(w->attrib.map_state == IsViewable && // desktop and invisible
            w->type != WindowTypeDesktop      && // windows should be
            !w->norender                      && // ignored
+           !w->destroyed                     &&
            (w->getRect() & p))
-
                return w;
+
+    return nullptr;
+}
+
+FireWindow WinStack::getTopmostToplevel() {
+    for(auto w : wins)
+        if(w->shouldBeDrawn() &&
+           w->type != WindowTypeDesktop &&
+           w->type != WindowTypeWidget)
+            return w;
 
     return nullptr;
 }

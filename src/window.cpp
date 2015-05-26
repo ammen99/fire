@@ -69,6 +69,12 @@ bool __FireWindow::shouldBeDrawn() {
     if(norender)
         return false;
 
+    if(destroyed)
+        return false;
+
+    if(attrib.c_class == InputOnly)
+        return false;
+
     if(attrib.width < 11 && attrib.height < 11) {
         norender = true;
         return false;

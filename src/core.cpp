@@ -266,11 +266,13 @@ void Core::addWindow(XCreateWindowEvent xev) {
 
     w->xvi = nullptr;
     wins->addWindow(w);
+    wins->focusWindow(w);
 }
 void Core::destroyWindow(FireWindow win) {
     if(!win)
         return;
 
+    //err << "In destroy win" << win->id;
     int cnt;
     Atom *atoms;
     XGetWMProtocols(d, win->id, &atoms, &cnt);
@@ -298,6 +300,9 @@ void Core::destroyWindow(FireWindow win) {
         XSendEvent ( d, win->id, FALSE, NoEventMask, &xev );
     } else
         XKillClient ( d, win->id );
+
+    win->destroyed = true;
+    wins->focusWindow(wins->getTopmostToplevel());
 }
 
 void Core::renderAllWindows() {
@@ -367,6 +372,7 @@ void Core::handleEvent(XEvent xev){
             auto parent = WinUtil::getAncestor(w);
             wins->restackTransients(parent);
             redraw = true;
+            break;
         }
         case MapNotify: {
 
@@ -428,11 +434,8 @@ void Core::handleEvent(XEvent xev){
             mousex = xev.xmotion.x_root;
             mousey = xev.xmotion.y_root;
             break;
-        case EnterNotify: {
-            auto w = wins->findWindow(xev.xcrossing.window);
-            if(w)
-                wins->focusWindow(w);
-        }
+        case EnterNotify:
+            break;
         default:
             if(xev.type == damage + XDamageNotify)
                 redraw = true;
@@ -440,7 +443,7 @@ void Core::handleEvent(XEvent xev){
     }
 }
 
-#define RefreshRate 200
+#define RefreshRate 100
 #define Second 1000000
 #define MaxDelay 1000
 
@@ -552,6 +555,10 @@ void Core::switchWorkspace(std::tuple<int, int> nPos) {
 
     vx = nx;
     vy = ny;
+
+    auto ws = getWindowsOnViewport(vx, vy);
+    if(ws.size() != 0)
+        wins->focusWindow(ws[0]);
 }
 
 std::vector<FireWindow> Core::getWindowsOnViewport(int x, int y) {

@@ -30,6 +30,7 @@ class WinStack {
         void addWindow(FireWindow win);
         void removeWindow(FireWindow win, bool destroy);
         FireWindow findWindow(Window win);
+        FireWindow getTopmostToplevel();
         void renderWindows();
         int getNumOfWindows();
 
