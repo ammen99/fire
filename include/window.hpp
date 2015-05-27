@@ -101,10 +101,11 @@ extern Atom wmClientLeaderAtom;
 extern Atom wmNameAtom;
 extern Atom winOpacityAtom;
 
+class Core;
 
 namespace WinUtil {
     bool recurseIsAncestor(FireWindow parent, FireWindow win);
-    void init();
+    void init(Core *core);
 
     void renderWindow(FireWindow win);
     int setWindowTexture(FireWindow win);

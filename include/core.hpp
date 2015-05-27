@@ -189,7 +189,8 @@ class Core {
         void handleEvent(XEvent xev);
         void wait(int timeout);
         void enableInputPass(Window win);
-
+        void addExistingWindows(); // adds windows created before
+                                   // we registered for SubstructureRedirect
         pollfd fd;
 
         int mousex, mousey; // pointer x, y
@@ -217,6 +218,8 @@ class Core {
         ATSwitcher *at;
         Grid *grid;
 
+        Window s0owner;
+
     public:
         Display *d;
         Window root;
@@ -229,6 +232,7 @@ class Core {
         int height;
 
         bool redraw = true; // should we redraw?
+        bool terminate = false; // should main loop exit?
 
         float scaleX = 1, scaleY = 1; // used for operations which
                               // depend on mouse moving
@@ -256,6 +260,7 @@ class Core {
 
         void renderAllWindows();
         void addWindow(XCreateWindowEvent);
+        void addWindow(Window);
         FireWindow findWindow(Window win);
         FireWindow getActiveWindow();
         void destroyWindow(FireWindow win);
@@ -265,5 +270,6 @@ class Core {
         static int onOtherWmDetected(Display *d, XErrorEvent *xev);
 };
 extern Core *core;
+extern bool restart;
 
 #endif

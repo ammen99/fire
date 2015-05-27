@@ -2,8 +2,9 @@
 #define GLXWORKER_H
 
 #include "commonincludes.hpp"
+class Core;
 namespace GLXUtils {
-    void initGLX();
+    void initGLX(Core *core);
 
     void destroyContext(Window win);
     void endFrame(Window win);
@@ -17,7 +18,7 @@ namespace GLXUtils {
     GLuint compileShader(const char* src, GLuint type);
     GLuint textureFromPixmap(Pixmap pixmap, int, int, XVisualInfo*);
 
-    void initFBConf();
+    void initFBConf(Core *core);
     GLXPixmap glxPixmap(Pixmap pixmap, GLXFBConfig, int, int);
 
     extern GLXFBConfig fbconfigs[33];

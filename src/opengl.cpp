@@ -160,7 +160,7 @@ void errorHandler(GLenum src, GLenum type,
 
 
 
-void OpenGLWorker::initOpenGL(const char *shaderSrcPath) {
+void OpenGLWorker::initOpenGL(Core *core, const char *shaderSrcPath) {
 
     //glEnable(GL_DEBUG_OUTPUT);
     //glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
@@ -175,6 +175,8 @@ void OpenGLWorker::initOpenGL(const char *shaderSrcPath) {
     glDepthFunc ( GL_LESS );
     glViewport ( 0, 0, core->width, core->height );
     glDisable ( GL_CULL_FACE );
+
+    err << "HHHFFFFF" << std::endl;
 
     std::string tmp = shaderSrcPath;
 
@@ -202,6 +204,7 @@ void OpenGLWorker::initOpenGL(const char *shaderSrcPath) {
         GLXUtils::loadShader(std::string(shaderSrcPath)
                 .append("/geom.glsl").c_str(),
                 GL_GEOMETRY_SHADER);
+    err << "LOADED SHADERS" << std::endl;
 
 
     program = glCreateProgram();
@@ -218,11 +221,14 @@ void OpenGLWorker::initOpenGL(const char *shaderSrcPath) {
     glUseProgram (program);
 
 
-    GLuint dummyVAO, dummyVBO;
-    glGenVertexArrays(1, &dummyVAO);
-    glBindVertexArray(dummyVAO);
-    generateVAOVBO(0, 0, core->width, core->height, dummyVAO, dummyVBO);
+    err << "PAHSE" << std::endl;
 
+//    GLuint dummyVAO, dummyVBO;
+//    glGenVertexArrays(1, &dummyVAO);
+//    glBindVertexArray(dummyVAO);
+//    generateVAOVBO(0, 0, core->width, core->height, dummyVAO, dummyVBO);
+//
+    err << "HHHHHHHHHHHHHHH" << std::endl;
 
     mvpID = glGetUniformLocation(program, "MVP");
     normalID = glGetUniformLocation(program, "NormalMatrix");
@@ -242,5 +248,6 @@ void OpenGLWorker::initOpenGL(const char *shaderSrcPath) {
     glUniformMatrix4fv(mvpID, 1, GL_FALSE, &MVP[0][0]);
     glUniformMatrix3fv(normalID, 1, GL_FALSE, &NM[0][0]);
 
+    err << "Set uniforms";
 }
 

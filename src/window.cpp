@@ -118,7 +118,7 @@ Atom wmNameAtom;
 Atom winOpacityAtom;
 
 namespace WinUtil {
-void init() {
+void init(Core *core) {
 
     activeWinAtom = XInternAtom(core->d, "_NET_ACTIVE_WINDOW", 0);
     wmNameAtom    = XInternAtom(core->d, "WM_NAME", 0);
@@ -594,8 +594,9 @@ Run::Run(Core *core) {
 
 Exit::Exit(Core *core) {
     KeyBinding *exit = new KeyBinding();
-    exit->action = [](Context *ctx){
-        std::exit(0);
+    exit->action = [core](Context *ctx){
+        core->terminate = true;
+        restart = false;
     };
 
     exit->active = true;

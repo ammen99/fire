@@ -38,8 +38,12 @@
 #include <IL/ilut.h>
 
 
-#define err LOG(ERROR)
-#define info LOG(INFO)
+//#define err LOG(ERROR)
+//#define info LOG(INFO)
+//
+using std::cout;
+//#define err (cout<<__FILE__<<" "<<__LINE__<<" ")
+#define err cout
 
 #ifdef YCM
 #define private public

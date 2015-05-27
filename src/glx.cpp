@@ -175,17 +175,18 @@ Window createNewWindowWithContext(Window parent, Core *core) {
 #define uchar unsigned char
 
 
-void initGLX() {
+void initGLX(Core *core) {
 
     auto x = glXGetCurrentContext();
     if ( x == NULL )
-        err << "current context is NULL!!!",
+        err << "current context is NULL!!!" << std::endl,
             std::exit(-1);
+
     glewExperimental = GL_TRUE;
     auto res = glewInit();
     glGetError(); // workaround for glew getting Invalid Enum
     if ( res != GLEW_OK ) {
-        err << "failed to init glew";
+        err << "failed to init glew" << std::endl;
         std::exit(-1);
     }
 
@@ -194,13 +195,12 @@ void initGLX() {
     ilutInit();
     ilutRenderer ( ILUT_OPENGL );
 
-
     glXBindTexImageEXT_func = (PFNGLXBINDTEXIMAGEEXTPROC)
         glXGetProcAddress((GLubyte *) "glXBindTexImageEXT");
     glXReleaseTexImageEXT_func = (PFNGLXRELEASETEXIMAGEEXTPROC)
         glXGetProcAddress((GLubyte*) "glXReleaseTexImageEXT");
 
-    initFBConf();
+    initFBConf(core);
 
 }
 
@@ -278,8 +278,7 @@ GLuint textureFromPixmap(Pixmap pixmap,
     return tex;
 }
 
-void initFBConf() {
-
+void initFBConf(Core *core) {
     int nfbs;
     auto fbs = glXGetFBConfigs (core->d, DefaultScreen(core->d), &nfbs);
     int value;

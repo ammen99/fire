@@ -38,7 +38,6 @@ void WinStack::addWindow(FireWindow win) {
         return;
 
     wins.push_front(win);
-    WinUtil::initWindow(win);
 }
 
 int WinStack::getNumOfWindows() {

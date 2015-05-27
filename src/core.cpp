@@ -44,7 +44,7 @@ Core::Core() {
     d = XOpenDisplay(NULL);
 
     if ( d == nullptr )
-        err << "Failed to open display!";
+        err << "Failed to open display!" << std::endl;
 
 
     XSynchronize(d, 1);
@@ -52,6 +52,7 @@ Core::Core() {
     fd.fd = ConnectionNumber(d);
     fd.events = POLLIN;
 
+    err << "Phase 1" << std::endl;
 
     XWindowAttributes xwa;
     XGetWindowAttributes(d, root, &xwa);
@@ -73,6 +74,8 @@ Core::Core() {
     if(wmDetected)
        err << "Another WM already running!\n", std::exit(-1);
 
+    err << "Phase 2" << std::endl;
+
     wins = new WinStack();
 
     XSetErrorHandler(&Core::onXError);
@@ -81,6 +84,8 @@ Core::Core() {
 
     enableInputPass(overlay);
     enableInputPass(outputwin);
+
+    err << "Phase 3" << std::endl;
 
     int dummy;
     XDamageQueryExtension(d, &damage, &dummy);
@@ -99,17 +104,35 @@ Core::Core() {
     cntHooks = 0;
     output = Rect(0, 0, width, height);
 
+    err << "Phase 4" << std::endl;
+
 
     // enable compositing to be recognized by other programs
-    Window w;
     Atom a;
-    w = XCreateSimpleWindow (d, root, 0, 0, 1, 1, 0, None, None);
-    Xutf8SetWMProperties (d, w, "xcompmgr", "xcompmgr",NULL,0,NULL,NULL,NULL);
+    s0owner = XCreateSimpleWindow (d, root, 0, 0, 1, 1, 0, None, None);
+    Xutf8SetWMProperties (d, s0owner,
+            "xcompmgr", "xcompmgr",
+            NULL, 0, NULL, NULL, NULL);
+
     a = XInternAtom (d, "_NET_WM_CM_S0", False);
-    XSetSelectionOwner (d, a, w, 0);
+    XSetSelectionOwner (d, a, s0owner, 0);
+
+    err << "Phase 5" << std::endl;
 
     run(const_cast<char*>("setxkbmap -model pc104 -layout us,bg -variant ,phonetic -option grp:alt_shift_toggle"));
 
+    err << "Initing GLX" << std::endl;
+    WinUtil::init(this);
+    err << "Phase 6" << std::endl;
+    GLXUtils::initGLX(this);
+    err << "Phase 7" << std::endl;
+    OpenGLWorker::initOpenGL(this, "/home/ilex/work/cwork/fire/shaders");
+
+    core = this;
+    err << "Adding existing windows" << std::endl;
+    addExistingWindows();
+
+    err << "Windows added" << std::endl;
 }
 
 void Core::enableInputPass(Window win) {
@@ -119,8 +142,60 @@ void Core::enableInputPass(Window win) {
     XFixesSetWindowShapeRegion(d, win, ShapeInput, 0, 0, region);
     XFixesDestroyRegion(d, region);
 }
+;
+void Core::addExistingWindows() {
+    Window dummy1, dummy2;
+    uint size;
+    Window  *children;
 
+    err << "Query" << std::endl;
+    XQueryTree(d, root, &dummy1, &dummy2, &children, &size);
+
+    if(size == 0)
+        return;
+
+    err << "Size not null " << size << std::endl;
+    for(int i = size - 1; i >= 0; i--)
+        if(children[i] != overlay   &&
+           children[i] != outputwin &&
+           children[i] != s0owner    )
+
+            addWindow(children[i]);
+
+    err << "Restack Windows" << std::endl;
+
+    for(int i = 0; i < size; i++) {
+        auto w = findWindow(children[i]);
+        err << "Searching for a win" << std::endl;
+        if(w) {
+            err << "Found one" << std::endl;
+            w->transientFor = WinUtil::getTransient(w);
+        }
+    }
+
+    for(auto i = 0; i < size; i++) {
+        auto w = findWindow(children[i]);
+        if(w)
+            WinUtil::initWindow(w);
+    }
+
+}
 Core::~Core(){
+
+    delete move;
+    delete resize;
+    delete wsswitch;
+    delete expo;
+    delete focus;
+    delete exit;
+    delete runn;
+    delete close;
+    delete at;
+    delete grid;
+    delete wins;
+
+    XDestroyWindow(core->d, outputwin);
+    XDestroyWindow(core->d, s0owner);
     XCompositeReleaseOverlayWindow(d, overlay);
     XCloseDisplay(d);
 }
@@ -250,6 +325,8 @@ void Core::setBackground(const char *path) {
 }
 
 FireWindow Core::findWindow(Window win) {
+    if(win == 0)
+        return nullptr;
     return wins->findWindow(win);
 }
 
@@ -261,12 +338,25 @@ void Core::addWindow(XCreateWindowEvent xev) {
     FireWindow w = std::make_shared<__FireWindow>();
     w->id = xev.window;
 
-    if(xev.parent != root)
+    if(xev.parent != root && xev.parent != 0)
         w->transientFor = findWindow(xev.parent);
 
     w->xvi = nullptr;
     wins->addWindow(w);
+    WinUtil::initWindow(w);
     wins->focusWindow(w);
+}
+void Core::addWindow(Window id) {
+    err << "Adding windows" << std::endl;
+    FireWindow w = std::make_shared<__FireWindow>();
+
+    w->id = id;
+    w->transientFor = nullptr;
+    w->xvi = nullptr;
+
+    err << "Adding to stack" << std::endl;
+    wins->addWindow(w);
+    err << "Aaaaaaaaaaaaaaa" << std::endl;
 }
 void Core::destroyWindow(FireWindow win) {
     if(!win)
@@ -462,7 +552,7 @@ void Core::loop(){
 
     XEvent xev;
 
-    while(true) {
+    while(!terminate) {
 
         while(XPending(d)) {
             XNextEvent(d, &xev);
