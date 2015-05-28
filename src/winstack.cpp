@@ -173,6 +173,10 @@ void WinStack::focusWindow(FireWindow win) {
     if(!win->shouldBeDrawn())
         return;
 
+    if(win->type == WindowTypeWidget && wins.size())
+        restackAbove(win, (*wins.begin())),
+        win = WinUtil::getAncestor(win);
+
     activeWin = win;
 
     auto w1 = findTopmostStackingWindow(activeWin);

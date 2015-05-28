@@ -20,35 +20,37 @@ class Refresh { // keybinding to restart window manager
 
 bool restart = true; // should we restart our app
 
-void signalHandle(int sig) { // if interrupted, then
-    restart = false;         // make main loop exit
-    core->terminate = true;  // and make core exit
+void signalHandle(int sig) {
+    switch(sig) {
+        case SIGINT:                 // if interrupted, then
+            restart = false;         // make main loop exit
+            core->terminate = true;  // and make core exit
+            break;
+
+        case SIGSEGV: // program crashed, so restart core
+            err << "Crash Detected!!!!!!" << std::endl;
+            core->terminate = true;
+            break;
+    }
 }
 
 void runOnce() { // simulates launching a new program
-    err << "running once" << std::endl;
     Transform::proj = Transform::view =
     Transform::grot = Transform::gscl =
     Transform::gtrs = glm::mat4();
 
-    err << "Init core" << std::endl;
     core = new Core();
-    err << "Core inited" << std::endl;
     core->setBackground("/tarball/backgrounds/last.jpg");
-    err << "Backgroudn set" << std::endl;
     Refresh *r = new Refresh();
-    err << "Refreshcom enabled" << std::endl;
     core->loop();
-    err << "End of loop" << std::endl;
     delete r;
     delete core;
 }
 
 int main(int argc, const char **argv ) {
     //google::InitGoogleLogging(argv[0]);
-    err << "Reg singal" << std::endl;
     signal(SIGINT, signalHandle);
-    err << "here" << std::endl;
+    signal(SIGSEGV, signalHandle);
     while(restart)
         runOnce();
 

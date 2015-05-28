@@ -52,8 +52,6 @@ Core::Core() {
     fd.fd = ConnectionNumber(d);
     fd.events = POLLIN;
 
-    err << "Phase 1" << std::endl;
-
     XWindowAttributes xwa;
     XGetWindowAttributes(d, root, &xwa);
     width = xwa.width;
@@ -74,8 +72,6 @@ Core::Core() {
     if(wmDetected)
        err << "Another WM already running!\n", std::exit(-1);
 
-    err << "Phase 2" << std::endl;
-
     wins = new WinStack();
 
     XSetErrorHandler(&Core::onXError);
@@ -84,8 +80,6 @@ Core::Core() {
 
     enableInputPass(overlay);
     enableInputPass(outputwin);
-
-    err << "Phase 3" << std::endl;
 
     int dummy;
     XDamageQueryExtension(d, &damage, &dummy);
@@ -104,9 +98,6 @@ Core::Core() {
     cntHooks = 0;
     output = Rect(0, 0, width, height);
 
-    err << "Phase 4" << std::endl;
-
-
     // enable compositing to be recognized by other programs
     Atom a;
     s0owner = XCreateSimpleWindow (d, root, 0, 0, 1, 1, 0, None, None);
@@ -117,22 +108,14 @@ Core::Core() {
     a = XInternAtom (d, "_NET_WM_CM_S0", False);
     XSetSelectionOwner (d, a, s0owner, 0);
 
-    err << "Phase 5" << std::endl;
-
     run(const_cast<char*>("setxkbmap -model pc104 -layout us,bg -variant ,phonetic -option grp:alt_shift_toggle"));
 
-    err << "Initing GLX" << std::endl;
     WinUtil::init(this);
-    err << "Phase 6" << std::endl;
     GLXUtils::initGLX(this);
-    err << "Phase 7" << std::endl;
     OpenGLWorker::initOpenGL(this, "/home/ilex/work/cwork/fire/shaders");
 
     core = this;
-    err << "Adding existing windows" << std::endl;
     addExistingWindows();
-
-    err << "Windows added" << std::endl;
 }
 
 void Core::enableInputPass(Window win) {
@@ -148,13 +131,11 @@ void Core::addExistingWindows() {
     uint size;
     Window  *children;
 
-    err << "Query" << std::endl;
     XQueryTree(d, root, &dummy1, &dummy2, &children, &size);
 
     if(size == 0)
         return;
 
-    err << "Size not null " << size << std::endl;
     for(int i = size - 1; i >= 0; i--)
         if(children[i] != overlay   &&
            children[i] != outputwin &&
@@ -162,15 +143,10 @@ void Core::addExistingWindows() {
 
             addWindow(children[i]);
 
-    err << "Restack Windows" << std::endl;
-
     for(int i = 0; i < size; i++) {
         auto w = findWindow(children[i]);
-        err << "Searching for a win" << std::endl;
-        if(w) {
-            err << "Found one" << std::endl;
+        if(w)
             w->transientFor = WinUtil::getTransient(w);
-        }
     }
 
     for(auto i = 0; i < size; i++) {
@@ -233,7 +209,6 @@ void Core::remHook(uint id) {
 }
 
 uint Core::addKey(KeyBinding *kb, bool grab) {
-    err << "Adding keys";
     if(!kb)
         return -1;
 
@@ -428,7 +403,7 @@ void Core::handleEvent(XEvent xev){
             if(xev.xcreatewindow.window == outputwin)
                 break;
 
-            err << "CreateNotify";
+            err << "CreateNotify" << std::endl;
             inMapping = true;
             XMapWindow(core->d, xev.xcreatewindow.window);
             XSync(core->d, 0);
@@ -466,6 +441,8 @@ void Core::handleEvent(XEvent xev){
         }
         case MapNotify: {
 
+            err << "MapNotify" << std::endl;
+
             auto w = wins->findWindow(xev.xmap.window);
             if(w == nullptr)
                 break;
@@ -479,6 +456,7 @@ void Core::handleEvent(XEvent xev){
             break;
         }
         case UnmapNotify: {
+            std::cout << "UnmapNotify" << std::endl;
 
             auto w = wins->findWindow(xev.xunmap.window);
             if(w == nullptr)
@@ -533,9 +511,10 @@ void Core::handleEvent(XEvent xev){
     }
 }
 
-#define RefreshRate 100
+#define RefreshRate 200
 #define Second 1000000
 #define MaxDelay 1000
+#define MinRR 61
 
 void Core::loop(){
 
@@ -583,8 +562,11 @@ void Core::loop(){
                 renderAllWindows(),
                     redraw = false;
 
-            if(diff - currentCycle > MaxDelay && Second / 61 <= currentCycle)
-                currentCycle /= 2;
+            /* optimisation when too slow,
+             * so we can update more rarely,
+             * i.e reduce lagging */
+            if(diff - currentCycle > MaxDelay && Second / MinRR <= currentCycle)
+                currentCycle += 2000; // 1ms slower redraws
 
             /* optimisation when idle */
             if(!cntHooks && !hadEvents && currentCycle < Second)
@@ -620,12 +602,13 @@ int Core::onXError(Display *d, XErrorEvent *xev) {
         return 0;
     }
 
-    err << "____________________________";
-    err << "XError code   " << int(xev->error_code);
+    err << std::endl << "____________________________" << std::endl;
+    err << "XError code   " << int(xev->error_code) << std::endl;
     char buf[512];
     XGetErrorText(d, xev->error_code, buf, 512);
-    err << "XError string " << buf;
-    err << "____________________________";
+    err << "XError string " << buf << std::endl;
+    err << "ResourceID = " << xev->resourceid << std::endl;
+    err << "____________________________" << std::endl << std::endl;
     return 0;
 }
 

@@ -177,7 +177,6 @@ void Expo::buttonRelease(Context *ctx) {
 }
 
 void Expo::buttonPress(Context *ctx) {
-    //err << "Button Press from expo wird gecallt";
     buttonRelease(ctx);
     Toggle(ctx);
 }
@@ -207,9 +206,6 @@ void Expo::recalc() {
 }
 
 void Expo::finalizeZoom() {
-    err << "Finalizing zoom";
-    err << offXtarget << " " << offYtarget;
-    err << sclXtarget << " " << sclYtarget;
     Transform::gtrs = glm::translate(glm::mat4(),
             glm::vec3(offXtarget, offYtarget, 0.f));
     Transform::gscl = glm::scale(glm::mat4(),
@@ -219,7 +215,6 @@ void Expo::finalizeZoom() {
 void Expo::Toggle(Context *ctx) {
     using namespace std::placeholders;
     if(!active) {
-        err << "Activating expo";
         active = !active;
 
         press.active = true;
@@ -276,9 +271,6 @@ void Expo::Toggle(Context *ctx) {
 
 void Expo::zoom() {
 
-    err << "Running, stepNum = " << stepNum;
-    err << offXcurrent << " " << offYcurrent;
-    err << sclXcurrent << " " << sclYcurrent;
     if(stepNum == MAXSTEP) {
         stepoffX = (offXtarget - offXcurrent) / float(MAXSTEP);
         stepoffY = (offYtarget - offYcurrent) / float(MAXSTEP);
