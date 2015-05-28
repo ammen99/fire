@@ -41,9 +41,9 @@
 //#define err LOG(ERROR)
 //#define info LOG(INFO)
 //
-using std::cout;
 //#define err (cout<<__FILE__<<" "<<__LINE__<<" ")
-#define err cout
+#include <fstream>
+extern std::fstream err;
 
 #ifdef YCM
 #define private public

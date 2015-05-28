@@ -3,7 +3,7 @@
 #include "../include/opengl.hpp"
 #include "../include/winstack.hpp"
 
-#include <glog/logging.h>
+#include <sstream>
 
 bool wmDetected;
 std::mutex wmMutex;
@@ -16,6 +16,8 @@ namespace {
 
 WinStack *Core::wins;
 Core *core;
+std::fstream err;
+
 
 Context::Context(XEvent ev) : xev(ev){}
 Hook::Hook() : active(false) {}
@@ -39,6 +41,12 @@ bool Hook::getState() {
 }
 
 Core::Core() {
+    err.open("/home/ilex/work/cwork/fire/log",
+            std::ios::out | std::ios::trunc);
+
+    if(!err.is_open())
+        std::cout << "Failed to open debug output, exiting" << std::endl,
+        std::exit(0);
 
     inMapping = false;
     d = XOpenDisplay(NULL);
@@ -91,7 +99,7 @@ Core::Core() {
     focus    = new Focus(this);
     exit     = new Exit(this);
     runn     = new Run(this);
-    close    = new Close(this);
+    clos     = new Close(this);
     at       = new ATSwitcher(this);
     grid     = new Grid(this);
 
@@ -165,7 +173,7 @@ Core::~Core(){
     delete focus;
     delete exit;
     delete runn;
-    delete close;
+    delete clos;
     delete at;
     delete grid;
     delete wins;
@@ -174,14 +182,16 @@ Core::~Core(){
     XDestroyWindow(core->d, s0owner);
     XCompositeReleaseOverlayWindow(d, overlay);
     XCloseDisplay(d);
+
+    err.close();
 }
 
 void Core::run(char *command) {
     auto pid = fork();
+
     if(!pid) {
         std::string str("DISPLAY=");
         str = str.append(XDisplayString(d));
-
         putenv(const_cast<char*>(str.c_str()));
 
         std::exit(execl("/bin/sh", "/bin/sh", "-c", command, NULL));
@@ -319,25 +329,24 @@ void Core::addWindow(XCreateWindowEvent xev) {
     w->xvi = nullptr;
     wins->addWindow(w);
     WinUtil::initWindow(w);
-    wins->focusWindow(w);
+
+    //err << "Created window with type " << w->type << std::endl;
+    if(w->type != WindowTypeWidget)
+        wins->focusWindow(w);
 }
 void Core::addWindow(Window id) {
-    err << "Adding windows" << std::endl;
+    //err << "Adding windows" << std::endl;
     FireWindow w = std::make_shared<__FireWindow>();
 
     w->id = id;
     w->transientFor = nullptr;
     w->xvi = nullptr;
-
-    err << "Adding to stack" << std::endl;
     wins->addWindow(w);
-    err << "Aaaaaaaaaaaaaaa" << std::endl;
 }
 void Core::destroyWindow(FireWindow win) {
     if(!win)
         return;
 
-    //err << "In destroy win" << win->id;
     int cnt;
     Atom *atoms;
     XGetWMProtocols(d, win->id, &atoms, &cnt);
@@ -403,7 +412,7 @@ void Core::handleEvent(XEvent xev){
             if(xev.xcreatewindow.window == outputwin)
                 break;
 
-            err << "CreateNotify" << std::endl;
+            err << "CreateNotify " << xev.xcreatewindow.window << std::endl;
             inMapping = true;
             XMapWindow(core->d, xev.xcreatewindow.window);
             XSync(core->d, 0);
@@ -423,6 +432,8 @@ void Core::handleEvent(XEvent xev){
             if ( w == nullptr )
                 break;
 
+            err << "Destroy Notify " << w->id << std::endl;
+
             wins->removeWindow(w, true);
             redraw = true;
             break;
@@ -431,6 +442,8 @@ void Core::handleEvent(XEvent xev){
             auto w = wins->findWindow(xev.xmaprequest.window);
             if(w == nullptr)
                 break;
+
+            err << "MapRequest " << w->id << std::endl;
 
             w->norender = false;
             WinUtil::syncWindowAttrib(w);
@@ -446,6 +459,8 @@ void Core::handleEvent(XEvent xev){
             auto w = wins->findWindow(xev.xmap.window);
             if(w == nullptr)
                 break;
+
+            err << "win->id = " << w->id << std::endl;
 
             w->norender = false;
             WinUtil::syncWindowAttrib(w);
@@ -579,14 +594,16 @@ void Core::loop(){
 }
 
 int Core::onOtherWmDetected(Display* d, XErrorEvent *xev) {
-    CHECK_EQ(static_cast<int>(xev->error_code), BadAccess);
-    wmDetected = true;
+    if(static_cast<int>(xev->error_code) == BadAccess)
+        wmDetected = true;
     return 0;
 }
 
 int Core::onXError(Display *d, XErrorEvent *xev) {
     if(xev->resourceid == 0) // invalid window
         return 0;
+
+    //return 0;
 
     if(xev->error_code == BadMatch    ||
        xev->error_code == BadDrawable ||

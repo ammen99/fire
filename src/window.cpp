@@ -480,7 +480,7 @@ WindowType getWindowType(FireWindow win) {
         else if ( a == winTypeTooltipAtom )
             return WindowTypeWidget;
         else if ( a == winTypeNotificationAtom )
-            return WindowTypeModal;
+            return WindowTypeWidget;
         else if ( a == winTypeComboAtom )
             return WindowTypeOther;
         else if ( a == winTypeDndAtom )
@@ -495,8 +495,6 @@ void setInputFocusToWindow(Window win) {
     XChangeProperty ( core->d, core->root, activeWinAtom,
             XA_WINDOW, 32, PropModeReplace,
             ( unsigned char * ) &win, 1 );
-
-    err << "First Xlib calls";
 
     XEvent ev;
 

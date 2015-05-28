@@ -214,7 +214,7 @@ class Core {
         WSSwitch *wsswitch;
         Move *move;
         Resize *resize;
-        Close *close;
+        Close *clos;
         ATSwitcher *at;
         Grid *grid;
 
