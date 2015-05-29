@@ -270,6 +270,4 @@ class Core {
         static int onOtherWmDetected(Display *d, XErrorEvent *xev);
 };
 extern Core *core;
-extern bool restart;
-
 #endif

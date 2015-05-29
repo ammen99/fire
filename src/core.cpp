@@ -41,12 +41,15 @@ bool Hook::getState() {
 }
 
 Core::Core() {
-    err.open("/home/ilex/work/cwork/fire/log",
+
+    err.open("/home/ilex/work/cwork/fire/log2",
             std::ios::out | std::ios::trunc);
 
     if(!err.is_open())
         std::cout << "Failed to open debug output, exiting" << std::endl,
         std::exit(0);
+
+    err << "Creating new Core" << std::endl;
 
     inMapping = false;
     d = XOpenDisplay(NULL);
@@ -547,6 +550,8 @@ void Core::loop(){
     XEvent xev;
 
     while(!terminate) {
+
+        err << "Handling event" << std::endl;
 
         while(XPending(d)) {
             XNextEvent(d, &xev);

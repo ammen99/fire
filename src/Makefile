@@ -6,7 +6,7 @@ endef
 
 CC=g++
 CFLAGS= -std=c++11 -c -Wno-narrowing -MMD -MP
-LDFLAGS= -g -lX11 -lXmu -lXcomposite -lXfixes -lXdamage -ldl -lGL -lGLEW -lIL -lILU -lILUT -lutil
+LDFLAGS= -pthread -g -lX11 -lXmu -lXcomposite -lXfixes -lXdamage -ldl -lGL -lGLEW -lIL -lILU -lILUT -lutil
 SOURCES=$(wildcard *.cpp)
 OBJECTS=$(SOURCES:.cpp=.o)
 DEPS=$(OBJECTS:.o=.d)

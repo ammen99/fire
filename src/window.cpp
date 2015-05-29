@@ -594,7 +594,6 @@ Exit::Exit(Core *core) {
     KeyBinding *exit = new KeyBinding();
     exit->action = [core](Context *ctx){
         core->terminate = true;
-        restart = false;
     };
 
     exit->active = true;
