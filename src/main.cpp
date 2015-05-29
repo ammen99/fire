@@ -46,15 +46,14 @@ void signalHandle(int sig) {
 void runOnce() { // simulates launching a new program
 
     shmid = shmget(shmkey, shmsize, 0666);
-    std::cout << "ro get shmid = " << shmid << std::endl;
-    std::cout << "ro erno = " << errno << std::endl;
     auto dataid = shmat(shmid, 0, 0);
-    std::cout << "ro got shmat = " << dataid;
     restart = (char*)dataid;
-
-
-
     *restart = 0;
+
+    signal(SIGINT, signalHandle);
+    signal(SIGSEGV, signalHandle);
+    signal(SIGFPE, signalHandle);
+    signal(SIGILL, signalHandle);
 
     Transform::proj = Transform::view =
     Transform::grot = Transform::gscl =
@@ -68,41 +67,24 @@ void runOnce() { // simulates launching a new program
 
 int main(int argc, const char **argv ) {
 
-    std::cout << "Startup" << std::endl;
     signal(SIGINT, signalHandle);
     signal(SIGSEGV, signalHandle);
     signal(SIGFPE, signalHandle);
     signal(SIGILL, signalHandle);
 
-    std::cout << "Registered Signals" << std::endl;
-
     shmid = shmget(shmkey, shmsize, 0666 | IPC_CREAT);
-
-    std::cout << "Get shmid = " << shmid << std::endl;
-
-    std::cout << "Errno = " << errno << std::endl;
-
-
     auto dataid = shmat(shmid, 0, 0);
     restart = (char*)dataid;
 
-    std::cout << "Errno = " << errno << std::endl;
-    std::cout << "Got ids" << std::endl;
-
-    std::cout << "Memory is " << std::endl;
-    std::cout << dataid << std::endl;
-    if(dataid == 0 || restart == 0) {
-        std::cout << "Got shared memory 0" << std::endl;
+    if(dataid == (void*)(-1)) {
+        std::cout << "Failed to get shared memory, aborting..." << std::endl;
+        std::exit(-1);
     }
-
-    std::cout << "Memory is " << restart << std::endl;
     *restart = 1;
-    std::cout << "Got everything" << std::endl;
 
     while(*restart) {
         auto pid = fork();
         if(pid == 0) {
-            std::cout << "In fork" << std::endl;
             runOnce();
             std::exit(0);
         }
