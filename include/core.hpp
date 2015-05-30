@@ -4,6 +4,7 @@
 #include "commonincludes.hpp"
 #include "window.hpp"
 #include "glx.hpp"
+#include "plugin.hpp"
 #include <queue>
 
 
@@ -172,14 +173,7 @@ class Grid{
 class Close;
 
 class Core {
-    friend class Focus;
-    friend class Move;
-    friend class Resize;
-    friend class WSSwitch;
-    friend class Expo;
-    friend class Close;
-    friend class ATSwitcher;
-    friend class Grid;
+ 
 
     private:
         std::vector<std::vector<FireWindow> > backgrounds;
@@ -207,16 +201,8 @@ class Core {
 
         KeyCode switchWorkspaceBindings[4];
 
-        Focus *focus;
-        Exit *exit;
-        Run *runn;
-        Expo *expo;
-        WSSwitch *wsswitch;
-        Move *move;
-        Resize *resize;
-        Close *clos;
-        ATSwitcher *at;
-        Grid *grid;
+        std::vector<Plugin> plugins;
+        void initDefaultPlugins();
 
         Window s0owner;
 
