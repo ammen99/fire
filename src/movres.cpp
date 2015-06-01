@@ -1,10 +1,10 @@
-#include "../include/core.hpp"
 #include "../include/winstack.hpp"
+#include "../include/wm.hpp"
 
-Move::Move(Core *c) {
+void Move::init(Core *c) {
     win = nullptr;
     hook.action = std::bind(std::mem_fn(&Move::Intermediate), this);
-    hid = c->addHook(&hook);
+    c->addHook(&hook);
 
     using namespace std::placeholders;
 
@@ -84,11 +84,11 @@ void Move::Intermediate() {
     core->redraw = true;
 }
 
-Resize::Resize(Core *c) {
+void Resize::init(Core *c) {
     win = nullptr;
 
     hook.action = std::bind(std::mem_fn(&Resize::Intermediate), this);
-    hid = c->addHook(&hook);
+    c->addHook(&hook);
 
     using namespace std::placeholders;
 
@@ -113,7 +113,8 @@ void Resize::Initiate(Context *ctx) {
         return;
 
     auto xev = ctx->xev.xbutton;
-    auto w = WinUtil::getAncestor(core->wins->findWindow(xev.window));
+    auto w = core->wins->findWindowAtCursorPosition(
+            Point(xev.x_root,xev.y_root));
 
     if(w){
 

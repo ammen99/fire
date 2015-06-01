@@ -8,7 +8,6 @@
 #include <queue>
 
 
-extern bool inRenderWindow;
 class WinStack;
 
 struct Context{
@@ -54,13 +53,19 @@ struct Hook {
         Hook();
 };
 
+class Expo;
+
 class Core {
+
+    // used to enable proper work of move and resize when expo
+    friend class Expo;
 
     private:
         std::vector<std::vector<FireWindow> > backgrounds;
         int damage;
 
-        static WinStack *wins;
+        WinStack *wins;
+
         void handleEvent(XEvent xev);
         void wait(int timeout);
         void enableInputPass(Window win);
@@ -82,7 +87,7 @@ class Core {
 
         KeyCode switchWorkspaceBindings[4];
 
-        std::vector<Plugin> plugins;
+        std::vector<PluginPtr> plugins;
         void initDefaultPlugins();
 
         Window s0owner;

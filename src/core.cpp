@@ -1,9 +1,10 @@
 #include "../include/commonincludes.hpp"
-#include "../include/core.hpp"
 #include "../include/opengl.hpp"
 #include "../include/winstack.hpp"
+#include "../include/wm.hpp"
 
 #include <sstream>
+#include <memory>
 
 bool wmDetected;
 std::mutex wmMutex;
@@ -14,7 +15,6 @@ namespace {
                       // when receiving CreateNotify
 }
 
-WinStack *Core::wins;
 Core *core;
 std::fstream err;
 
@@ -95,16 +95,17 @@ Core::Core() {
     int dummy;
     XDamageQueryExtension(d, &damage, &dummy);
 
-    move     = new Move(this); // we have to make sure that
-    resize   = new Resize(this);// move and resize are before expo
-    wsswitch = new WSSwitch(this);
-    expo     = new Expo(this);
-    focus    = new Focus(this);
-    exit     = new Exit(this);
-    runn     = new Run(this);
-    clos     = new Close(this);
-    at       = new ATSwitcher(this);
-    grid     = new Grid(this);
+
+    plugins.push_back(std::make_shared<Plugin>(new Move()));
+    plugins.push_back(std::make_shared<Plugin>(new Resize()));
+    plugins.push_back(std::make_shared<Plugin>(new WSSwitch()));
+    plugins.push_back(std::make_shared<Plugin>(new Expo()));
+    plugins.push_back(std::make_shared<Plugin>(new Focus()));
+    plugins.push_back(std::make_shared<Plugin>(new Exit()));
+    plugins.push_back(std::make_shared<Plugin>(new Run()));
+    plugins.push_back(std::make_shared<Plugin>(new Close()));
+    plugins.push_back(std::make_shared<Plugin>(new ATSwitcher()));
+    plugins.push_back(std::make_shared<Plugin>(new Grid()));
 
     cntHooks = 0;
     output = Rect(0, 0, width, height);
@@ -127,6 +128,9 @@ Core::Core() {
 
     core = this;
     addExistingWindows();
+
+    for(auto p : plugins)
+        p->init(this);
 }
 
 void Core::enableInputPass(Window win) {
@@ -169,17 +173,8 @@ void Core::addExistingWindows() {
 }
 Core::~Core(){
 
-    delete move;
-    delete resize;
-    delete wsswitch;
-    delete expo;
-    delete focus;
-    delete exit;
-    delete runn;
-    delete clos;
-    delete at;
-    delete grid;
-    delete wins;
+    for(auto p : plugins)
+        p.reset();
 
     XDestroyWindow(core->d, outputwin);
     XDestroyWindow(core->d, s0owner);
@@ -618,7 +613,7 @@ int Core::onXError(Display *d, XErrorEvent *xev) {
         err << "caught BadMatch/Drawable/Window. Disabling window drawing "
             << xev->resourceid;
 
-        auto x = wins->findWindow(xev->resourceid);
+        auto x = core->wins->findWindow(xev->resourceid);
         if (x != nullptr)
             x->norender = true;
 

@@ -1,5 +1,6 @@
 #ifndef PLUGIN_H
 #define PLUGIN_H
+#include "commonincludes.hpp"
 
 /*
  * Documentation for writing a plugin
@@ -28,5 +29,7 @@ class Plugin {
     public:
         virtual void init(Core*) = 0;
 };
+
+using PluginPtr = std::shared_ptr<Plugin>;
 
 #endif

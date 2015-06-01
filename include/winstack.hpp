@@ -40,12 +40,4 @@ class WinStack {
 
         void updateTransientsAttrib(FireWindow win, int, int, int, int);
 };
-
-class Focus {
-    private:
-        ButtonBinding focus;
-    public:
-        Focus(Core *core);
-};
-
 #endif

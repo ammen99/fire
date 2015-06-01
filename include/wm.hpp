@@ -24,6 +24,15 @@ class Close{
 };
 
 
+class Focus : public Plugin {
+    private:
+        ButtonBinding focus;
+    public:
+        void init(Core*);
+};
+
+
+
 /* specialized class for operations on window(for ex. Move and Resize) */
 class WindowOperation : public Plugin {
     protected:
