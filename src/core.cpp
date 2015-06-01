@@ -95,20 +95,10 @@ Core::Core() {
     int dummy;
     XDamageQueryExtension(d, &damage, &dummy);
 
-
-    plugins.push_back(std::make_shared<Plugin>(new Move()));
-    plugins.push_back(std::make_shared<Plugin>(new Resize()));
-    plugins.push_back(std::make_shared<Plugin>(new WSSwitch()));
-    plugins.push_back(std::make_shared<Plugin>(new Expo()));
-    plugins.push_back(std::make_shared<Plugin>(new Focus()));
-    plugins.push_back(std::make_shared<Plugin>(new Exit()));
-    plugins.push_back(std::make_shared<Plugin>(new Run()));
-    plugins.push_back(std::make_shared<Plugin>(new Close()));
-    plugins.push_back(std::make_shared<Plugin>(new ATSwitcher()));
-    plugins.push_back(std::make_shared<Plugin>(new Grid()));
-
     cntHooks = 0;
     output = Rect(0, 0, width, height);
+
+    initDefaultPlugins();
 
     // enable compositing to be recognized by other programs
     Atom a;
@@ -634,6 +624,18 @@ std::tuple<int, int> Core::getWorkspace() {
     return std::make_tuple(vx, vy);
 }
 
+std::tuple<int, int> Core::getWorksize() {
+    return std::make_tuple(vwidth, vheight);
+}
+
+std::tuple<int, int> Core::getScreenSize() {
+    return std::make_tuple(width, height);
+}
+
+std::tuple<int, int> Core::getMouseCoord() {
+    return std::make_tuple(mousex, mousey);
+}
+
 void Core::switchWorkspace(std::tuple<int, int> nPos) {
     auto nx = std::get<0> (nPos);
     auto ny = std::get<1> (nPos);
@@ -647,14 +649,17 @@ void Core::switchWorkspace(std::tuple<int, int> nPos) {
     vx = nx;
     vy = ny;
 
-    auto ws = getWindowsOnViewport(vx, vy);
+    auto ws = getWindowsOnViewport(this->getWorkspace());
     if(ws.size() != 0)
         wins->focusWindow(ws[0]);
 }
 
-std::vector<FireWindow> Core::getWindowsOnViewport(int x, int y) {
+std::vector<FireWindow> Core::getWindowsOnViewport(std::tuple<int, int> vp) {
+    auto x = std::get<0>(vp);
+    auto y = std::get<1>(vp);
+
     Rect view((x - vx    ) * width, (y - vy    ) * height,
-              (x - vx + 1) * width, (y - vy + 1) * height);
+            (x - vx + 1) * width, (y - vy + 1) * height);
 
     std::vector<FireWindow> ret;
     for(auto w : wins->wins)
@@ -662,4 +667,22 @@ std::vector<FireWindow> Core::getWindowsOnViewport(int x, int y) {
             ret.push_back(w);
 
     return ret;
+}
+
+template<class T>
+PluginPtr Core::createPlugin() {
+    return std::static_pointer_cast<Plugin>(std::make_shared<T>());
+}
+
+void Core::initDefaultPlugins() {
+    plugins.push_back(createPlugin<Move>());
+    plugins.push_back(createPlugin<Resize>());
+    plugins.push_back(createPlugin<WSSwitch>());
+    plugins.push_back(createPlugin<Expo>());
+    plugins.push_back(createPlugin<Focus>());
+    plugins.push_back(createPlugin<Exit>());
+    plugins.push_back(createPlugin<Run>());
+    plugins.push_back(createPlugin<Close>());
+    plugins.push_back(createPlugin<ATSwitcher>());
+    plugins.push_back(createPlugin<Grid>());
 }

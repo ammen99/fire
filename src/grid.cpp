@@ -1,6 +1,5 @@
-#include "../include/core.hpp"
+#include "../include/wm.hpp"
 #include <algorithm>
-#include "../include/winstack.hpp"
 
 Grid::GridWindow::GridWindow(Window win, int x, int y, int w, int h):id(win) {
     size.x = x;
@@ -9,7 +8,7 @@ Grid::GridWindow::GridWindow(Window win, int x, int y, int w, int h):id(win) {
     size.height = h;
 }
 
-Grid::Grid(Core *core) {
+void Grid::init(Core *core) {
     codes[1] = XKeysymToKeycode(core->d, XK_KP_End);
     codes[2] = XKeysymToKeycode(core->d, XK_KP_Down);
     codes[3] = XKeysymToKeycode(core->d, XK_KP_Page_Down);
@@ -46,8 +45,12 @@ void Grid::toggleMaxim(FireWindow win) {
         wins.push_back(GridWindow(win->id, win->attrib.x, win->attrib.y,
                     win->attrib.width, win->attrib.height));
 
+        auto t = core->getScreenSize();
+        auto w = std::get<0> (t);
+        auto h = std::get<1> (t);
+
         WinUtil::moveWindow(win, 0, 0);
-        WinUtil::resizeWindow(win, core->width, core->height);
+        WinUtil::resizeWindow(win, w, h);
         return;
     }
 
@@ -59,32 +62,36 @@ void Grid::toggleMaxim(FireWindow win) {
 }
 
 void Grid::getSlot(int n, int &x, int &y, int &w, int &h) {
-    int w2 = core->width  / 2;
-    int h2 = core->height / 2;
+
+    auto t = core->getScreenSize();
+    auto width = std::get<0>(t);
+    auto height= std::get<1>(t);
+
+    int w2 = width  / 2;
+    int h2 = height / 2;
     if(n == 7)
         x = 0, y = 0, w = w2, h = h2;
     if(n == 8)
-        x = 0, y = 0, w = core->width, h = h2;
+        x = 0, y = 0, w = width, h = h2;
     if(n == 9)
         x = w2, y = 0, w = w2, h = h2;
     if(n == 4)
-        x = 0, y = 0, w = w2, h = core->height;
+        x = 0, y = 0, w = w2, h = height;
     if(n == 6)
-        x = w2, y = 0, w = w2, h = core->height;
+        x = w2, y = 0, w = w2, h = height;
     if(n == 1)
         x = 0, y = h2, w = w2, h = h2;
     if(n == 2)
-        x = 0, y = h2, w = core->width, h = h2;
+        x = 0, y = h2, w = width, h = h2;
     if(n == 3)
         x = w2, y = h2, w = w2, h = h2;
 }
 
 void Grid::handleKey(Context *ctx) {
-    err << "In handleKey from grid";
-    auto win = core->wins->activeWin;
+    auto win = core->getActiveWindow();
     if(!win)
         return;
-    err << "Window found";
+
     for(int i = 1; i < 10; i++) {
         if(ctx->xev.xkey.keycode == codes[i]) {
             if(i == 5)

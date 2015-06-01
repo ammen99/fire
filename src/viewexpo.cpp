@@ -1,4 +1,4 @@
-#include "../include/core.hpp"
+#include "../include/wm.hpp"
 #include "../include/winstack.hpp"
 
 void WSSwitch::beginSwitch() {
@@ -8,8 +8,13 @@ void WSSwitch::beginSwitch() {
     int ddx = std::get<0> (tup);
     int ddy = std::get<1> (tup);
 
-    auto nx = (core->vx - ddx + core->vwidth ) % core->vwidth;
-    auto ny = (core->vy - ddy + core->vheight) % core->vheight;
+    auto t = core->getWorkspace();
+    auto vx = std::get<0>(t);
+    auto vy = std::get<1>(t);
+    
+
+    auto nx = (vx - ddx + core->vwidth ) % core->vwidth;
+    auto ny = (vy - ddy + core->vheight) % core->vheight;
 
     this->nx = nx;
     this->ny = ny;
@@ -52,13 +57,13 @@ void WSSwitch::handleSwitchWorkspace(Context *ctx) {
 
     auto xev = ctx->xev.xkey;
 
-    if(xev.keycode == core->switchWorkspaceBindings[0])
+    if(xev.keycode == switchWorkspaceBindings[0])
         moveWorkspace(1,  0);
-    if(xev.keycode == core->switchWorkspaceBindings[1])
+    if(xev.keycode == switchWorkspaceBindings[1])
         moveWorkspace(-1, 0);
-    if(xev.keycode == core->switchWorkspaceBindings[2])
+    if(xev.keycode == switchWorkspaceBindings[2])
         moveWorkspace(0, -1);
-    if(xev.keycode == core->switchWorkspaceBindings[3])
+    if(xev.keycode == switchWorkspaceBindings[3])
         moveWorkspace(0,  1);
 }
 
@@ -91,13 +96,13 @@ void WSSwitch::moveStep() {
 }
 
 
-WSSwitch::WSSwitch(Core *core) {
+void WSSwitch::init(Core *core) {
     using namespace std::placeholders;
 
-    core->switchWorkspaceBindings[0] = XKeysymToKeycode(core->d, XK_h);
-    core->switchWorkspaceBindings[1] = XKeysymToKeycode(core->d, XK_l);
-    core->switchWorkspaceBindings[2] = XKeysymToKeycode(core->d, XK_j);
-    core->switchWorkspaceBindings[3] = XKeysymToKeycode(core->d, XK_k);
+    switchWorkspaceBindings[0] = XKeysymToKeycode(core->d, XK_h);
+    switchWorkspaceBindings[1] = XKeysymToKeycode(core->d, XK_l);
+    switchWorkspaceBindings[2] = XKeysymToKeycode(core->d, XK_j);
+    switchWorkspaceBindings[3] = XKeysymToKeycode(core->d, XK_k);
 
     core->vwidth = core->vheight = 3;
     core->vx = core->vy = 0;
@@ -106,7 +111,7 @@ WSSwitch::WSSwitch(Core *core) {
         kbs[i].type = BindingTypePress;
         kbs[i].active = true;
         kbs[i].mod = ControlMask | Mod1Mask;
-        kbs[i].key = core->switchWorkspaceBindings[i];
+        kbs[i].key = switchWorkspaceBindings[i];
 
         kbs[i].action =
             std::bind(std::mem_fn(&WSSwitch::handleSwitchWorkspace),
@@ -119,10 +124,10 @@ WSSwitch::WSSwitch(Core *core) {
     core->addHook(&hook);
 }
 
-Expo::Expo(Core *core) {
+void Expo::init(Core *core) {
     using namespace std::placeholders;
     for(int i = 0; i < 4; i++) {
-        keys[i].key = core->switchWorkspaceBindings[i];
+        keys[i].key = switchWorkspaceBindings[i];
         keys[i].active = false;
         keys[i].mod = NoMods;
         keys[i].action =

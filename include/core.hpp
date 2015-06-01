@@ -59,22 +59,17 @@ class Core {
 
     // used to enable proper work of move and resize when expo
     friend class Expo;
+    // used to optimize idle time by counting hooks(cntHooks)
+    friend class Hook;
 
     private:
         std::vector<std::vector<FireWindow> > backgrounds;
-        int damage;
-
-        WinStack *wins;
-
-        void handleEvent(XEvent xev);
-        void wait(int timeout);
-        void enableInputPass(Window win);
-        void addExistingWindows(); // adds windows created before
-                                   // we registered for SubstructureRedirect
-        pollfd fd;
 
         int mousex, mousey; // pointer x, y
+        int cntHooks;
 
+        int width;
+        int height;
         int vwidth, vheight; // viewport size
         int vx, vy;          // viewport position
 
@@ -82,26 +77,21 @@ class Core {
         std::unordered_map<uint, ButtonBinding*> buttons;
         std::unordered_map<uint, Hook*> hooks;
 
-        template<class T>
-        uint getFreeID(std::unordered_map<uint, T> *map);
-
-        KeyCode switchWorkspaceBindings[4];
-
         std::vector<PluginPtr> plugins;
         void initDefaultPlugins();
-
-        Window s0owner;
-
+        template<class T>
+        PluginPtr createPlugin();
     public:
+
+        /* warning!
+         * no plugin should change these! */
         Display *d;
         Window root;
         Window overlay;
         Window outputwin;
+        Window s0owner;
+        int damage;
 
-        int cntHooks;
-
-        int width;
-        int height;
 
         bool redraw = true; // should we redraw?
         bool terminate = false; // should main loop exit?
@@ -109,10 +99,11 @@ class Core {
         float scaleX = 1, scaleY = 1; // used for operations which
                               // depend on mouse moving
                               // for ex. when using expo
+
         void setBackground(const char *path);
 
-        void switchWorkspace(std::tuple<int, int>);
-        std::tuple<int, int> getWorkspace();
+        template<class T>
+        uint getFreeID(std::unordered_map<uint, T> *map);
 
         uint addKey(KeyBinding *kb, bool grab = false);
         void remKey(uint id);
@@ -123,20 +114,40 @@ class Core {
         uint addHook(Hook*);
         void remHook(uint);
 
+    private:
+        void handleEvent(XEvent xev);
+        void wait(int timeout);
+        void enableInputPass(Window win);
+        void addExistingWindows(); // adds windows created before
+                                   // we registered for SubstructureRedirect
+        WinStack *wins;
+        pollfd fd;
+
     public:
         ~Core();
         void loop();
         Core();
 
         void run(char *command);
-
         void renderAllWindows();
+
         void addWindow(XCreateWindowEvent);
         void addWindow(Window);
+        void focusWindow(FireWindow win);
+        void destroyWindow(FireWindow win);
+
         FireWindow findWindow(Window win);
         FireWindow getActiveWindow();
-        void destroyWindow(FireWindow win);
-        std::vector<FireWindow> getWindowsOnViewport(int x, int y);
+        FireWindow getWindowAtPoint(Point p);
+
+        std::vector<FireWindow> getWindowsOnViewport(std::tuple<int, int>);
+        void switchWorkspace(std::tuple<int, int>);
+        std::tuple<int, int> getWorkspace ();
+        std::tuple<int, int> getWorksize  ();
+        std::tuple<int, int> getScreenSize();
+
+        std::tuple<int, int> getMouseCoord();
+
 
         static int onXError (Display* d, XErrorEvent* xev);
         static int onOtherWmDetected(Display *d, XErrorEvent *xev);

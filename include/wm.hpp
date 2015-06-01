@@ -18,7 +18,7 @@ class Exit : public Plugin {
         void init(Core*);
 };
 
-class Close{
+class Close : public Plugin {
     public:
         void init(Core*);
 };
@@ -48,7 +48,7 @@ class WindowOperation : public Plugin {
 /* typically plugins don't have any other public methods
  * except for init(), because they are to be "generic" */
 
-class Move : WindowOperation {
+class Move : public WindowOperation {
     void Initiate(Context*);
     void Intermediate();
     void Terminate(Context*);
@@ -58,7 +58,7 @@ class Move : WindowOperation {
 
 };
 
-class Resize : WindowOperation {
+class Resize : public WindowOperation {
     void Initiate(Context*);
     void Intermediate();
     void Terminate(Context*);
@@ -67,9 +67,11 @@ class Resize : WindowOperation {
     void init(Core*);
 };
 
-class WSSwitch {
+class WSSwitch : public Plugin {
     private:
         KeyBinding kbs[4];
+        KeyCode switchWorkspaceBindings[4];
+
         Hook hook;
         int stepNum;
         int dirx, diry;
@@ -85,9 +87,10 @@ class WSSwitch {
         void init(Core*);
 };
 
-class Expo {
+class Expo : public Plugin {
     private:
         KeyBinding keys[4];
+        KeyCode switchWorkspaceBindings[4];
         KeyBinding toggle;
         ButtonBinding press, release;
 
@@ -117,7 +120,7 @@ class Expo {
         void init(Core*);
 };
 
-class ATSwitcher {
+class ATSwitcher : public Plugin {
     KeyBinding initiate;
     KeyBinding forward;
     KeyBinding backward;
@@ -141,7 +144,7 @@ class ATSwitcher {
         void init(Core*);
 };
 
-class Grid{
+class Grid : public Plugin {
 
     struct GridWindow {
         Window id;
