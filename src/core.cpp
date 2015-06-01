@@ -551,8 +551,7 @@ void Core::loop(){
 
     while(!terminate) {
 
-        err << "Handling event" << std::endl;
-
+        /* handle current events */
         while(XPending(d)) {
             XNextEvent(d, &xev);
             handleEvent(xev);
@@ -562,8 +561,9 @@ void Core::loop(){
         int diff = (after.tv_sec - before.tv_sec) * 1000000 +
             after.tv_usec - before.tv_usec;
 
-        if(diff < currentCycle) {
-            wait(currentCycle - diff);
+        if(diff < currentCycle) {     // we have time to next redraw, wait
+            wait(currentCycle - diff);// for events
+
             if(fd.revents & POLLIN) { /* disable optimisation */
                 hadEvents = true;
                 currentCycle = baseCycle;
@@ -572,7 +572,7 @@ void Core::loop(){
             fd.revents = 0;
         }
         else {
-            if(cntHooks) {
+            if(cntHooks) { // if running hooks, run them
                 for (auto hook : hooks)
                     if(hook.second->getState())
                         hook.second->action();
@@ -608,7 +608,8 @@ int Core::onXError(Display *d, XErrorEvent *xev) {
     if(xev->resourceid == 0) // invalid window
         return 0;
 
-    //return 0;
+    /* some of the calls to obtain a texture from this window
+     * have failed, so don't draw it the next time */
 
     if(xev->error_code == BadMatch    ||
        xev->error_code == BadDrawable ||

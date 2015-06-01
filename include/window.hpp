@@ -133,19 +133,3 @@ namespace WinUtil {
 
     int readProp(Window win, Atom prop, int def);
 };
-
-class Core;
-class Run {
-    public:
-        Run(Core *core);
-};
-
-class Exit {
-    public:
-        Exit(Core *core);
-};
-
-class Close{
-    public:
-        Close(Core *core);
-};

@@ -45,6 +45,7 @@ void signalHandle(int sig) {
 
 void runOnce() { // simulates launching a new program
 
+                 // get the shared memory from the main process
     shmid = shmget(shmkey, shmsize, 0666);
     auto dataid = shmat(shmid, 0, 0);
     restart = (char*)dataid;
@@ -72,6 +73,11 @@ int main(int argc, const char **argv ) {
     signal(SIGFPE, signalHandle);
     signal(SIGILL, signalHandle);
 
+
+    /* get a bit of shared memory
+     * it is used to check if fork() wants us to exit
+     * or just to reload(in case of crash for ex.) */
+
     shmid = shmget(shmkey, shmsize, 0666 | IPC_CREAT);
     auto dataid = shmat(shmid, 0, 0);
     restart = (char*)dataid;
@@ -82,14 +88,19 @@ int main(int argc, const char **argv ) {
     }
     *restart = 1;
 
+    int times = 0;
     while(*restart) {
+        if(times++) // print a message if there has been crash
+                    // but note that it could have just been a refresh
+            std::cout << "Crash detected or just refresh" << std::endl;
+
         auto pid = fork();
         if(pid == 0) {
-            runOnce();
-            std::exit(0);
+            runOnce();   // run Core()
+            std::exit(0);// and exit
         }
         int status = 0;
-        waitpid(pid, &status, 0);
+        waitpid(pid, &status, 0); // wait for fork() to finish
     }
 
     shmdt(dataid);

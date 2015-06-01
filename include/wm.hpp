@@ -1,49 +1,61 @@
 #ifndef WM_H
 #define WM_H
 #include "plugin.hpp"
-/* here are the
- * definitions for the wm actions(i.e close, move, resize) */
+#include "core.hpp"
+/* here are the definitions for
+ * the wm actions(i.e close, move, resize) */
+
+// The following plugins
+// are very, very simple(they just register a keybinding)
+
 class Run : public Plugin {
     public:
-        Run(Core *core);
+        void init(Core*);
 };
 
-class Exit {
+class Exit : public Plugin {
     public:
-        Exit(Core *core);
+        void init(Core*);
 };
 
 class Close{
     public:
-        Close(Core *core);
+        void init(Core*);
 };
 
-class Focus;
-class WindowOperation {
+
+/* specialized class for operations on window(for ex. Move and Resize) */
+class WindowOperation : public Plugin {
     protected:
         int sx, sy; // starting pointer x, y
         FireWindow win; // window we're operating on
-        uint hid; // id of hook
+
     protected:
         ButtonBinding press;
         ButtonBinding release;
         Hook hook;
 };
 
+/* typically plugins don't have any other public methods
+ * except for init(), because they are to be "generic" */
+
 class Move : WindowOperation {
+    void Initiate(Context*);
+    void Intermediate();
+    void Terminate(Context*);
+
     public:
-        Move(Core *core);
-        void Initiate(Context*);
-        void Intermediate();
-        void Terminate(Context*);
+    void init(Core*);
+
 };
 
 class Resize : WindowOperation {
+    void Initiate(Context*);
+    void Intermediate();
+    void Terminate(Context*);
+
     public:
-        Resize(Core *core);
-        void Initiate(Context*);
-        void Intermediate();
-        void Terminate(Context*);
+    void init(Core*);
 };
 
 class WSSwitch {
@@ -56,11 +68,12 @@ class WSSwitch {
         int nx, ny;
         std::queue<std::tuple<int, int> >dirs; // series of moves we have to do
         void beginSwitch();
-    public:
-        WSSwitch(Core *core);
         void moveWorkspace(int dx, int dy);
         void handleSwitchWorkspace(Context *ctx);
         void moveStep();
+
+    public:
+        void init(Core*);
 };
 
 class Expo {
@@ -81,8 +94,7 @@ class Expo {
         Hook hook;
         bool active;
         std::function<FireWindow(Point)> save; // used to restore
-    public:                                // WinStack::find...Position
-        Expo(Core *core);
+
         void handleKey(Context *ctx);
         void Toggle(Context *ctx);
         FireWindow findWindow(Point p);
@@ -91,6 +103,9 @@ class Expo {
         void recalc();
         void zoom();
         void finalizeZoom();
+
+    public:
+        void init(Core*);
 };
 
 class ATSwitcher {
@@ -103,16 +118,18 @@ class ATSwitcher {
     bool active;
     int index;
     Hook rnd; // used to render windows
+
+    void handleKey(Context *ctx);
+    void moveLeft();
+    void moveRight();
+    void Initiate();
+    void Terminate();
+    void render();
+    void reset();
+    float getFactor(int x, int y, float percent);
+
     public:
-        ATSwitcher(Core *core);
-        void handleKey(Context *ctx);
-        void moveLeft();
-        void moveRight();
-        void Initiate();
-        void Terminate();
-        void render();
-        void reset();
-        float getFactor(int x, int y, float percent);
+        void init(Core*);
 };
 
 class Grid{
@@ -127,11 +144,11 @@ class Grid{
     KeyBinding keys[10];
     KeyCode codes[10];
 
-    public:
-        Grid(Core *core);
-        void handleKey(Context*);
-        void toggleMaxim(FireWindow win);
-        void getSlot(int n, int &x, int &y, int &w, int &h);
-};
+    void handleKey(Context*);
+    void toggleMaxim(FireWindow win);
+    void getSlot(int n, int &x, int &y, int &w, int &h);
 
-class Close;
+    public:
+        void init(Core*);
+};
+#endif
