@@ -57,3 +57,17 @@ void Focus::init(Core *core) {
     };
     core->addBut(&focus);
 }
+
+void RefreshWin::init(Core *core) {
+    r.type = BindingTypePress;
+    r.key = XKeysymToKeycode(core->d, XK_r);
+    r.mod = ControlMask | Mod4Mask;
+    r.active = true;
+    r.action = [core] (Context *ctx) {
+        auto w = core->getActiveWindow();
+        if(!w)
+            return;
+        w->mapTryNum = 100;
+        w->norender = false;
+    };
+}

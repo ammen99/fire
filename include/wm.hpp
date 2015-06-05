@@ -23,6 +23,12 @@ class Close : public Plugin {
         void init(Core*);
 };
 
+class RefreshWin : public Plugin {
+    KeyBinding r;
+    public:
+        void init(Core*);
+};
+
 
 class Focus : public Plugin {
     private:

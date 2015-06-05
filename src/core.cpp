@@ -685,4 +685,5 @@ void Core::initDefaultPlugins() {
     plugins.push_back(createPlugin<Close>());
     plugins.push_back(createPlugin<ATSwitcher>());
     plugins.push_back(createPlugin<Grid>());
+    plugins.push_back(createPlugin<RefreshWin>());
 }
