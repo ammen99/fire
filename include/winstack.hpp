@@ -28,7 +28,7 @@ class WinStack {
     public:
         WinStack();
         void addWindow(FireWindow win);
-        void removeWindow(FireWindow win, bool destroy);
+        void removeWindow(FireWindow win);
         FireWindow findWindow(Window win);
         FireWindow getTopmostToplevel();
         void renderWindows();

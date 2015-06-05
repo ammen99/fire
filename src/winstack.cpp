@@ -66,14 +66,11 @@ void WinStack::renderWindows() {
     }
 }
 
-void WinStack::removeWindow(FireWindow win, bool destroy) {
+void WinStack::removeWindow(FireWindow win) {
     auto x = std::find_if(wins.begin(), wins.end(),
             [win] (FireWindow w) {
                 return w->id == win->id;
             });
-
-    if(destroy)
-        WinUtil::finishWindow(*x);
 
     wins.erase(x);
 }

@@ -426,7 +426,8 @@ void Core::handleEvent(XEvent xev){
 
             err << "Destroy Notify " << w->id << std::endl;
 
-            wins->removeWindow(w, true);
+            wins->removeWindow(w);
+            WinUtil::finishWindow(w);
             redraw = true;
             break;
         }
