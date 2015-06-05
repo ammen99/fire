@@ -22,9 +22,11 @@ glm::vec4 OpenGLWorker::color;
 void OpenGLWorker::generateVAOVBO(int x, int y, int w, int h,
         GLuint &vao, GLuint &vbo) {
 
+    GetTuple(sw, sh, core->getScreenSize());
 
-    float w2 = float(core->width) / 2.;
-    float h2 = float(core->height) / 2.;
+
+    float w2 = float(sw) / 2.;
+    float h2 = float(sh) / 2.;
 
     float tlx = float(x) - w2,
           tly = h2 - float(y);
@@ -67,12 +69,11 @@ void OpenGLWorker::generateVAOVBO(int x, int y, int w, int h,
 }
 
 void OpenGLWorker::generateVAOVBO(int w, int h, GLuint &vao, GLuint &vbo) {
-    int mx = core->width  / 2;
-    int my = core->height / 2;
+    GetTuple(sw, sh, core->getScreenSize());
 
+    int mx = sw / 2;
+    int my = sh / 2;
 
-    err << "Generating special VBO " << mx - w / 2 << " " << my - h / 2
-        << " " << w << " " << h;
     generateVAOVBO(mx - w / 2, my - h / 2, w, h, vao, vbo);
 }
 
@@ -165,18 +166,18 @@ void OpenGLWorker::initOpenGL(Core *core, const char *shaderSrcPath) {
     //glEnable(GL_DEBUG_OUTPUT);
     //glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
     //glDebugMessageCallback(errorHandler, (void*)0);
+    //
+    GetTuple(sw, sh, core->getScreenSize());
 
-    glClearColor ( .0f, .0f, .0f, 1.f );
-    glClearDepth ( 1.f );
-    glEnable ( GL_DEPTH_TEST );
-    glEnable ( GL_ALPHA_TEST );
-    glEnable ( GL_BLEND );
-    glBlendFunc ( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
-    glDepthFunc ( GL_LESS );
-    glViewport ( 0, 0, core->width, core->height );
-    glDisable ( GL_CULL_FACE );
-
-    err << "HHHFFFFF" << std::endl;
+    glClearColor (.0f, .0f, .0f, 1.f);
+    glClearDepth (1.f);
+    glEnable     (GL_DEPTH_TEST);
+    glEnable     (GL_ALPHA_TEST);
+    glEnable     (GL_BLEND);
+    glBlendFunc  (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glDepthFunc  (GL_LESS);
+    glViewport   (0, 0, sw, sh);
+    glDisable    (GL_CULL_FACE);
 
     std::string tmp = shaderSrcPath;
 
@@ -204,7 +205,6 @@ void OpenGLWorker::initOpenGL(Core *core, const char *shaderSrcPath) {
         GLXUtils::loadShader(std::string(shaderSrcPath)
                 .append("/geom.glsl").c_str(),
                 GL_GEOMETRY_SHADER);
-    err << "LOADED SHADERS" << std::endl;
 
 
     program = glCreateProgram();
@@ -221,14 +221,11 @@ void OpenGLWorker::initOpenGL(Core *core, const char *shaderSrcPath) {
     glUseProgram (program);
 
 
-    err << "PAHSE" << std::endl;
-
 //    GLuint dummyVAO, dummyVBO;
 //    glGenVertexArrays(1, &dummyVAO);
 //    glBindVertexArray(dummyVAO);
 //    generateVAOVBO(0, 0, core->width, core->height, dummyVAO, dummyVBO);
 //
-    err << "HHHHHHHHHHHHHHH" << std::endl;
 
     mvpID = glGetUniformLocation(program, "MVP");
     normalID = glGetUniformLocation(program, "NormalMatrix");
@@ -247,7 +244,5 @@ void OpenGLWorker::initOpenGL(Core *core, const char *shaderSrcPath) {
 
     glUniformMatrix4fv(mvpID, 1, GL_FALSE, &MVP[0][0]);
     glUniformMatrix3fv(normalID, 1, GL_FALSE, &NM[0][0]);
-
-    err << "Set uniforms";
 }
 

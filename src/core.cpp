@@ -119,6 +119,10 @@ Core::Core() {
     core = this;
     addExistingWindows();
 
+
+    core->vwidth = core->vheight = 3;
+    core->vx = core->vy = 0;
+
     for(auto p : plugins)
         p->init(this);
 }
@@ -667,6 +671,14 @@ std::vector<FireWindow> Core::getWindowsOnViewport(std::tuple<int, int> vp) {
             ret.push_back(w);
 
     return ret;
+}
+
+void Core::focusWindow(FireWindow win) {
+    wins->focusWindow(win);
+}
+
+FireWindow Core::getWindowAtPoint(Point p) {
+    return wins->findWindowAtCursorPosition(p);
 }
 
 template<class T>

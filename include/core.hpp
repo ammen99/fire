@@ -55,12 +55,15 @@ struct Hook {
 
 class Expo;
 
+#define GetTuple(x,y,t) auto x = std::get<0>(t); \
+                        auto y = std::get<1>(t)
+
 class Core {
 
     // used to enable proper work of move and resize when expo
     friend class Expo;
     // used to optimize idle time by counting hooks(cntHooks)
-    friend class Hook;
+    friend struct Hook;
 
     private:
         std::vector<std::vector<FireWindow> > backgrounds;
