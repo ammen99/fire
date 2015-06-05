@@ -169,6 +169,17 @@ void Core::addExistingWindows() {
 }
 Core::~Core(){
 
+    int nx, ny;
+    for(auto w : wins->wins) {
+        nx = w->attrib.x % width;
+        ny = w->attrib.y % height;
+
+        nx += width; ny += height;
+        ny %= width; ny %= height;
+
+        WinUtil::moveWindow(w, nx, ny);
+    }
+
     delete move;
     delete resize;
     delete wsswitch;
@@ -550,8 +561,6 @@ void Core::loop(){
     XEvent xev;
 
     while(!terminate) {
-
-        err << "Handling event" << std::endl;
 
         while(XPending(d)) {
             XNextEvent(d, &xev);
