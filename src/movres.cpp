@@ -68,6 +68,7 @@ void Move::Terminate(Context *ctx) {
     WinUtil::moveWindow(win, nx, ny);
     XUngrabPointer(core->d, CurrentTime);
     core->focusWindow(win);
+    win->addDamage();
 
     core->redraw = true;
 }
@@ -82,6 +83,7 @@ void Move::Intermediate() {
                     float(cmx - sx) / float(w / 2.0),
                     float(sy - cmy) / float(h / 2.0),
                     0.f));
+    win->addDamage();
     core->redraw = true;
 }
 
@@ -160,6 +162,7 @@ void Resize::Terminate(Context *ctx) {
 
     XUngrabPointer(core->d, CurrentTime);
     core->focusWindow(win);
+    win->addDamage();
     core->redraw = true;
 }
 
@@ -195,5 +198,6 @@ void Resize::Intermediate() {
 
     win->transform.scalation =
         glm::scale(glm::mat4(), glm::vec3(kW, kH, 1.f));
+    win->addDamage();
     core->redraw = true;
 }

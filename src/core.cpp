@@ -8,12 +8,7 @@
 
 bool wmDetected;
 std::mutex wmMutex;
-namespace {
-    bool inMapping;   //  used to determine whether
-    bool ignoreWindow;//  a BadWindow    has arised
-                      //  from a XMapWindow request
-                      // when receiving CreateNotify
-}
+
 
 Core *core;
 std::fstream err;
@@ -51,7 +46,6 @@ Core::Core() {
 
     err << "Creating new Core" << std::endl;
 
-    inMapping = false;
     d = XOpenDisplay(NULL);
 
     if ( d == nullptr )
@@ -125,6 +119,8 @@ Core::Core() {
 
     for(auto p : plugins)
         p->init(this);
+
+    dmg = Rect(0, 0, width, height);
 }
 
 void Core::enableInputPass(Window win) {
@@ -325,6 +321,8 @@ void Core::addWindow(XCreateWindowEvent xev) {
     //err << "Created window with type " << w->type << std::endl;
     if(w->type != WindowTypeWidget)
         wins->focusWindow(w);
+
+    w->addDamage();
 }
 void Core::addWindow(Window id) {
     //err << "Adding windows" << std::endl;
@@ -368,13 +366,17 @@ void Core::destroyWindow(FireWindow win) {
         XKillClient ( d, win->id );
 
     win->destroyed = true;
+    win->addDamage();
     wins->focusWindow(wins->getTopmostToplevel());
 }
 
 void Core::renderAllWindows() {
+    err << "Rendering area " << std::endl;
+    err << dmg;
     OpenGLWorker::preStage();
     wins->renderWindows();
     GLXUtils::endFrame(outputwin);
+    dmg = Rect(0, 0, 0, 0);
 }
 
 void Core::wait(int timeout) {
@@ -405,15 +407,8 @@ void Core::handleEvent(XEvent xev){
                 break;
 
             err << "CreateNotify " << xev.xcreatewindow.window << std::endl;
-            inMapping = true;
             XMapWindow(core->d, xev.xcreatewindow.window);
             XSync(core->d, 0);
-            inMapping = false;
-
-            if(ignoreWindow){
-                ignoreWindow = false;
-                break;
-            }
             addWindow(xev.xcreatewindow);
 
             redraw = true;
@@ -472,6 +467,7 @@ void Core::handleEvent(XEvent xev){
 
             w->norender = true;
             w->attrib.map_state = IsUnmapped;
+            w->addDamage();
             redraw = true;
             break;
         }
@@ -513,8 +509,15 @@ void Core::handleEvent(XEvent xev){
         case EnterNotify:
             break;
         default:
-            if(xev.type == damage + XDamageNotify)
+            if(xev.type == damage + XDamageNotify) {
                 redraw = true;
+                XDamageNotifyEvent *x =
+                    reinterpret_cast<XDamageNotifyEvent*> (&xev);
+
+                dmg = dmg + Rect(x->area.x, x->area.y,
+                        x->area.x + x->area.width,
+                        x->area.y + x->area.height);
+            }
             break;
     }
 }

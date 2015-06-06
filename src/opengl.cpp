@@ -109,6 +109,10 @@ void OpenGLWorker::renderTransformedTexture(GLuint tex,
 
 
 void OpenGLWorker::preStage() {
+    glScissor(core->dmg.tlx, core->dmg.tly,
+              core->dmg.brx - core->dmg.tlx,
+              core->dmg.bry - core->dmg.tly);
+
     glClear ( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 }
 
@@ -178,6 +182,7 @@ void OpenGLWorker::initOpenGL(Core *core, const char *shaderSrcPath) {
     glDepthFunc  (GL_LESS);
     glViewport   (0, 0, sw, sh);
     glDisable    (GL_CULL_FACE);
+    glEnable     (GL_SCISSOR_TEST);
 
     std::string tmp = shaderSrcPath;
 
