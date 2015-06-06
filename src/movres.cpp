@@ -44,6 +44,8 @@ void Move::Initiate(Context *ctx) {
                 PointerMotionMask,
                 GrabModeAsync, GrabModeAsync,
                 core->root, None, CurrentTime);
+
+        prev = win->getRect();
     }
 }
 
@@ -68,7 +70,9 @@ void Move::Terminate(Context *ctx) {
     WinUtil::moveWindow(win, nx, ny);
     XUngrabPointer(core->d, CurrentTime);
     core->focusWindow(win);
+
     win->addDamage();
+    core->dmg = core->dmg + prev;
 
     core->redraw = true;
 }
@@ -83,7 +87,15 @@ void Move::Intermediate() {
                     float(cmx - sx) / float(w / 2.0),
                     float(sy - cmy) / float(h / 2.0),
                     0.f));
-    win->addDamage();
+
+    auto newrect =
+        Rect (win->attrib.x + cmx - sx, win->attrib.y + cmy - sy,
+              win->attrib.x + cmx - sx + win->attrib.width,
+              win->attrib.x + cmy - sy + win->attrib.height);
+
+    core->dmg = core->dmg + newrect + prev;
+    prev = newrect;
+
     core->redraw = true;
 }
 
@@ -138,6 +150,8 @@ void Resize::Initiate(Context *ctx) {
                 PointerMotionMask,
                 GrabModeAsync, GrabModeAsync,
                 core->root, None, CurrentTime);
+
+        prev = win->getRect();
     }
 }
 
@@ -162,7 +176,9 @@ void Resize::Terminate(Context *ctx) {
 
     XUngrabPointer(core->d, CurrentTime);
     core->focusWindow(win);
+
     win->addDamage();
+    core->dmg = core->dmg + prev;
     core->redraw = true;
 }
 
@@ -198,6 +214,15 @@ void Resize::Intermediate() {
 
     win->transform.scalation =
         glm::scale(glm::mat4(), glm::vec3(kW, kH, 1.f));
-    win->addDamage();
+
+
+    auto newrect =
+        Rect(win->attrib.x - 1, win->attrib.y - 1,
+             win->attrib.x + int(float(win->attrib.width ) * kW) + 2,
+             win->attrib.y + int(float(win->attrib.height) * kH) + 2);
+
+    core->dmg = core->dmg + newrect + prev;
+    prev = newrect;
+
     core->redraw = true;
 }

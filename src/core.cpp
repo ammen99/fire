@@ -576,9 +576,9 @@ void Core::loop(){
                         hook.second->action();
             }
 
-            if(redraw)
+            if(redraw && dmg.brx - dmg.tlx != 0 && dmg.bry - dmg.tly != 0)
                 renderAllWindows(),
-                    redraw = false;
+                redraw = false;
 
             /* optimisation when too slow,
              * so we can update more rarely,
