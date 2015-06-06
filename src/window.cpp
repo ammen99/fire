@@ -474,9 +474,9 @@ WindowType getWindowType(FireWindow win) {
         else if ( a == winTypeDialogAtom )
             return WindowTypeModal;
         else if ( a == winTypeDropdownMenuAtom )
-            return WindowTypeWidget;
+            return WindowTypeModal;
         else if ( a == winTypePopupMenuAtom )
-            return WindowTypeWidget;
+            return WindowTypeModal;
         else if ( a == winTypeTooltipAtom )
             return WindowTypeWidget;
         else if ( a == winTypeNotificationAtom )
