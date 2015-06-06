@@ -110,13 +110,15 @@ void OpenGLWorker::renderTransformedTexture(GLuint tex,
 
 void OpenGLWorker::preStage() {
     GetTuple(sw, sh, core->getScreenSize());
-    sw = 0;
 
     int blx = core->dmg.tlx;
     int bly = sh - core->dmg.bry;
 
-    glScissor(blx, bly, core->dmg.brx - core->dmg.tlx,
+    if(!__FireWindow::allDamaged) // do not scissor if damaging everything
+        glScissor(blx, bly, core->dmg.brx - core->dmg.tlx,
               core->dmg.bry - core->dmg.tly);
+    else
+        glScissor(0, 0, sw, sh);
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }

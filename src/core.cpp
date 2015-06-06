@@ -371,12 +371,11 @@ void Core::destroyWindow(FireWindow win) {
 }
 
 void Core::renderAllWindows() {
-    err << "Rendering area " << std::endl;
-    err << dmg;
     OpenGLWorker::preStage();
     wins->renderWindows();
     GLXUtils::endFrame(outputwin);
-    dmg = Rect(0, 0, 0, 0);
+    if(!__FireWindow::allDamaged) // do not clear damage
+        dmg = Rect(0, 0, 0, 0);
 }
 
 void Core::wait(int timeout) {
@@ -386,6 +385,7 @@ void Core::wait(int timeout) {
 void Core::handleEvent(XEvent xev){
     switch(xev.type) {
         case Expose:
+            dmg = Rect(0, 0, width, height);
             redraw = true;
         case KeyPress: {
             // check keybindings
