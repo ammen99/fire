@@ -554,8 +554,12 @@ void setInputFocusToWindow(Window win) {
 }
 
 void moveWindow(FireWindow win, int x, int y) {
+    auto prev = win->getRect();
+
     win->attrib.x = x;
     win->attrib.y = y;
+
+    core->dmg = core->dmg + prev + win->getRect();
 
     if(win->type == WindowTypeDesktop) {
         glDeleteBuffers(1, &win->vbo);
@@ -576,8 +580,13 @@ void moveWindow(FireWindow win, int x, int y) {
 }
 
 void resizeWindow(FireWindow win, int w, int h) {
+
+    auto prev = win->getRect();
+
     win->attrib.width  = w;
     win->attrib.height = h;
+
+    core->dmg = core->dmg + prev + win->getRect();
 
     XWindowChanges xwc;
     xwc.width  = w;

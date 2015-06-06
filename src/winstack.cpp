@@ -158,6 +158,13 @@ void WinStack::focusWindow(FireWindow win) {
         restackAbove(win, (*wins.begin())),
         win = WinUtil::getAncestor(win);
 
+    if(win->type == WindowTypeModal) {
+        restackAbove(win, win->transientFor);
+        WinUtil::setInputFocusToWindow(win->id);
+        activeWin = win;
+        return;
+    }
+
     activeWin = win;
 
     auto w1 = findTopmostStackingWindow(activeWin);

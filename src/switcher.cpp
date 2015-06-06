@@ -101,6 +101,11 @@ void ATSwitcher::Initiate() {
             GrabModeAsync, GrabModeAsync, CurrentTime);
 
     index = 0;
+
+    GetTuple(sw, sh, core->getScreenSize());
+    __FireWindow::allDamaged = true;
+    core->dmg = Rect(0, 0, sw, sh);
+
     render();
 }
 
@@ -153,6 +158,8 @@ void ATSwitcher::Terminate() {
         background->transform.color = glm::vec4(1, 1, 1, 1),
         background->transform.translation = glm::mat4(),
         background->transform.scalation   = glm::mat4();
+
+    __FireWindow::allDamaged = false;
 }
 
 float ATSwitcher::getFactor(int x, int y, float percent) {
