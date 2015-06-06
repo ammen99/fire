@@ -137,8 +137,12 @@ Window createNewWindowWithContext(Window parent, Core *core) {
     winAttr.border_pixel = 0;
     winAttr.event_mask = ExposureMask;
 
+    auto t = core->getScreenSize();
+    auto w = std::get<0>(t);
+    auto h = std::get<1>(t);
+
     auto window = XCreateWindow ( core->d,core->root,
-            0, 0, core->width, core->height, 0,
+            0, 0, w, h, 0,
             vi->depth, InputOutput, vi->visual,
             CWBorderPixel | CWColormap | CWEventMask,
             &winAttr );

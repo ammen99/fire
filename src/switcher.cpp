@@ -1,8 +1,7 @@
-#include "../include/core.hpp"
-#include "../include/winstack.hpp"
+#include "../include/wm.hpp"
 #include "../include/opengl.hpp"
 
-ATSwitcher::ATSwitcher(Core *core) {
+void ATSwitcher::init(Core *core) {
     using namespace std::placeholders;
 
     active = false;
@@ -42,7 +41,6 @@ ATSwitcher::ATSwitcher(Core *core) {
 
 void ATSwitcher::handleKey(Context *ctx) {
     auto xev = ctx->xev.xkey;
-    err << "In handle Key";
 
     if(xev.keycode == XKeysymToKeycode(core->d, XK_Tab)) {
         if(active)
@@ -62,9 +60,8 @@ void ATSwitcher::handleKey(Context *ctx) {
 }
 
 void ATSwitcher::Initiate() {
-    //rnd.enable();
     windows.clear();
-    windows = core->getWindowsOnViewport(core->vx, core->vy);
+    windows = core->getWindowsOnViewport(core->getWorkspace());
     active = true;
 
     background = nullptr;
@@ -105,7 +102,6 @@ void ATSwitcher::Initiate() {
 
     index = 0;
     render();
-    err << "end of init";
 }
 
 void ATSwitcher::reset() {
@@ -153,16 +149,20 @@ void ATSwitcher::Terminate() {
     terminate.active = false;
 
 
-    background->transform.color = glm::vec4(1, 1, 1, 1);
     if(background)
+        background->transform.color = glm::vec4(1, 1, 1, 1),
         background->transform.translation = glm::mat4(),
         background->transform.scalation   = glm::mat4();
 }
 
 float ATSwitcher::getFactor(int x, int y, float percent) {
+    auto t = core->getScreenSize();
+    auto width = std::get<0> (t);
+    auto height = std::get<1>(t);
+
     float d = std::sqrt(x * x + y * y);
-    float d1 = std::sqrt(core->width * core->width +
-                         core->height * core->height);
+    float d1 = std::sqrt(width * width +
+                         height *height);
     if(d != 0)
         return percent * d1 / d;
     else
@@ -217,7 +217,7 @@ void ATSwitcher::render() {
     windows[next ]->transform.scalation = glm::scale(glm::mat4(),
             glm::vec3(c3, c3, 1.0));
 
-    core->wins->focusWindow(windows[index]);
+    core->focusWindow(windows[index]);
 }
 
 void ATSwitcher::moveLeft() {

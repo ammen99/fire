@@ -2,23 +2,7 @@
 #include "../include/opengl.hpp"
 #include <algorithm>
 
-Focus::Focus(Core *core) {
-    focus.type = BindingTypePress;
-    focus.button = Button1;
-    focus.mod = NoMods;
-    focus.active = true;
 
-    focus.action = [core] (Context *ctx){
-        auto xev = ctx->xev.xbutton;
-        auto w =
-            core->wins->findWindowAtCursorPosition
-            (Point(xev.x_root, xev.y_root));
-
-        if(w)
-            core->wins->focusWindow(w);
-    };
-    core->addBut(&focus);
-}
 
 typedef std::list<FireWindow>::iterator StackIterator;
 WinStack::WinStack() {
@@ -82,14 +66,11 @@ void WinStack::renderWindows() {
     }
 }
 
-void WinStack::removeWindow(FireWindow win, bool destroy) {
+void WinStack::removeWindow(FireWindow win) {
     auto x = std::find_if(wins.begin(), wins.end(),
             [win] (FireWindow w) {
                 return w->id == win->id;
             });
-
-    if(destroy)
-        WinUtil::finishWindow(*x);
 
     wins.erase(x);
 }

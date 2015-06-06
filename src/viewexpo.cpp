@@ -1,4 +1,4 @@
-#include "../include/core.hpp"
+#include "../include/wm.hpp"
 #include "../include/winstack.hpp"
 
 void WSSwitch::beginSwitch() {
@@ -8,8 +8,13 @@ void WSSwitch::beginSwitch() {
     int ddx = std::get<0> (tup);
     int ddy = std::get<1> (tup);
 
-    auto nx = (core->vx - ddx + core->vwidth ) % core->vwidth;
-    auto ny = (core->vy - ddy + core->vheight) % core->vheight;
+
+    GetTuple(vx, vy, core->getWorkspace());
+    GetTuple(vw, vh, core->getWorksize());
+    GetTuple(sw, sh, core->getScreenSize());
+
+    auto nx = (vx - ddx + vw) % vw;
+    auto ny = (vy - ddy + vh) % vh;
 
     this->nx = nx;
     this->ny = ny;
@@ -17,18 +22,18 @@ void WSSwitch::beginSwitch() {
     dirx = ddx;
     diry = ddy;
 
-    dx = (core->vx - nx) * core->width;
-    dy = (core->vy - ny) * core->height;
+    dx = (vx - nx) * sw;
+    dy = (vy - ny) * sh;
 
     int tlx1 = 0;
     int tly1 = 0;
-    int brx1 = core->width;
-    int bry1 = core->height;
+    int brx1 = sw;
+    int bry1 = sh;
 
     int tlx2 = -dx;
     int tly2 = -dy;
-    int brx2 = tlx2 + core->width;
-    int bry2 = tly2 + core->height;
+    int brx2 = tlx2 + sw;
+    int bry2 = tly2 + sh;
 
     output = Rect(std::min(tlx1, tlx2),
             std::min(tly1, tly2),
@@ -52,23 +57,25 @@ void WSSwitch::handleSwitchWorkspace(Context *ctx) {
 
     auto xev = ctx->xev.xkey;
 
-    if(xev.keycode == core->switchWorkspaceBindings[0])
+    if(xev.keycode == switchWorkspaceBindings[0])
         moveWorkspace(1,  0);
-    if(xev.keycode == core->switchWorkspaceBindings[1])
+    if(xev.keycode == switchWorkspaceBindings[1])
         moveWorkspace(-1, 0);
-    if(xev.keycode == core->switchWorkspaceBindings[2])
+    if(xev.keycode == switchWorkspaceBindings[2])
         moveWorkspace(0, -1);
-    if(xev.keycode == core->switchWorkspaceBindings[3])
+    if(xev.keycode == switchWorkspaceBindings[3])
         moveWorkspace(0,  1);
 }
 
 #define MAXSTEP 20
 void WSSwitch::moveStep() {
+    GetTuple(w, h, core->getScreenSize());
+
     if(stepNum == MAXSTEP){
         Transform::gtrs = glm::mat4();
         core->switchWorkspace(std::make_tuple(nx, ny));
         core->redraw = true;
-        output = Rect(0, 0, core->width, core->height);
+        output = Rect(0, 0, w, h);
 
         if(dirs.size() == 0)
             hook.disable();
@@ -78,8 +85,8 @@ void WSSwitch::moveStep() {
     }
     float progress = float(stepNum++) / float(MAXSTEP);
 
-    float offx =  2.f * progress * float(dx) / float(core->width );
-    float offy = -2.f * progress * float(dy) / float(core->height);
+    float offx =  2.f * progress * float(dx) / float(w);
+    float offy = -2.f * progress * float(dy) / float(h);
 
     if(!dirx)
         offx = 0;
@@ -91,22 +98,19 @@ void WSSwitch::moveStep() {
 }
 
 
-WSSwitch::WSSwitch(Core *core) {
+void WSSwitch::init(Core *core) {
     using namespace std::placeholders;
 
-    core->switchWorkspaceBindings[0] = XKeysymToKeycode(core->d, XK_h);
-    core->switchWorkspaceBindings[1] = XKeysymToKeycode(core->d, XK_l);
-    core->switchWorkspaceBindings[2] = XKeysymToKeycode(core->d, XK_j);
-    core->switchWorkspaceBindings[3] = XKeysymToKeycode(core->d, XK_k);
-
-    core->vwidth = core->vheight = 3;
-    core->vx = core->vy = 0;
+    switchWorkspaceBindings[0] = XKeysymToKeycode(core->d, XK_h);
+    switchWorkspaceBindings[1] = XKeysymToKeycode(core->d, XK_l);
+    switchWorkspaceBindings[2] = XKeysymToKeycode(core->d, XK_j);
+    switchWorkspaceBindings[3] = XKeysymToKeycode(core->d, XK_k);
 
     for(int i = 0; i < 4; i++) {
         kbs[i].type = BindingTypePress;
         kbs[i].active = true;
         kbs[i].mod = ControlMask | Mod1Mask;
-        kbs[i].key = core->switchWorkspaceBindings[i];
+        kbs[i].key = switchWorkspaceBindings[i];
 
         kbs[i].action =
             std::bind(std::mem_fn(&WSSwitch::handleSwitchWorkspace),
@@ -119,10 +123,10 @@ WSSwitch::WSSwitch(Core *core) {
     core->addHook(&hook);
 }
 
-Expo::Expo(Core *core) {
+void Expo::init(Core *core) {
     using namespace std::placeholders;
     for(int i = 0; i < 4; i++) {
-        keys[i].key = core->switchWorkspaceBindings[i];
+        keys[i].key = switchWorkspaceBindings[i];
         keys[i].active = false;
         keys[i].mod = NoMods;
         keys[i].action =
@@ -162,10 +166,13 @@ Expo::Expo(Core *core) {
 
 void Expo::buttonRelease(Context *ctx) {
 
+    GetTuple(w, h, core->getScreenSize());
+    GetTuple(vw, vh, core->getWorksize());
+
     auto xev = ctx->xev.xbutton;
 
-    int vpw = core->width / core->vwidth;
-    int vph = core->height / core->vheight;
+    int vpw = w / vw;
+    int vph = h / vh;
 
     int vx = xev.x_root / vpw;
     int vy = xev.y_root / vph;
@@ -183,26 +190,28 @@ void Expo::buttonPress(Context *ctx) {
 
 void Expo::recalc() {
 
+    GetTuple(vx, vy, core->getWorkspace());
+    GetTuple(vwidth, vheight, core->getWorksize());
+    GetTuple(width, height, core->getScreenSize());
+
     int midx = core->vwidth / 2;
     int midy = core->vheight / 2;
 
-    float offX = float(core->vx - midx) * 2.f / float(core->vwidth );
-    float offY = float(midy - core->vy) * 2.f / float(core->vheight);
+    float offX = float(vx - midx) * 2.f / float(vwidth );
+    float offY = float(midy - vy) * 2.f / float(vheight);
 
-    float scaleX = 1.f / float(core->vwidth);
-    float scaleY = 1.f / float(core->vheight);
-    core->scaleX = core->vwidth;
-    core->scaleY = core->vheight;
+    float scaleX = 1.f / float(vwidth);
+    float scaleY = 1.f / float(vheight);
+    core->scaleX = vwidth;
+    core->scaleY = vheight;
 
     offXtarget = offX;
     offYtarget = offY;
     sclXtarget = scaleX;
     sclYtarget = scaleY;
 
-    output = Rect(-core->vx * core->width, // output everything
-            -core->vy * core->height,
-            (core->vwidth  - core->vx) * core->width,
-            (core->vheight - core->vy) * core->height);
+    output = Rect(-vx * width, -vy * height, // output everything
+            (vwidth  - vx) * width, (vheight - vy) * height);
 }
 
 void Expo::finalizeZoom() {
@@ -299,16 +308,20 @@ void Expo::zoom() {
 }
 
 FireWindow Expo::findWindow(Point p) {
-    int vpw = core->width / core->vwidth;
-    int vph = core->height / core->vheight;
+    GetTuple(w, h, core->getScreenSize());
+    GetTuple(vw, vh, core->getWorksize());
+    GetTuple(cvx, cvy, core->getWorkspace());
+
+    int vpw = w / vw;
+    int vph = h / vh;
 
     int vx = p.x / vpw;
     int vy = p.y / vph;
     int x =  p.x % vpw;
     int y =  p.y % vph;
 
-    int realx = (vx - core->vx) * core->width  + x * core->vwidth;
-    int realy = (vy - core->vy) * core->height + y * core->vheight;
+    int realx = (vx - cvx) * w + x * vw;
+    int realy = (vy - cvy) * h + y * vh;
 
     return save(Point(realx, realy));
 }

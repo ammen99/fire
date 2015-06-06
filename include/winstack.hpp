@@ -28,7 +28,7 @@ class WinStack {
     public:
         WinStack();
         void addWindow(FireWindow win);
-        void removeWindow(FireWindow win, bool destroy);
+        void removeWindow(FireWindow win);
         FireWindow findWindow(Window win);
         FireWindow getTopmostToplevel();
         void renderWindows();
@@ -40,12 +40,4 @@ class WinStack {
 
         void updateTransientsAttrib(FireWindow win, int, int, int, int);
 };
-
-class Focus {
-    private:
-        ButtonBinding focus;
-    public:
-        Focus(Core *core);
-};
-
 #endif

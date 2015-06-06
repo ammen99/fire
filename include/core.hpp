@@ -4,10 +4,10 @@
 #include "commonincludes.hpp"
 #include "window.hpp"
 #include "glx.hpp"
+#include "plugin.hpp"
 #include <queue>
 
 
-extern bool inRenderWindow;
 class WinStack;
 
 struct Context{
@@ -53,148 +53,26 @@ struct Hook {
         Hook();
 };
 
-class Focus;
-class WindowOperation {
-    protected:
-        int sx, sy; // starting pointer x, y
-        FireWindow win; // window we're operating on
-        uint hid; // id of hook
-    protected:
-        ButtonBinding press;
-        ButtonBinding release;
-        Hook hook;
-};
+class Expo;
 
-class Move : WindowOperation {
-    public:
-        Move(Core *core);
-        void Initiate(Context*);
-        void Intermediate();
-        void Terminate(Context*);
-};
-
-class Resize : WindowOperation {
-    public:
-        Resize(Core *core);
-        void Initiate(Context*);
-        void Intermediate();
-        void Terminate(Context*);
-};
-
-class WSSwitch {
-    private:
-        KeyBinding kbs[4];
-        Hook hook;
-        int stepNum;
-        int dirx, diry;
-        int dx, dy;
-        int nx, ny;
-        std::queue<std::tuple<int, int> >dirs; // series of moves we have to do
-        void beginSwitch();
-    public:
-        WSSwitch(Core *core);
-        void moveWorkspace(int dx, int dy);
-        void handleSwitchWorkspace(Context *ctx);
-        void moveStep();
-};
-
-class Expo {
-    private:
-        KeyBinding keys[4];
-        KeyBinding toggle;
-        ButtonBinding press, release;
-
-        int stepNum;
-
-        float offXtarget, offYtarget;
-        float offXcurrent, offYcurrent;
-        float sclXtarget, sclYtarget;
-        float sclXcurrent, sclYcurrent;
-
-        float stepoffX, stepoffY, stepsclX, stepsclY;
-
-        Hook hook;
-        bool active;
-        std::function<FireWindow(Point)> save; // used to restore
-    public:                                // WinStack::find...Position
-        Expo(Core *core);
-        void handleKey(Context *ctx);
-        void Toggle(Context *ctx);
-        FireWindow findWindow(Point p);
-        void buttonRelease(Context *ctx);
-        void buttonPress(Context *ctx);
-        void recalc();
-        void zoom();
-        void finalizeZoom();
-};
-
-class ATSwitcher {
-    KeyBinding initiate;
-    KeyBinding forward;
-    KeyBinding backward;
-    KeyBinding terminate;
-    std::vector<FireWindow> windows;
-    FireWindow background;
-    bool active;
-    int index;
-    Hook rnd; // used to render windows
-    public:
-        ATSwitcher(Core *core);
-        void handleKey(Context *ctx);
-        void moveLeft();
-        void moveRight();
-        void Initiate();
-        void Terminate();
-        void render();
-        void reset();
-        float getFactor(int x, int y, float percent);
-};
-
-class Grid{
-
-    struct GridWindow {
-        Window id;
-        XWindowAttributes size;
-        GridWindow(Window id, int x, int y, int w, int h);
-    };
-
-    std::vector<GridWindow> wins;
-    KeyBinding keys[10];
-    KeyCode codes[10];
-
-    public:
-        Grid(Core *core);
-        void handleKey(Context*);
-        void toggleMaxim(FireWindow win);
-        void getSlot(int n, int &x, int &y, int &w, int &h);
-};
-
-class Close;
+#define GetTuple(x,y,t) auto x = std::get<0>(t); \
+                        auto y = std::get<1>(t)
 
 class Core {
-    friend class Focus;
-    friend class Move;
-    friend class Resize;
-    friend class WSSwitch;
+
+    // used to enable proper work of move and resize when expo
     friend class Expo;
-    friend class Close;
-    friend class ATSwitcher;
-    friend class Grid;
+    // used to optimize idle time by counting hooks(cntHooks)
+    friend struct Hook;
 
     private:
         std::vector<std::vector<FireWindow> > backgrounds;
-        int damage;
-
-        static WinStack *wins;
-        void handleEvent(XEvent xev);
-        void wait(int timeout);
-        void enableInputPass(Window win);
-        void addExistingWindows(); // adds windows created before
-                                   // we registered for SubstructureRedirect
-        pollfd fd;
 
         int mousex, mousey; // pointer x, y
+        int cntHooks;
 
+        int width;
+        int height;
         int vwidth, vheight; // viewport size
         int vx, vy;          // viewport position
 
@@ -202,34 +80,21 @@ class Core {
         std::unordered_map<uint, ButtonBinding*> buttons;
         std::unordered_map<uint, Hook*> hooks;
 
+        std::vector<PluginPtr> plugins;
+        void initDefaultPlugins();
         template<class T>
-        uint getFreeID(std::unordered_map<uint, T> *map);
-
-        KeyCode switchWorkspaceBindings[4];
-
-        Focus *focus;
-        Exit *exit;
-        Run *runn;
-        Expo *expo;
-        WSSwitch *wsswitch;
-        Move *move;
-        Resize *resize;
-        Close *clos;
-        ATSwitcher *at;
-        Grid *grid;
-
-        Window s0owner;
-
+        PluginPtr createPlugin();
     public:
+
+        /* warning!
+         * no plugin should change these! */
         Display *d;
         Window root;
         Window overlay;
         Window outputwin;
+        Window s0owner;
+        int damage;
 
-        int cntHooks;
-
-        int width;
-        int height;
 
         bool redraw = true; // should we redraw?
         bool terminate = false; // should main loop exit?
@@ -237,10 +102,11 @@ class Core {
         float scaleX = 1, scaleY = 1; // used for operations which
                               // depend on mouse moving
                               // for ex. when using expo
+
         void setBackground(const char *path);
 
-        void switchWorkspace(std::tuple<int, int>);
-        std::tuple<int, int> getWorkspace();
+        template<class T>
+        uint getFreeID(std::unordered_map<uint, T> *map);
 
         uint addKey(KeyBinding *kb, bool grab = false);
         void remKey(uint id);
@@ -251,20 +117,40 @@ class Core {
         uint addHook(Hook*);
         void remHook(uint);
 
+    private:
+        void handleEvent(XEvent xev);
+        void wait(int timeout);
+        void enableInputPass(Window win);
+        void addExistingWindows(); // adds windows created before
+                                   // we registered for SubstructureRedirect
+        WinStack *wins;
+        pollfd fd;
+
     public:
         ~Core();
         void loop();
         Core();
 
         void run(char *command);
-
         void renderAllWindows();
+
         void addWindow(XCreateWindowEvent);
         void addWindow(Window);
+        void focusWindow(FireWindow win);
+        void destroyWindow(FireWindow win);
+
         FireWindow findWindow(Window win);
         FireWindow getActiveWindow();
-        void destroyWindow(FireWindow win);
-        std::vector<FireWindow> getWindowsOnViewport(int x, int y);
+        FireWindow getWindowAtPoint(Point p);
+
+        std::vector<FireWindow> getWindowsOnViewport(std::tuple<int, int>);
+        void switchWorkspace(std::tuple<int, int>);
+        std::tuple<int, int> getWorkspace ();
+        std::tuple<int, int> getWorksize  ();
+        std::tuple<int, int> getScreenSize();
+
+        std::tuple<int, int> getMouseCoord();
+
 
         static int onXError (Display* d, XErrorEvent* xev);
         static int onOtherWmDetected(Display *d, XErrorEvent *xev);

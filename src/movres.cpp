@@ -1,10 +1,9 @@
-#include "../include/core.hpp"
-#include "../include/winstack.hpp"
+#include "../include/wm.hpp"
 
-Move::Move(Core *c) {
+void Move::init(Core *c) {
     win = nullptr;
     hook.action = std::bind(std::mem_fn(&Move::Intermediate), this);
-    hid = c->addHook(&hook);
+    c->addHook(&hook);
 
     using namespace std::placeholders;
 
@@ -26,12 +25,11 @@ Move::Move(Core *c) {
 
 void Move::Initiate(Context *ctx) {
     auto xev = ctx->xev.xbutton;
-    auto w = core->wins->findWindowAtCursorPosition
-        (Point(xev.x_root, xev.y_root));
+    auto w = core->getWindowAtPoint((Point(xev.x_root, xev.y_root)));
 
     if(w){
         err << "moving";
-        core->wins->focusWindow(w);
+        core->focusWindow(w);
         win = w;
 
         release.active = true;
@@ -69,26 +67,29 @@ void Move::Terminate(Context *ctx) {
 
     WinUtil::moveWindow(win, nx, ny);
     XUngrabPointer(core->d, CurrentTime);
-    core->wins->focusWindow(win);
+    core->focusWindow(win);
 
     core->redraw = true;
 }
 
 void Move::Intermediate() {
 
+    GetTuple(cmx, cmy, core->getMouseCoord());
+    GetTuple(w, h, core->getScreenSize());
+
     win->transform.translation =
         glm::translate(glm::mat4(), glm::vec3(
-                    float(core->mousex - sx) / float(core->width / 2.0),
-                    float(sy - core->mousey) / float(core->height / 2.0),
+                    float(cmx - sx) / float(w / 2.0),
+                    float(sy - cmy) / float(h / 2.0),
                     0.f));
     core->redraw = true;
 }
 
-Resize::Resize(Core *c) {
+void Resize::init(Core *c) {
     win = nullptr;
 
     hook.action = std::bind(std::mem_fn(&Resize::Intermediate), this);
-    hid = c->addHook(&hook);
+    c->addHook(&hook);
 
     using namespace std::placeholders;
 
@@ -113,11 +114,11 @@ void Resize::Initiate(Context *ctx) {
         return;
 
     auto xev = ctx->xev.xbutton;
-    auto w = WinUtil::getAncestor(core->wins->findWindow(xev.window));
+    auto w = core->getWindowAtPoint(Point(xev.x_root,xev.y_root));
 
     if(w){
 
-        core->wins->focusWindow(w);
+        core->focusWindow(w);
         win = w;
         hook.enable();
         release.active = true;
@@ -148,22 +149,26 @@ void Resize::Terminate(Context *ctx) {
     win->transform.scalation = glm::mat4();
     win->transform.translation = glm::mat4();
 
-    int dw = (core->mousex - sx) * core->scaleX;
-    int dh = (core->mousey - sy) * core->scaleY;
+    GetTuple(cmx, cmy, core->getMouseCoord());
+
+    int dw = (cmx - sx) * core->scaleX;
+    int dh = (cmy - sy) * core->scaleY;
 
     int nw = win->attrib.width  + dw;
     int nh = win->attrib.height + dh;
     WinUtil::resizeWindow(win, nw, nh);
 
     XUngrabPointer(core->d, CurrentTime);
-    core->wins->focusWindow(win);
+    core->focusWindow(win);
     core->redraw = true;
 }
 
 void Resize::Intermediate() {
 
-    int dw = core->mousex - sx;
-    int dh = core->mousey - sy;
+
+    GetTuple(cmx, cmy, core->getMouseCoord());
+    int dw = cmx - sx;
+    int dh = cmy - sy;
 
     int nw = win->attrib.width  + dw;
     int nh = win->attrib.height + dh;
@@ -172,8 +177,10 @@ void Resize::Intermediate() {
     float kH = float(nh) / float(win->attrib.height);
 
 
-    float w2 = float(core->width) / 2.;
-    float h2 = float(core->height) / 2.;
+    GetTuple(sw, sh, core->getScreenSize());
+
+    float w2 = float(sw) / 2.;
+    float h2 = float(sh) / 2.;
 
     float tlx = float(win->attrib.x) - w2,
           tly = h2 - float(win->attrib.y);

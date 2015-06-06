@@ -1,9 +1,10 @@
 #include "../include/commonincludes.hpp"
-#include "../include/core.hpp"
 #include "../include/opengl.hpp"
 #include "../include/winstack.hpp"
+#include "../include/wm.hpp"
 
 #include <sstream>
+#include <memory>
 
 bool wmDetected;
 std::mutex wmMutex;
@@ -14,7 +15,6 @@ namespace {
                       // when receiving CreateNotify
 }
 
-WinStack *Core::wins;
 Core *core;
 std::fstream err;
 
@@ -95,19 +95,10 @@ Core::Core() {
     int dummy;
     XDamageQueryExtension(d, &damage, &dummy);
 
-    move     = new Move(this); // we have to make sure that
-    resize   = new Resize(this);// move and resize are before expo
-    wsswitch = new WSSwitch(this);
-    expo     = new Expo(this);
-    focus    = new Focus(this);
-    exit     = new Exit(this);
-    runn     = new Run(this);
-    clos     = new Close(this);
-    at       = new ATSwitcher(this);
-    grid     = new Grid(this);
-
     cntHooks = 0;
     output = Rect(0, 0, width, height);
+
+    initDefaultPlugins();
 
     // enable compositing to be recognized by other programs
     Atom a;
@@ -127,6 +118,13 @@ Core::Core() {
 
     core = this;
     addExistingWindows();
+
+
+    core->vwidth = core->vheight = 3;
+    core->vx = core->vy = 0;
+
+    for(auto p : plugins)
+        p->init(this);
 }
 
 void Core::enableInputPass(Window win) {
@@ -169,6 +167,9 @@ void Core::addExistingWindows() {
 }
 Core::~Core(){
 
+    for(auto p : plugins)
+        p.reset();
+
     int nx, ny;
     for(auto w : wins->wins) {
         nx = w->attrib.x % width;
@@ -179,18 +180,6 @@ Core::~Core(){
 
         WinUtil::moveWindow(w, nx, ny);
     }
-
-    delete move;
-    delete resize;
-    delete wsswitch;
-    delete expo;
-    delete focus;
-    delete exit;
-    delete runn;
-    delete clos;
-    delete at;
-    delete grid;
-    delete wins;
 
     XDestroyWindow(core->d, outputwin);
     XDestroyWindow(core->d, s0owner);
@@ -448,7 +437,8 @@ void Core::handleEvent(XEvent xev){
 
             err << "Destroy Notify " << w->id << std::endl;
 
-            wins->removeWindow(w, true);
+            wins->removeWindow(w);
+            WinUtil::finishWindow(w);
             redraw = true;
             break;
         }
@@ -561,7 +551,7 @@ void Core::loop(){
     XEvent xev;
 
     while(!terminate) {
-
+        /* handle current events */
         while(XPending(d)) {
             XNextEvent(d, &xev);
             handleEvent(xev);
@@ -571,8 +561,9 @@ void Core::loop(){
         int diff = (after.tv_sec - before.tv_sec) * 1000000 +
             after.tv_usec - before.tv_usec;
 
-        if(diff < currentCycle) {
-            wait(currentCycle - diff);
+        if(diff < currentCycle) {     // we have time to next redraw, wait
+            wait(currentCycle - diff);// for events
+
             if(fd.revents & POLLIN) { /* disable optimisation */
                 hadEvents = true;
                 currentCycle = baseCycle;
@@ -581,7 +572,7 @@ void Core::loop(){
             fd.revents = 0;
         }
         else {
-            if(cntHooks) {
+            if(cntHooks) { // if running hooks, run them
                 for (auto hook : hooks)
                     if(hook.second->getState())
                         hook.second->action();
@@ -617,7 +608,8 @@ int Core::onXError(Display *d, XErrorEvent *xev) {
     if(xev->resourceid == 0) // invalid window
         return 0;
 
-    //return 0;
+    /* some of the calls to obtain a texture from this window
+     * have failed, so don't draw it the next time */
 
     if(xev->error_code == BadMatch    ||
        xev->error_code == BadDrawable ||
@@ -626,7 +618,7 @@ int Core::onXError(Display *d, XErrorEvent *xev) {
         err << "caught BadMatch/Drawable/Window. Disabling window drawing "
             << xev->resourceid;
 
-        auto x = wins->findWindow(xev->resourceid);
+        auto x = core->wins->findWindow(xev->resourceid);
         if (x != nullptr)
             x->norender = true;
 
@@ -647,6 +639,18 @@ std::tuple<int, int> Core::getWorkspace() {
     return std::make_tuple(vx, vy);
 }
 
+std::tuple<int, int> Core::getWorksize() {
+    return std::make_tuple(vwidth, vheight);
+}
+
+std::tuple<int, int> Core::getScreenSize() {
+    return std::make_tuple(width, height);
+}
+
+std::tuple<int, int> Core::getMouseCoord() {
+    return std::make_tuple(mousex, mousey);
+}
+
 void Core::switchWorkspace(std::tuple<int, int> nPos) {
     auto nx = std::get<0> (nPos);
     auto ny = std::get<1> (nPos);
@@ -660,14 +664,17 @@ void Core::switchWorkspace(std::tuple<int, int> nPos) {
     vx = nx;
     vy = ny;
 
-    auto ws = getWindowsOnViewport(vx, vy);
+    auto ws = getWindowsOnViewport(this->getWorkspace());
     if(ws.size() != 0)
         wins->focusWindow(ws[0]);
 }
 
-std::vector<FireWindow> Core::getWindowsOnViewport(int x, int y) {
+std::vector<FireWindow> Core::getWindowsOnViewport(std::tuple<int, int> vp) {
+    auto x = std::get<0>(vp);
+    auto y = std::get<1>(vp);
+
     Rect view((x - vx    ) * width, (y - vy    ) * height,
-              (x - vx + 1) * width, (y - vy + 1) * height);
+            (x - vx + 1) * width, (y - vy + 1) * height);
 
     std::vector<FireWindow> ret;
     for(auto w : wins->wins)
@@ -675,4 +682,31 @@ std::vector<FireWindow> Core::getWindowsOnViewport(int x, int y) {
             ret.push_back(w);
 
     return ret;
+}
+
+void Core::focusWindow(FireWindow win) {
+    wins->focusWindow(win);
+}
+
+FireWindow Core::getWindowAtPoint(Point p) {
+    return wins->findWindowAtCursorPosition(p);
+}
+
+template<class T>
+PluginPtr Core::createPlugin() {
+    return std::static_pointer_cast<Plugin>(std::make_shared<T>());
+}
+
+void Core::initDefaultPlugins() {
+    plugins.push_back(createPlugin<Move>());
+    plugins.push_back(createPlugin<Resize>());
+    plugins.push_back(createPlugin<WSSwitch>());
+    plugins.push_back(createPlugin<Expo>());
+    plugins.push_back(createPlugin<Focus>());
+    plugins.push_back(createPlugin<Exit>());
+    plugins.push_back(createPlugin<Run>());
+    plugins.push_back(createPlugin<Close>());
+    plugins.push_back(createPlugin<ATSwitcher>());
+    plugins.push_back(createPlugin<Grid>());
+    plugins.push_back(createPlugin<RefreshWin>());
 }
