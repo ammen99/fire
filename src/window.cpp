@@ -343,6 +343,7 @@ void renderWindow(FireWindow win) {
                 win->vao, win->vbo);
 
     if(win->age) {
+        err << "A window is fading" << std::endl;
         if(win->fading)
             win->opacity = float(0xffff) * float(win->age) / 100.f;
         else

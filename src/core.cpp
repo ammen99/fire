@@ -335,7 +335,8 @@ void Core::addWindow(XCreateWindowEvent xev) {
         wins->focusWindow(w);
 
     w->addDamage();
-    w->age = 100;
+    w->age = InitialAge;
+    w->fading = w->destroyed = false;
 }
 void Core::addWindow(Window id) {
     //err << "Adding windows" << std::endl;
