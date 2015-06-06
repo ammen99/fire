@@ -39,6 +39,9 @@ void WSSwitch::beginSwitch() {
             std::min(tly1, tly2),
             std::max(brx1, brx2),
             std::max(bry1, bry2));
+
+    __FireWindow::allDamaged = true;
+    core->dmg = Rect(0, 0, sw, sh);
     stepNum = 0;
 }
 
@@ -77,8 +80,10 @@ void WSSwitch::moveStep() {
         core->redraw = true;
         output = Rect(0, 0, w, h);
 
-        if(dirs.size() == 0)
+        if(dirs.size() == 0) {
             hook.disable();
+            __FireWindow::allDamaged = false;
+        }
         else
             beginSwitch();
         return;
@@ -238,7 +243,10 @@ void Expo::Toggle(Context *ctx) {
         core->wins->findWindowAtCursorPosition =
             std::bind(std::mem_fn(&Expo::findWindow), this, _1);
 
+        GetTuple(sw, sh, core->getScreenSize());
         hook.enable();
+        __FireWindow::allDamaged = true;
+        core->dmg = Rect(0, 0, sw, sh);
         stepNum = MAXSTEP;
         recalc();
 
@@ -259,8 +267,6 @@ void Expo::Toggle(Context *ctx) {
         core->scaleY = 1;
 
         core->redraw = true;
-        core->wins->findWindowAtCursorPosition = save;
-
 
 
         hook.enable();
@@ -301,8 +307,12 @@ void Expo::zoom() {
     else {
         finalizeZoom();
         hook.disable();
-        if(!active)
+        if(!active) {
             output = Rect(0, 0, core->width, core->height);
+            __FireWindow::allDamaged = false;
+            core->wins->findWindowAtCursorPosition = save;
+        }
+
     }
     core->redraw = true;
 }

@@ -50,13 +50,18 @@ class Rect{
         Rect(int, int, int, int);
         bool operator &(const Rect  &other) const;
         bool operator &(const Point &other) const;
+        Rect operator +(const Rect  &other) const;
 };
 std::ostream& operator<<(std::ostream& stream, const Rect& rect);
 
 extern Rect output;
 
 class __FireWindow {
+    private:
+        bool damaged = false;
     public:
+
+        static bool allDamaged;
         XVisualInfo *xvi;
         Pixmap pixmap;
         Window id;
@@ -84,6 +89,10 @@ class __FireWindow {
         void recalcWorkspace();
         void regenVBOFromAttribs();
         Rect getRect();
+
+        void addDamage();
+        void remDamage();
+        bool getDamage();
 };
 
 typedef std::shared_ptr<__FireWindow> FireWindow;

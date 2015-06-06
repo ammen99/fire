@@ -53,6 +53,16 @@ bool Rect::operator&(const Point &other) const {
         return false;
 }
 
+Rect Rect::operator+(const Rect &other) const {
+    Rect r;
+    r.tlx = std::min(this->tlx, other.tlx);
+    r.tly = std::min(this->tly, other.tly);
+    r.brx = std::max(this->brx, other.brx);
+    r.bry = std::max(this->bry, other.bry);
+
+    return r;
+}
+
 std::ostream& operator<<(std::ostream &stream, const Rect& rect) {
 
     stream << "Debug rect\n";
@@ -64,6 +74,7 @@ std::ostream& operator<<(std::ostream &stream, const Rect& rect) {
 }
 
 Rect output;
+bool __FireWindow::allDamaged = false;
 
 bool __FireWindow::shouldBeDrawn() {
     if(norender)
@@ -80,7 +91,15 @@ bool __FireWindow::shouldBeDrawn() {
         return false;
     }
 
-    if(getRect() & output)
+    if(allDamaged) {
+
+        if(getRect() & output)
+            return true;
+        else
+            return false;
+    }
+
+    if(getRect() & core->dmg)
         return true;
     else
         return false;
@@ -102,6 +121,27 @@ Rect __FireWindow::getRect() {
     return Rect(this->attrib.x, this->attrib.y,
                 this->attrib.x + this->attrib.width,
                 this->attrib.y + this->attrib.height);
+}
+
+void __FireWindow::addDamage() {
+    //if(this->damaged)
+    //    return;
+
+    this->damaged = true;
+    //core->screenDmg++;
+    core->dmg = core->dmg + this->getRect();
+}
+
+void __FireWindow::remDamage() {
+    if(!this->damaged)
+        return;
+
+    this->damaged = false;
+    core->screenDmg--;
+}
+
+bool __FireWindow::getDamage() {
+    return this->damaged;
 }
 
 Atom winTypeAtom, winTypeDesktopAtom, winTypeDockAtom,
@@ -273,6 +313,7 @@ void finishWindow(FireWindow win) {
 void renderWindow(FireWindow win) {
     OpenGLWorker::opacity = 1;
     OpenGLWorker::color = win->transform.color;
+    win->remDamage();
 
     if(win->type == WindowTypeDesktop){
         OpenGLWorker::renderTransformedTexture(win->texture,
@@ -573,6 +614,7 @@ void syncWindowAttrib(FireWindow win) {
     glDeleteBuffers(1, &win->vbo);
     glDeleteVertexArrays(1, &win->vao);
     win->regenVBOFromAttribs();
+    win->addDamage();
 }
 }
 

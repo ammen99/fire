@@ -109,7 +109,18 @@ void OpenGLWorker::renderTransformedTexture(GLuint tex,
 
 
 void OpenGLWorker::preStage() {
-    glClear ( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+    GetTuple(sw, sh, core->getScreenSize());
+
+    int blx = core->dmg.tlx;
+    int bly = sh - core->dmg.bry;
+
+    if(!__FireWindow::allDamaged) // do not scissor if damaging everything
+        glScissor(blx, bly, core->dmg.brx - core->dmg.tlx,
+              core->dmg.bry - core->dmg.tly);
+    else
+        glScissor(0, 0, sw, sh);
+
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
 #define cout std::cout
@@ -178,6 +189,7 @@ void OpenGLWorker::initOpenGL(Core *core, const char *shaderSrcPath) {
     glDepthFunc  (GL_LESS);
     glViewport   (0, 0, sw, sh);
     glDisable    (GL_CULL_FACE);
+    glEnable     (GL_SCISSOR_TEST);
 
     std::string tmp = shaderSrcPath;
 
