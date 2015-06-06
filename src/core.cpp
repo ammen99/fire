@@ -514,9 +514,14 @@ void Core::handleEvent(XEvent xev){
                 XDamageNotifyEvent *x =
                     reinterpret_cast<XDamageNotifyEvent*> (&xev);
 
-                dmg = dmg + Rect(x->area.x, x->area.y,
-                        x->area.x + x->area.width,
-                        x->area.y + x->area.height);
+                auto w = findWindow(x->drawable);
+                if(!w)
+                    return;
+
+                dmg = dmg + Rect(x->area.x + w->attrib.x,
+                                 x->area.y + w->attrib.y,
+                                 x->area.x + w->attrib.x + x->area.width,
+                                 x->area.y + w->attrib.y + x->area.height);
             }
             break;
     }

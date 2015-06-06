@@ -109,11 +109,16 @@ void OpenGLWorker::renderTransformedTexture(GLuint tex,
 
 
 void OpenGLWorker::preStage() {
-    glScissor(core->dmg.tlx, core->dmg.tly,
-              core->dmg.brx - core->dmg.tlx,
+    GetTuple(sw, sh, core->getScreenSize());
+    sw = 0;
+
+    int blx = core->dmg.tlx;
+    int bly = sh - core->dmg.bry;
+
+    glScissor(blx, bly, core->dmg.brx - core->dmg.tlx,
               core->dmg.bry - core->dmg.tly);
 
-    glClear ( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
 #define cout std::cout
