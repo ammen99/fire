@@ -109,6 +109,7 @@ Core::Core() {
     WinUtil::init(this);
     GLXUtils::initGLX(this);
     OpenGLWorker::initOpenGL(this, "/home/ilex/work/cwork/fire/shaders");
+    resetDMG = true;
 
     core = this;
     addExistingWindows();
@@ -334,6 +335,7 @@ void Core::addWindow(XCreateWindowEvent xev) {
         wins->focusWindow(w);
 
     w->addDamage();
+    w->age = 100;
 }
 void Core::addWindow(Window id) {
     //err << "Adding windows" << std::endl;
@@ -386,7 +388,8 @@ void Core::renderAllWindows() {
     wins->renderWindows();
     GLXUtils::endFrame(outputwin);
     if(!__FireWindow::allDamaged) // do not clear damage
-        dmg = Rect(0, 0, 0, 0);
+        if(resetDMG)
+            dmg = Rect(0, 0, 0, 0);
 }
 
 void Core::wait(int timeout) {
@@ -445,6 +448,8 @@ void Core::handleEvent(XEvent xev){
             err << "MapRequest " << w->id << std::endl;
 
             w->norender = false;
+            w->age = InitialAge;
+            w->fading = false;
             WinUtil::syncWindowAttrib(w);
             auto parent = WinUtil::getAncestor(w);
             wins->restackTransients(parent);
@@ -462,6 +467,8 @@ void Core::handleEvent(XEvent xev){
             err << "win->id = " << w->id << std::endl;
 
             w->norender = false;
+            w->age = InitialAge;
+            w->fading = false;
             WinUtil::syncWindowAttrib(w);
             auto parent = WinUtil::getAncestor(w);
             wins->restackTransients(parent);
@@ -479,6 +486,8 @@ void Core::handleEvent(XEvent xev){
             w->norender = true;
             w->attrib.map_state = IsUnmapped;
             w->addDamage();
+            w->age = InitialAge;
+            w->fading = true;
             redraw = true;
             break;
         }
@@ -572,7 +581,7 @@ void Core::loop(){
         if(diff < currentCycle) {     // we have time to next redraw, wait
             wait(currentCycle - diff);// for events
 
-            if(fd.revents & POLLIN) { /* disable optimisation */
+            if(fd.revents & POLLIN || !resetDMG) { /* disable optimisation */
                 hadEvents = true;
                 currentCycle = baseCycle;
                 continue;
@@ -597,7 +606,7 @@ void Core::loop(){
                 currentCycle += 2000; // 1ms slower redraws
 
             /* optimisation when idle */
-            if(!cntHooks && !hadEvents && currentCycle < Second)
+            if(!cntHooks && !hadEvents && currentCycle < Second && resetDMG)
                 currentCycle *= 2;
 
             before = after;

@@ -7,6 +7,8 @@
 #include "plugin.hpp"
 #include <queue>
 
+#define InitialAge 50
+
 
 class WinStack;
 
@@ -98,6 +100,7 @@ class Core {
 
         bool redraw = true; // should we redraw?
         bool terminate = false; // should main loop exit?
+        bool resetDMG;
         int screenDmg = 1;
         Rect dmg;
 

@@ -67,9 +67,11 @@ class __FireWindow {
         Window id;
         GLuint texture; // image on screen
         int opacity;
+        int age;
 
         bool norender = false; // should we draw window?
         bool destroyed = false;
+        bool fading = false;
         int mapTryNum = 5; // how many times have we tried to map this window?
         Transform transform;
 

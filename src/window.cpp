@@ -1,5 +1,6 @@
 #include "../include/core.hpp"
 #include "../include/opengl.hpp"
+#include <X11/extensions/XTest.h>
 
 
 glm::mat4 Transform::proj;
@@ -77,10 +78,7 @@ Rect output;
 bool __FireWindow::allDamaged = false;
 
 bool __FireWindow::shouldBeDrawn() {
-    if(norender)
-        return false;
-
-    if(destroyed)
+    if(norender && !fading)
         return false;
 
     if(attrib.c_class == InputOnly)
@@ -197,14 +195,16 @@ int setWindowTexture(FireWindow win) {
         syncWindowAttrib(win);        // in order to get a
         XSync(core->d, 0);            // pixmap
     }
-    if(win->attrib.map_state != IsViewable) {
+    if(win->attrib.map_state != IsViewable && !win->fading) {
         err << "Invisible window";
         win->norender = true;
         XUngrabServer(core->d);
         return 0;
     }
 
-    auto pix = XCompositeNameWindowPixmap(core->d, win->id);
+    Pixmap pix = win->pixmap;
+    if(!win->fading)
+        pix = XCompositeNameWindowPixmap(core->d, win->id);
 
     if(win->pixmap == pix) {
         glBindTexture(GL_TEXTURE_2D, win->texture);
@@ -308,6 +308,16 @@ void finishWindow(FireWindow win) {
     err << "window deleted";
 }
 
+namespace {
+    void createFakeEvent() {
+        XEvent xev;
+        xev.type = Expose;
+        xev.xexpose.window = core->root;
+        XSendEvent(core->d, core->root, False, ExposureMask, &xev);
+        XFlush(core->d);
+    }
+}
+
 
 
 void renderWindow(FireWindow win) {
@@ -332,12 +342,45 @@ void renderWindow(FireWindow win) {
                 win->attrib.width, win->attrib.height,
                 win->vao, win->vbo);
 
-    win->opacity = readProp(win->id, winOpacityAtom, 0xffff);
+    if(win->age) {
+        if(win->fading)
+            win->opacity = float(0xffff) * float(win->age) / 100.f;
+        else
+            win->opacity = float(0xffff) * float(100 - win->age) / 100.f;
+
+        --win->age;
+
+        core->resetDMG = false;
+        core->dmg = core->dmg + win->getRect();
+        core->redraw = true;
+        //sendFakeSpace(); // force redrawing of screen
+        XserverRegion reg =
+            XFixesCreateRegionFromWindow(core->d, win->id,
+                    WindowRegionBounding);
+
+        if(!win->fading)
+            XDamageAdd(core->d, win->id, reg);
+        else
+            createFakeEvent();
+
+        if(!win->age) {
+            core->resetDMG = true,
+            win->fading = false;
+        }
+
+    } else {
+        if(!win->destroyed && !win->fading)
+            win->opacity = readProp(win->id, winOpacityAtom, 0xffff);
+    }
+
     OpenGLWorker::opacity = float(win->opacity) / float(0xffff);
     OpenGLWorker::depth = win->xvi->depth;
 
     OpenGLWorker::renderTransformedTexture(win->texture,
             win->vao, win->vbo, win->transform.compose());
+
+    if(win->destroyed && win->age == 0)
+        core->destroyWindow(win);
 
 }
 
