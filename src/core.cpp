@@ -167,10 +167,9 @@ void Core::addExistingWindows() {
 }
 Core::~Core(){
 
-<<<<<<< HEAD
     for(auto p : plugins)
         p.reset();
-=======
+
     int nx, ny;
     for(auto w : wins->wins) {
         nx = w->attrib.x % width;
@@ -181,19 +180,6 @@ Core::~Core(){
 
         WinUtil::moveWindow(w, nx, ny);
     }
-
-    delete move;
-    delete resize;
-    delete wsswitch;
-    delete expo;
-    delete focus;
-    delete exit;
-    delete runn;
-    delete clos;
-    delete at;
-    delete grid;
-    delete wins;
->>>>>>> master
 
     XDestroyWindow(core->d, outputwin);
     XDestroyWindow(core->d, s0owner);
@@ -565,11 +551,7 @@ void Core::loop(){
     XEvent xev;
 
     while(!terminate) {
-
-<<<<<<< HEAD
         /* handle current events */
-=======
->>>>>>> master
         while(XPending(d)) {
             XNextEvent(d, &xev);
             handleEvent(xev);
