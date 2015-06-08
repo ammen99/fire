@@ -134,7 +134,7 @@ class Core {
     public:
         ~Core();
         void loop();
-        Core();
+        Core(int vx, int vy); // initial viewport position
 
         void run(char *command);
         void renderAllWindows();

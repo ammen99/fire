@@ -8,7 +8,11 @@
 #include <execinfo.h>
 #include <cxxabi.h>
 
-char *restart; // should we restart our app
+/* shdata keeps all the shared memory between first process and fork()
+ * shdata[0] is a flag whether to restart or no
+ * shdata[1] and shdata[2] are initial viewport x and y */
+
+char *shdata;
 constexpr int shmkey = 1010101234;
 constexpr int shmsize = 8;
 int shmid;
@@ -23,7 +27,7 @@ class Refresh { // keybinding to restart window manager
             ref.mod = ControlMask | Mod1Mask;
             ref.action = [] (Context *ctx) {
                 core->terminate = true;
-                *restart = 1;
+                shdata[0] = 1;
             };
             core->addKey(&ref, true);
         }
@@ -116,13 +120,21 @@ void print_trace(int nSig) {
 void signalHandle(int sig) {
     switch(sig) {
         case SIGINT:                 // if interrupted, then
-            *restart = 0;         // make main loop exit
+            shdata[0] = 0;         // make main loop exit
             core->terminate = true;  // and make core exit
             break;
 
         default: // program crashed, so restart core
             err << "Crash Detected!!!!!!" << std::endl;
-            *restart = 1;
+            shdata[0] = 1;
+
+            // try to fully recover, i.e do not lose windows
+
+            GetTuple(vx, vy, core->getWorkspace());
+
+            shdata[1] = int(vx);
+            shdata[2] = int(vy);
+
             print_trace(SIGSEGV);
             break;
     }
@@ -133,8 +145,8 @@ void runOnce() { // simulates launching a new program
                  // get the shared memory from the main process
     shmid = shmget(shmkey, shmsize, 0666);
     auto dataid = shmat(shmid, 0, 0);
-    restart = (char*)dataid;
-    *restart = 0;
+    shdata = (char*)dataid;
+    shdata[0] = 0;
 
     signal(SIGINT, signalHandle);
     signal(SIGSEGV, signalHandle);
@@ -145,10 +157,15 @@ void runOnce() { // simulates launching a new program
     Transform::grot = Transform::gscl =
     Transform::gtrs = glm::mat4();
 
-    core = new Core();
+    core = new Core(shdata[1], shdata[2]);
     core->setBackground("/tarball/backgrounds/last.jpg");
     new Refresh();
     core->loop();
+
+    GetTuple(vx, vy, core->getWorkspace());
+
+    shdata[1] = int(vx);
+    shdata[2] = int(vy);
 }
 
 int main(int argc, const char **argv ) {
@@ -165,16 +182,17 @@ int main(int argc, const char **argv ) {
 
     shmid = shmget(shmkey, shmsize, 0666 | IPC_CREAT);
     auto dataid = shmat(shmid, 0, 0);
-    restart = (char*)dataid;
+    shdata = (char*)dataid;
 
     if(dataid == (void*)(-1)) {
         std::cout << "Failed to get shared memory, aborting..." << std::endl;
         std::exit(-1);
     }
-    *restart = 1;
+    shdata[0] = 1;
+    shdata[1] = shdata[2] = 0;
 
     int times = 0;
-    while(*restart) {
+    while(shdata[0]) {
         if(times++) // print a message if there has been crash
                     // but note that it could have just been a refresh
             std::cout << "Crash detected or just refresh" << std::endl;

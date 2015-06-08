@@ -232,6 +232,9 @@ void Expo::finalizeZoom() {
 
 void Expo::Toggle(Context *ctx) {
     using namespace std::placeholders;
+
+    std::cout << "Toggled Expo" << std::endl;
+
     if(!active) {
         active = !active;
 

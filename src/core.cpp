@@ -35,7 +35,7 @@ bool Hook::getState() {
     return this->active;
 }
 
-Core::Core() {
+Core::Core(int vx, int vy) {
 
     err.open("/home/ilex/work/cwork/fire/log2",
             std::ios::out | std::ios::trunc);
@@ -115,8 +115,9 @@ Core::Core() {
     addExistingWindows();
 
 
-    core->vwidth = core->vheight = 3;
-    core->vx = core->vy = 0;
+    vwidth = vheight = 3;
+    this->vx = vx;
+    this->vy = vy;
 
     for(auto p : plugins)
         p->init(this);
@@ -295,8 +296,8 @@ void Core::setBackground(const char *path) {
             backgrounds[i][j]->norender = false;
             backgrounds[i][j]->texture  = texture;
 
-            backgrounds[i][j]->attrib.x = j * width;
-            backgrounds[i][j]->attrib.y = i * height;
+            backgrounds[i][j]->attrib.x = (i - vx) * width;
+            backgrounds[i][j]->attrib.y = (j - vy) * height;
             backgrounds[i][j]->attrib.width  = width;
             backgrounds[i][j]->attrib.height = height;
 
@@ -345,6 +346,8 @@ void Core::addWindow(Window id) {
 void Core::destroyWindow(FireWindow win) {
     if(!win)
         return;
+
+    std::cout << "In destroyWindow" << std::endl;
 
     int cnt;
     Atom *atoms;
@@ -534,10 +537,15 @@ void Core::handleEvent(XEvent xev){
                 if(!w)
                     return;
 
-                dmg = dmg + Rect(x->area.x + w->attrib.x,
-                                 x->area.y + w->attrib.y,
-                                 x->area.x + w->attrib.x + x->area.width,
-                                 x->area.y + w->attrib.y + x->area.height);
+                auto damagedArea =
+                    Rect(x->area.x + w->attrib.x,
+                         x->area.y + w->attrib.y,
+                         x->area.x + w->attrib.x + x->area.width,
+                         x->area.y + w->attrib.y + x->area.height);
+
+                if(!__FireWindow::allDamaged)
+                    if(damagedArea & output)
+                    dmg = dmg + damagedArea;
             }
             break;
     }
@@ -591,8 +599,11 @@ void Core::loop(){
                         hook.second->action();
             }
 
-            if(redraw && dmg.brx - dmg.tlx != 0 && dmg.bry - dmg.tly != 0)
-                renderAllWindows(),
+            if(redraw ||
+                    ((dmg.brx - dmg.tlx != 0 &&  // if we have damage
+                      dmg.bry - dmg.tly != 0) ||
+                        __FireWindow::allDamaged)) // or we just redraw
+                renderAllWindows(),                // everything
                 redraw = false;
 
             /* optimisation when too slow,
