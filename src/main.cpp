@@ -5,6 +5,8 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 
+#include <execinfo.h>
+#include <cxxabi.h>
 
 char *restart; // should we restart our app
 constexpr int shmkey = 1010101234;
@@ -27,6 +29,89 @@ class Refresh { // keybinding to restart window manager
         }
 };
 #define Crash 101
+#define max_frames 100
+
+void print_trace(int nSig) {
+    std::cout << "stack trace:\n";
+
+    //storage array for stack trace address data
+    void* addrlist[max_frames+1];
+
+    // retrieve current stack addresses
+    int addrlen = backtrace(addrlist, sizeof(addrlist) / sizeof(void*));
+
+    if (addrlen == 0) {
+        std::cout << "  <empty, possibly corrupt>\n";
+        return;
+    }
+
+    //resolve addresses into strings containing "filename(function+address)",
+    //this array must be free()-ed
+    char** symbollist=backtrace_symbols(addrlist, addrlen);
+
+    //allocate string which will be filled with
+    //the demangled function name
+    size_t funcnamesize = 256;
+    char* funcname=(char*)malloc(funcnamesize);
+
+    //iterate over the returned symbol lines.skip the first, it is the
+    //address of this function.
+    for(int i = 1;i < addrlen; i++) {
+        char*begin_name=0,*begin_offset=0,*end_offset=0;
+
+        //findparenthesesand+addressoffsetsurroundingthemangledname:
+        //./module(function+0x15c)[0x8048a6d]
+        for(char* p = symbollist[i]; *p; ++p) {
+            if(*p == '(')
+                begin_name = p;
+            else if(*p == '+')
+                begin_offset = p;
+            else if(*p == ')' && begin_offset){
+                end_offset = p;
+                break;
+            }
+        }
+
+        if(begin_name && begin_offset && end_offset
+                &&begin_name < begin_offset)
+        {
+            *begin_name++ = '\0';
+            *begin_offset++ = '\0';
+            *end_offset = '\0';
+
+            //manglednameisnowin[begin_name,begin_offset)andcaller
+            //offsetin[begin_offset,end_offset).nowapply
+            //__cxa_demangle():
+
+            int status;
+            char*ret=abi::__cxa_demangle(begin_name,
+                    funcname,&funcnamesize,&status);
+            if(status==0){
+                funcname=ret;//usepossiblyrealloc()-edstring
+                printf("%s:%s+%s\n",
+                        symbollist[i],funcname,begin_offset);
+            }
+            else{
+                //demanglingfailed.OutputfunctionnameasaCfunctionwith
+                //noarguments.
+                printf("%s:%s()+%s\n",
+                        symbollist[i],begin_name,begin_offset);
+            }
+        }
+        else
+        {
+            //couldn'tparsetheline?printthewholeline.
+            printf("%s\n",symbollist[i]);
+        }
+    }
+
+    free(funcname);
+    free(symbollist);
+
+    exit(-1);
+}
+
+
 
 void signalHandle(int sig) {
     switch(sig) {
@@ -38,7 +123,7 @@ void signalHandle(int sig) {
         default: // program crashed, so restart core
             err << "Crash Detected!!!!!!" << std::endl;
             *restart = 1;
-            std::exit(0);
+            print_trace(SIGSEGV);
             break;
     }
 }

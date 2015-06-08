@@ -105,6 +105,7 @@ void ATSwitcher::Initiate() {
     GetTuple(sw, sh, core->getScreenSize());
     __FireWindow::allDamaged = true;
     core->dmg = Rect(0, 0, sw, sh);
+    core->resetDMG = false;
 
     render();
 }

@@ -330,13 +330,8 @@ void Core::addWindow(XCreateWindowEvent xev) {
     wins->addWindow(w);
     WinUtil::initWindow(w);
 
-    //err << "Created window with type " << w->type << std::endl;
     if(w->type != WindowTypeWidget)
         wins->focusWindow(w);
-
-    w->addDamage();
-    w->age = InitialAge;
-    w->fading = w->destroyed = false;
 }
 void Core::addWindow(Window id) {
     //err << "Adding windows" << std::endl;
@@ -379,8 +374,6 @@ void Core::destroyWindow(FireWindow win) {
     } else
         XKillClient ( d, win->id );
 
-    win->destroyed = true;
-    win->addDamage();
     wins->focusWindow(wins->getTopmostToplevel());
 }
 
@@ -395,6 +388,34 @@ void Core::renderAllWindows() {
 
 void Core::wait(int timeout) {
     poll(&fd, 1, timeout / 1000); // convert from usec to msec
+}
+
+void Core::mapWindow(FireWindow win) {
+    //if(win->attrib.map_state == IsViewable)
+    //    return;
+
+    win->norender = false;
+    win->age = InitialAge;
+    win->fading = win->destroyed = false;
+    win->attrib.map_state = IsViewable;
+    win->addDamage();
+
+    WinUtil::syncWindowAttrib(win);
+    auto parent = WinUtil::getAncestor(win);
+    wins->restackTransients(parent);
+
+    redraw = true;
+}
+
+void Core::unmapWindow(FireWindow win) {
+
+    win->attrib.map_state = IsUnmapped;
+    win->addDamage();
+
+    win->age = InitialAge;
+    win->fading = true;
+
+    redraw = true;
 }
 
 void Core::handleEvent(XEvent xev){
@@ -422,19 +443,14 @@ void Core::handleEvent(XEvent xev){
                 break;
 
             err << "CreateNotify " << xev.xcreatewindow.window << std::endl;
-            XMapWindow(core->d, xev.xcreatewindow.window);
-            XSync(core->d, 0);
             addWindow(xev.xcreatewindow);
-
-            redraw = true;
+            mapWindow(findWindow(xev.xcreatewindow.window));
             break;
         }
         case DestroyNotify: {
             auto w = wins->findWindow(xev.xdestroywindow.window);
             if ( w == nullptr )
                 break;
-
-            err << "Destroy Notify " << w->id << std::endl;
 
             wins->removeWindow(w);
             WinUtil::finishWindow(w);
@@ -447,14 +463,8 @@ void Core::handleEvent(XEvent xev){
                 break;
 
             err << "MapRequest " << w->id << std::endl;
+            mapWindow(w);
 
-            w->norender = false;
-            w->age = InitialAge;
-            w->fading = false;
-            WinUtil::syncWindowAttrib(w);
-            auto parent = WinUtil::getAncestor(w);
-            wins->restackTransients(parent);
-            redraw = true;
             break;
         }
         case MapNotify: {
@@ -465,16 +475,7 @@ void Core::handleEvent(XEvent xev){
             if(w == nullptr)
                 break;
 
-            err << "win->id = " << w->id << std::endl;
-
-            w->norender = false;
-            w->age = InitialAge;
-            w->fading = false;
-            WinUtil::syncWindowAttrib(w);
-            auto parent = WinUtil::getAncestor(w);
-            wins->restackTransients(parent);
-            w->attrib.map_state = IsViewable;
-            redraw = true;
+            mapWindow(w);
             break;
         }
         case UnmapNotify: {
@@ -483,13 +484,7 @@ void Core::handleEvent(XEvent xev){
             auto w = wins->findWindow(xev.xunmap.window);
             if(w == nullptr)
                 break;
-
-            w->norender = true;
-            w->attrib.map_state = IsUnmapped;
-            w->addDamage();
-            w->age = InitialAge;
-            w->fading = true;
-            redraw = true;
+            unmapWindow(w);
             break;
         }
 

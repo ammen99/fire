@@ -143,6 +143,8 @@ class Core {
         void addWindow(Window);
         void focusWindow(FireWindow win);
         void destroyWindow(FireWindow win);
+        void mapWindow(FireWindow win);
+        void unmapWindow(FireWindow win);
 
         FireWindow findWindow(Window win);
         FireWindow getActiveWindow();

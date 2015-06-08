@@ -95,15 +95,21 @@ void OpenGLWorker::renderTransformedTexture(GLuint tex,
     else
         MVP = Model;
 
+    std::cout << "Start renderTT" << std::endl;
+
     glUniformMatrix4fv(mvpID, 1, GL_FALSE, &MVP[0][0]);
     glUniform1f(opacityID, opacity);
     glUniform1i(depthID, depth);
     glUniform4fv(colorID, 1, &color[0]);
 
+    std::cout << "Rendering texture" << std::endl;
     renderTexture(tex, vao, vbo);
+    std::cout << std::endl;
 
     MVP = Proj * View;
     glUniformMatrix4fv(mvpID, 1, GL_FALSE, &MVP[0][0]);
+
+    std::cout << "End of renderTT" << std::endl;
 
 }
 

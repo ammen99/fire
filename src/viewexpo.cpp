@@ -42,15 +42,18 @@ void WSSwitch::beginSwitch() {
 
     __FireWindow::allDamaged = true;
     core->dmg = Rect(0, 0, sw, sh);
+    core->resetDMG = false;
     stepNum = 0;
 }
 
+#define MAXDIRS 6
 void WSSwitch::moveWorkspace(int ddx, int ddy) {
     if(!hook.getState())
         hook.enable(),
         dirs.push(std::make_tuple(ddx, ddy)),
         beginSwitch();
     else
+        if(dirs.size() < MAXDIRS)
         dirs.push(std::make_tuple(ddx, ddy));
 }
 
@@ -83,6 +86,7 @@ void WSSwitch::moveStep() {
         if(dirs.size() == 0) {
             hook.disable();
             __FireWindow::allDamaged = false;
+            core->resetDMG = true;
         }
         else
             beginSwitch();
@@ -246,6 +250,7 @@ void Expo::Toggle(Context *ctx) {
         GetTuple(sw, sh, core->getScreenSize());
         hook.enable();
         __FireWindow::allDamaged = true;
+        core->resetDMG = false;
         core->dmg = Rect(0, 0, sw, sh);
         stepNum = MAXSTEP;
         recalc();
@@ -310,6 +315,7 @@ void Expo::zoom() {
         if(!active) {
             output = Rect(0, 0, core->width, core->height);
             __FireWindow::allDamaged = false;
+            core->resetDMG = true;
             core->wins->findWindowAtCursorPosition = save;
         }
 
