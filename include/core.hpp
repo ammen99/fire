@@ -6,6 +6,7 @@
 #include "glx.hpp"
 #include "plugin.hpp"
 #include <queue>
+#include <unordered_set>
 
 #define InitialAge 50
 
@@ -27,6 +28,8 @@ struct Binding{
     bool active;
     BindingType type;
     uint mod;
+
+    Ownership owner = nullptr;
 
     std::function<void(Context*)> action;
 
@@ -59,7 +62,6 @@ class Expo;
 
 #define GetTuple(x,y,t) auto x = std::get<0>(t); \
                         auto y = std::get<1>(t)
-
 class Core {
 
     // used to enable proper work of move and resize when expo
@@ -81,6 +83,7 @@ class Core {
         std::unordered_map<uint, KeyBinding*> keys;
         std::unordered_map<uint, ButtonBinding*> buttons;
         std::unordered_map<uint, Hook*> hooks;
+        std::unordered_set<Ownership> owners;
 
         std::vector<PluginPtr> plugins;
         void initDefaultPlugins();
@@ -121,6 +124,13 @@ class Core {
 
         uint addHook(Hook*);
         void remHook(uint);
+
+        void regOwner(Ownership owner);
+        bool checkKey(KeyBinding *kb, XKeyEvent xkey);
+        bool checkButPress  (ButtonBinding *bb, XButtonEvent xb);
+        bool checkButRelease(ButtonBinding *bb, XButtonEvent xb);
+        bool activateOwner  (Ownership owner);
+        bool deactivateOwner(Ownership owner);
 
     private:
         void handleEvent(XEvent xev);

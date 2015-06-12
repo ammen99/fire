@@ -25,9 +25,33 @@
  */
 
 class Core;
+
+using Owner = std::string;
+/* owners are used to acquire screen grab and to add bindings */
+struct _Ownership {
+    Owner name;
+    /* list of plugins which we are compatible with */
+    std::unordered_set<Owner> compat;
+    bool active;
+    // if we are compatible with all plugins
+    bool compatAll = false;
+
+    // call these functions to (un)grab keyboard and mouse
+    void grab();
+    void ungrab();
+    bool grabbed;
+};
+
+using Ownership = std::shared_ptr<_Ownership>;
+
+
 class Plugin {
     public:
+
+        /* initOwnership() should set all values in own */
+        virtual void initOwnership();
         virtual void init(Core*) = 0;
+        Ownership owner;
 };
 
 using PluginPtr = std::shared_ptr<Plugin>;

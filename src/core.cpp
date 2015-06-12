@@ -52,7 +52,7 @@ Core::Core(int vx, int vy) {
         err << "Failed to open display!" << std::endl;
 
 
-    XSynchronize(d, 1);
+    //XSynchronize(d, 1);
     root = DefaultRootWindow(d);
     fd.fd = ConnectionNumber(d);
     fd.events = POLLIN;
@@ -421,6 +421,74 @@ void Core::unmapWindow(FireWindow win) {
     redraw = true;
 }
 
+bool Core::activateOwner(Ownership owner) {
+
+    if(owner->active)
+        return true;
+
+    for(auto o : owners)
+        if(o->active)
+            if(o->compat.find(owner->name) ==
+               o->compat.end() && !o->compatAll)
+                return false;
+
+    owner->active = true;
+    return true;
+}
+
+bool Core::deactivateOwner(Ownership owner) {
+    owner->active = false;
+    return true;
+}
+
+bool Core::checkKey(KeyBinding *kb, XKeyEvent xkey) {
+    if(!kb->active)
+        return false;
+
+    if(kb->key != xkey.keycode)
+        return false;
+
+    if(kb->mod != xkey.state)
+        return false;
+
+    if(activateOwner(kb->owner))
+        return true;
+    else
+        return false;
+}
+
+bool Core::checkButPress(ButtonBinding *bb, XButtonEvent xb) {
+    if(!bb->active)
+        return false;
+
+    if(bb->type != BindingTypePress)
+        return false;
+
+    if(!(bb->mod & xb.state) && !(bb->mod == NoMods && xb.state == 0))
+        return false;
+
+    if(bb->button != xb.button)
+        return false;
+
+    if(activateOwner(bb->owner))
+        return true;
+    else
+        return false;
+}
+
+bool Core::checkButRelease(ButtonBinding *bb, XButtonEvent kb) {
+    if(!bb->active)
+        return false;
+
+    if(bb->type != BindingTypeRelease)
+        return false;
+
+    if(activateOwner(bb->owner))
+        return true;
+    else
+        return false;
+}
+
 void Core::handleEvent(XEvent xev){
     switch(xev.type) {
         case Expose:
@@ -429,10 +497,8 @@ void Core::handleEvent(XEvent xev){
         case KeyPress: {
             // check keybindings
             for(auto kb : keys)
-                if(kb.second->key == xev.xkey.keycode &&
-                   kb.second->mod == xev.xkey.state)
-                if(kb.second->active)
-                    kb.second->action(new Context(xev));
+                if(checkKey(kb.second, xev.xkey))
+                   kb.second->action(new Context(xev));
 
             redraw = true;
             break;
@@ -496,12 +562,7 @@ void Core::handleEvent(XEvent xev){
             mousey = xev.xbutton.y_root;
 
             for(auto bb : buttons)
-                if(bb.second->active)
-                if(bb.second->type == BindingTypePress)
-                if((bb.second->mod & xev.xbutton.state) ||
-                   (bb.second->mod == NoMods            && // check if there
-                    xev.xbutton.state == 0))               // are no mods
-                if(bb.second->button == xev.xbutton.button) {// and we're
+                if(checkBut(bb.second, xev.xbutton, true)) {
                     bb.second->action(new Context(xev));
                     break;
                 }
