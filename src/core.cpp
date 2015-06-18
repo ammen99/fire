@@ -562,7 +562,7 @@ void Core::handleEvent(XEvent xev){
             mousey = xev.xbutton.y_root;
 
             for(auto bb : buttons)
-                if(checkBut(bb.second, xev.xbutton, true)) {
+                if(checkButPress(bb.second, xev.xbutton)) {
                     bb.second->action(new Context(xev));
                     break;
                 }
@@ -575,8 +575,7 @@ void Core::handleEvent(XEvent xev){
                             // activated => there is no need to check
                             // for buttons
             for(auto bb : this->buttons)
-                if(bb.second->type == BindingTypeRelease)
-                if(bb.second->active)
+                if(checkButRelease(bb.second, xev.xbutton))
                     bb.second->action(new Context(xev));
 
             XAllowEvents(d, ReplayPointer, xev.xbutton.time);
