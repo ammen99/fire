@@ -146,7 +146,6 @@ void WinStack::updateTransientsAttrib(FireWindow win,
 }
 
 void WinStack::focusWindow(FireWindow win) {
-    std::cout << "Focus begin" << std::endl;
     if(win == nullptr)
         return;
 
@@ -159,13 +158,9 @@ void WinStack::focusWindow(FireWindow win) {
     if(!win->shouldBeDrawn())
         return;
 
-    std::cout << "passed basic chekcs" << std::endl;
-
     if(win->type == WindowTypeWidget && wins.size())
         restackAbove(win, (*wins.begin())),
         win = WinUtil::getAncestor(win);
-
-    std::cout << "fast am ende  " << (win->type == WindowTypeModal) << std::endl;
 
     if(win->type == WindowTypeModal) {
         restackAbove(win, win->transientFor);
@@ -173,8 +168,6 @@ void WinStack::focusWindow(FireWindow win) {
         activeWin = win;
         return;
     }
-
-    std::cout << "Escaped ifs" << std::endl;
 
     activeWin = win;
 

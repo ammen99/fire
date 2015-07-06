@@ -308,25 +308,18 @@ void finishWindow(FireWindow win) {
         glDeleteVertexArrays(1, &win->vao);
 
     XDamageDestroy(core->d, win->damage);
-
-    err << "window deleted";
 }
 
 void renderWindow(FireWindow win) {
 
-    std::cout << "In render Window" << std::endl;
     OpenGLWorker::opacity = 1;
     OpenGLWorker::color = win->transform.color;
     win->remDamage();
 
-    std::cout << "DID IT" << std::endl;
-
     if(win->type == WindowTypeDesktop){
-        std::cout << "Renderign a desktop win" << std::endl;
         OpenGLWorker::renderTransformedTexture(win->texture,
                 win->vao, win->vbo,
                 win->transform.compose());
-        std::cout << "Trying to exit, but failing" << std::endl;
         return;
     }
 
@@ -335,26 +328,19 @@ void renderWindow(FireWindow win) {
         return;
     }
 
-    std::cout << "SetWinText" << std::endl;
-
     if(win->vbo == -1 || win->vao == -1)
         OpenGLWorker::generateVAOVBO(win->attrib.x, win->attrib.y,
                 win->attrib.width, win->attrib.height,
                 win->vao, win->vbo);
 
-
-    std::cout << "Nun hier" << std::endl;
-
     OpenGLWorker::opacity = float(win->opacity) / float(0xffff);
-    std::cout << "opacity set" << std::endl;
+
     if(!win->xvi)
         win->xvi = getVisualInfoForWindow(win->id);
     OpenGLWorker::depth = win->xvi->depth;
-    std::cout << "Std" << std::endl;
+
     OpenGLWorker::renderTransformedTexture(win->texture,
             win->vao, win->vbo, win->transform.compose());
-
-    std::cout << "End Render Widnow" << std::endl;
 }
 
 XVisualInfo *getVisualInfoForWindow(Window win) {

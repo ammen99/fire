@@ -329,18 +329,12 @@ void Core::addWindow(XCreateWindowEvent xev) {
 
     w->xvi = nullptr;
     wins->addWindow(w);
-
-    std::cout << "Look, here we are" << std::endl;
     WinUtil::initWindow(w);
 
-    std::cout << "Focusing maybe" << std::endl;
     if(w->type != WindowTypeWidget)
         wins->focusWindow(w);
-
-    std::cout << "LALALLALLALALALALALAOALAJODJDJSOJOS" << std::endl;
 }
 void Core::addWindow(Window id) {
-    //err << "Adding windows" << std::endl;
     FireWindow w = std::make_shared<__FireWindow>();
 
     w->id = id;
@@ -351,8 +345,6 @@ void Core::addWindow(Window id) {
 void Core::closeWindow(FireWindow win) {
     if(!win)
         return;
-
-    std::cout << "In destroyWindow" << std::endl;
 
     int cnt;
     Atom *atoms;
@@ -389,9 +381,6 @@ void Core::renderAllWindows() {
     OpenGLWorker::preStage();
     wins->renderWindows();
     GLXUtils::endFrame(outputwin);
-    //if(!__FireWindow::allDamaged) // do not clear damage
-    //    if(resetDMG)
-    //        dmg = Rect(0, 0, 0, 0);
 }
 
 void Core::wait(int timeout) {
@@ -399,21 +388,14 @@ void Core::wait(int timeout) {
 }
 
 void Core::mapWindow(FireWindow win) {
-    //if(win->attrib.map_state == IsViewable)
-    //    return;
-
     win->norender = false;
-//    win->age = InitialAge;
-//    win->fading = win->destroyed = false;
     new AnimationHook(new Fade(win), this);
     win->attrib.map_state = IsViewable;
-    win->addDamage();
+    damageWindow(win);
 
     WinUtil::syncWindowAttrib(win);
     auto parent = WinUtil::getAncestor(win);
     wins->restackTransients(parent);
-
-    redraw = true;
 }
 
 void Core::unmapWindow(FireWindow win) {
@@ -446,11 +428,8 @@ void Core::handleEvent(XEvent xev){
             if(xev.xcreatewindow.window == outputwin)
                 break;
 
-            std::cout << "CreateNotify " << xev.xcreatewindow.window << std::endl;
             addWindow(xev.xcreatewindow);
-            std::cout << "Added window" << std::endl;
             mapWindow(findWindow(xev.xcreatewindow.window));
-            std::cout << "CreateNotify ed" << std::endl;
             break;
         }
         case DestroyNotify: {
@@ -465,7 +444,6 @@ void Core::handleEvent(XEvent xev){
 
             wins->removeWindow(w);
             WinUtil::finishWindow(w);
-            //new AnimationHook(new Fade(w, Fade::FadeOut, 60, true), this);
             redraw = true;
             break;
         }
@@ -473,16 +451,10 @@ void Core::handleEvent(XEvent xev){
             auto w = wins->findWindow(xev.xmaprequest.window);
             if(w == nullptr)
                 break;
-
-            err << "MapRequest " << w->id << std::endl;
             mapWindow(w);
-
             break;
         }
         case MapNotify: {
-
-            err << "MapNotify" << std::endl;
-
             auto w = wins->findWindow(xev.xmap.window);
             if(w == nullptr)
                 break;
@@ -491,8 +463,6 @@ void Core::handleEvent(XEvent xev){
             break;
         }
         case UnmapNotify: {
-            std::cout << "UnmapNotify" << std::endl;
-
             auto w = wins->findWindow(xev.xunmap.window);
             if(w == nullptr)
                 break;
@@ -514,8 +484,6 @@ void Core::handleEvent(XEvent xev){
                     bb.second->action(new Context(xev));
                     break;
                 }
-
-            std::cout << "Intercepted fajdskflasfasfadsfasdfadsfadsfasdfasfasdfasddsfasf" << std::endl;;
 
             XAllowEvents(d, ReplayPointer, xev.xbutton.time);
             break;

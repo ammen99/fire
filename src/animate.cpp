@@ -11,7 +11,6 @@ AnimationHook::AnimationHook(Animation *_anim, Core *c) {
 
 void AnimationHook::step() {
     if(!this->anim->Step()) {
-        std::cout << "Closing everything" << std::endl;
         delete this->anim;
         this->hook.disable();
        // delete this; // TODO: add deletion of used hooks
