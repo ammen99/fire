@@ -343,7 +343,7 @@ void Core::addWindow(Window id) {
     w->xvi = nullptr;
     wins->addWindow(w);
 }
-void Core::destroyWindow(FireWindow win) {
+void Core::closeWindow(FireWindow win) {
     if(!win)
         return;
 
@@ -384,9 +384,9 @@ void Core::renderAllWindows() {
     OpenGLWorker::preStage();
     wins->renderWindows();
     GLXUtils::endFrame(outputwin);
-    if(!__FireWindow::allDamaged) // do not clear damage
-        if(resetDMG)
-            dmg = Rect(0, 0, 0, 0);
+    //if(!__FireWindow::allDamaged) // do not clear damage
+    //    if(resetDMG)
+    //        dmg = Rect(0, 0, 0, 0);
 }
 
 void Core::wait(int timeout) {
@@ -398,8 +398,9 @@ void Core::mapWindow(FireWindow win) {
     //    return;
 
     win->norender = false;
-    win->age = InitialAge;
-    win->fading = win->destroyed = false;
+//    win->age = InitialAge;
+//    win->fading = win->destroyed = false;
+    new AnimationHook(new Fade(win), this);
     win->attrib.map_state = IsViewable;
     win->addDamage();
 
@@ -415,8 +416,9 @@ void Core::unmapWindow(FireWindow win) {
     win->attrib.map_state = IsUnmapped;
     win->addDamage();
 
-    win->age = InitialAge;
-    win->fading = true;
+    //win->age = InitialAge;
+    //win->fading = true;
+    new AnimationHook(new Fade(win, Fade::FadeOut), this);
 
     redraw = true;
 }
@@ -453,6 +455,9 @@ void Core::handleEvent(XEvent xev){
         case DestroyNotify: {
             auto w = wins->findWindow(xev.xdestroywindow.window);
             if ( w == nullptr )
+                break;
+
+            if(w->destroyed)
                 break;
 
             wins->removeWindow(w);
@@ -708,8 +713,27 @@ std::vector<FireWindow> Core::getWindowsOnViewport(std::tuple<int, int> vp) {
     return ret;
 }
 
+void Core::damageWindow(FireWindow win) {
+    XserverRegion reg =
+        XFixesCreateRegionFromWindow(core->d, win->id,
+                WindowRegionBounding);
+
+    XDamageAdd(core->d, win->id, reg);
+
+    XFixesDestroyRegion(core->d, reg);
+}
+
 void Core::focusWindow(FireWindow win) {
+    if(!win)
+        return;
+
+    damageWindow(win);
     wins->focusWindow(win);
+}
+
+void Core::removeWindow(FireWindow win) {
+    wins->removeWindow(win);
+    WinUtil::finishWindow(win);
 }
 
 FireWindow Core::getWindowAtPoint(Point p) {

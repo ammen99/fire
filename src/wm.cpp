@@ -37,9 +37,7 @@ void Close::init(Core *core) {
     close->key = XKeysymToKeycode(core->d, XK_F4);
     close->action = [core](Context *ctx) {
         auto w = core->getActiveWindow();
-        w->fading = true;
-        w->destroyed = true;
-        w->age = InitialAge;
+        new AnimationHook(new Fade(w, Fade::FadeOut, 60, true), core);
         //core->destroyWindow(core->getActiveWindow());
     };
     core->addKey(close, true);

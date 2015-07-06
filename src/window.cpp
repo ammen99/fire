@@ -310,18 +310,6 @@ void finishWindow(FireWindow win) {
     err << "window deleted";
 }
 
-namespace {
-    void createFakeEvent() {
-        XEvent xev;
-        xev.type = Expose;
-        xev.xexpose.window = core->root;
-        XSendEvent(core->d, core->root, False, ExposureMask, &xev);
-        XFlush(core->d);
-    }
-}
-
-
-
 void renderWindow(FireWindow win) {
 
     std::cout << "In render Window" << std::endl;
@@ -332,9 +320,11 @@ void renderWindow(FireWindow win) {
     std::cout << "DID IT" << std::endl;
 
     if(win->type == WindowTypeDesktop){
+        //std::cout << "Renderign a desktop win" << std::endl;
         OpenGLWorker::renderTransformedTexture(win->texture,
                 win->vao, win->vbo,
                 win->transform.compose());
+        //std::cout << "Trying to exit, but failing" << std::endl;
         return;
     }
 
@@ -351,45 +341,6 @@ void renderWindow(FireWindow win) {
                 win->vao, win->vbo);
 
 
-    std::cout << "Enter Age" << std::endl;
-    if(win->age) {
-
-        err << "A window is fading" << std::endl;
-        if(win->fading)
-            win->opacity = float(0xffff) * float(win->age) / 100.f;
-        else
-            win->opacity = float(0xffff) * float(100 - win->age) / 100.f;
-
-        --win->age;
-
-        core->resetDMG = false;
-        core->dmg = core->dmg + win->getRect();
-        core->redraw = true;
-
-        //sendFakeSpace(); // force redrawing of screen
-        XserverRegion reg =
-            XFixesCreateRegionFromWindow(core->d, win->id,
-                    WindowRegionBounding);
-
-        if(!win->fading)
-            XDamageAdd(core->d, win->id, reg);
-        else
-            createFakeEvent();
-
-        if(!win->age) {
-            core->resetDMG = true,
-            win->fading = false;
-        }
-
-    } else { 
-        win->opacity = 0;
-        if(!win->destroyed && !win->fading)
-            win->opacity = readProp(win->id, winOpacityAtom, 0xffff);
-        if(win->fading)
-            win->norender = true,
-            win->fading = false;
-    }
-
     std::cout << "Nun hier" << std::endl;
 
     OpenGLWorker::opacity = float(win->opacity) / float(0xffff);
@@ -400,11 +351,6 @@ void renderWindow(FireWindow win) {
     std::cout << "Std" << std::endl;
     OpenGLWorker::renderTransformedTexture(win->texture,
             win->vao, win->vbo, win->transform.compose());
-
-    std::cout << "FFFFFF" << std::endl;
-
-    if(win->destroyed && win->age == 0)
-        core->destroyWindow(win);
 
     std::cout << "End Render Widnow" << std::endl;
 }
