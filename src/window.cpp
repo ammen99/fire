@@ -78,8 +78,9 @@ Rect output;
 bool __FireWindow::allDamaged = false;
 
 bool __FireWindow::shouldBeDrawn() {
-    if(fading)
+    if(keepCount)
         return true;
+
     if(norender)
         return false;
 
@@ -197,7 +198,7 @@ int setWindowTexture(FireWindow win) {
         syncWindowAttrib(win);        // in order to get a
         XSync(core->d, 0);            // pixmap
     }
-    if(win->attrib.map_state != IsViewable && !win->fading) {
+    if(win->attrib.map_state != IsViewable && !win->keepCount) {
         err << "Invisible window";
         win->norender = true;
         XUngrabServer(core->d);
@@ -205,10 +206,11 @@ int setWindowTexture(FireWindow win) {
     }
 
     Pixmap pix = win->pixmap;
-    if(!win->fading)
+    if(!win->destroyed)
         pix = XCompositeNameWindowPixmap(core->d, win->id);
 
-    if(win->pixmap == pix) {
+    if(win->pixmap == pix ||
+            (win->keepCount && win->attrib.map_state != IsViewable)) {
         glBindTexture(GL_TEXTURE_2D, win->texture);
         XUngrabServer(core->d);
         return 1;
@@ -320,11 +322,11 @@ void renderWindow(FireWindow win) {
     std::cout << "DID IT" << std::endl;
 
     if(win->type == WindowTypeDesktop){
-        //std::cout << "Renderign a desktop win" << std::endl;
+        std::cout << "Renderign a desktop win" << std::endl;
         OpenGLWorker::renderTransformedTexture(win->texture,
                 win->vao, win->vbo,
                 win->transform.compose());
-        //std::cout << "Trying to exit, but failing" << std::endl;
+        std::cout << "Trying to exit, but failing" << std::endl;
         return;
     }
 

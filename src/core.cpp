@@ -329,10 +329,15 @@ void Core::addWindow(XCreateWindowEvent xev) {
 
     w->xvi = nullptr;
     wins->addWindow(w);
+
+    std::cout << "Look, here we are" << std::endl;
     WinUtil::initWindow(w);
 
+    std::cout << "Focusing maybe" << std::endl;
     if(w->type != WindowTypeWidget)
         wins->focusWindow(w);
+
+    std::cout << "LALALLALLALALALALALAOALAJODJDJSOJOS" << std::endl;
 }
 void Core::addWindow(Window id) {
     //err << "Adding windows" << std::endl;
@@ -412,15 +417,9 @@ void Core::mapWindow(FireWindow win) {
 }
 
 void Core::unmapWindow(FireWindow win) {
-
     win->attrib.map_state = IsUnmapped;
     win->addDamage();
-
-    //win->age = InitialAge;
-    //win->fading = true;
     new AnimationHook(new Fade(win, Fade::FadeOut), this);
-
-    redraw = true;
 }
 
 void Core::handleEvent(XEvent xev){
@@ -447,21 +446,26 @@ void Core::handleEvent(XEvent xev){
             if(xev.xcreatewindow.window == outputwin)
                 break;
 
-            err << "CreateNotify " << xev.xcreatewindow.window << std::endl;
+            std::cout << "CreateNotify " << xev.xcreatewindow.window << std::endl;
             addWindow(xev.xcreatewindow);
+            std::cout << "Added window" << std::endl;
             mapWindow(findWindow(xev.xcreatewindow.window));
+            std::cout << "CreateNotify ed" << std::endl;
             break;
         }
         case DestroyNotify: {
             auto w = wins->findWindow(xev.xdestroywindow.window);
-            if ( w == nullptr )
+            if(w == nullptr)
                 break;
 
-            if(w->destroyed)
+            if(w->destroyed) {
+                w->norender = true;
                 break;
+            }
 
             wins->removeWindow(w);
             WinUtil::finishWindow(w);
+            //new AnimationHook(new Fade(w, Fade::FadeOut, 60, true), this);
             redraw = true;
             break;
         }
@@ -510,6 +514,8 @@ void Core::handleEvent(XEvent xev){
                     bb.second->action(new Context(xev));
                     break;
                 }
+
+            std::cout << "Intercepted fajdskflasfasfadsfasdfadsfadsfasdfasfasdfasddsfasf" << std::endl;;
 
             XAllowEvents(d, ReplayPointer, xev.xbutton.time);
             break;
@@ -714,6 +720,12 @@ std::vector<FireWindow> Core::getWindowsOnViewport(std::tuple<int, int> vp) {
 }
 
 void Core::damageWindow(FireWindow win) {
+    if(!win)
+        return;
+
+    if(win->norender)
+        return;
+
     XserverRegion reg =
         XFixesCreateRegionFromWindow(core->d, win->id,
                 WindowRegionBounding);

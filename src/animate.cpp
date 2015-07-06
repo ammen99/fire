@@ -22,6 +22,7 @@ AnimationHook::~AnimationHook() {}
 
 Fade::Fade (FireWindow _win, Mode _mode, int _steps, bool _destroy) :
     win(_win), mode(_mode), maxstep(_steps), destroy(_destroy) {
+        win->keepCount++;
         if(mode == FadeIn)
             this->progress = 0,
             this->target = maxstep;
@@ -36,10 +37,12 @@ bool Fade::Step() {
     core->damageWindow(win);
 
     if(progress == target) {
+
+        win->keepCount--;
         if(mode == FadeOut && !destroy)
             win->norender = true;
 
-        if(mode == FadeOut && destroy) {
+        if(mode == FadeOut && destroy && !win->norender && !win->keepCount) {
             core->closeWindow(win);
             core->removeWindow(win);
         }
