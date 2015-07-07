@@ -502,8 +502,77 @@ void Core::handleEvent(XEvent xev){
             mousex = xev.xmotion.x_root;
             mousey = xev.xmotion.y_root;
             break;
-        case EnterNotify:
+
+        case ConfigureRequest: {
+            std::cout << "CofigureRequest " <<
+                xev.xconfigurerequest.window << std::endl;
+
+            auto w = findWindow(xev.xconfigurerequest.window);
+            if(!w) { // from compiz window manager
+                XWindowChanges xwc;
+                std::memset(&xwc, 0, sizeof(xwc));
+
+                auto xwcm = xev.xconfigurerequest.value_mask &
+                    (CWX | CWY | CWWidth | CWHeight | CWBorderWidth);
+
+                xwc.x        = xev.xconfigurerequest.x;
+                xwc.y        = xev.xconfigurerequest.y;
+                xwc.width        = xev.xconfigurerequest.width;
+                xwc.height       = xev.xconfigurerequest.height;
+                xwc.border_width = xev.xconfigurerequest.border_width;
+
+                XConfigureWindow (d, xev.xconfigurerequest.window,
+                        xwcm, &xwc);
+                break;
+            }
+
+            int width = w->attrib.width;
+            int height = w->attrib.height;
+            int x = w->attrib.x;
+            int y = w->attrib.y;
+
+            if(xev.xconfigurerequest.value_mask & CWWidth)
+                width = xev.xconfigurerequest.width;
+            if(xev.xconfigurerequest.value_mask & CWHeight)
+                height = xev.xconfigurerequest.height;
+            if(xev.xconfigurerequest.value_mask & CWX)
+                x = xev.xconfigurerequest.x;
+            if(xev.xconfigurerequest.value_mask & CWY)
+                y = xev.xconfigurerequest.y;
+
+            WinUtil::moveWindow(w, x, y);
+            WinUtil::resizeWindow(w, width, height);
+
+            if(xev.xconfigurerequest.value_mask & CWStackMode) {
+                if(xev.xconfigurerequest.above) {
+                    auto below = findWindow(xev.xconfigurerequest.above);
+                    if(below) {
+                        if(xev.xconfigurerequest.detail == Above)
+                            wins->restackAbove(w, below);
+                        else
+                            wins->restackAbove(below, w);
+                    }
+                }
+                else
+                    if(xev.xconfigurerequest.detail == Above)
+                        focusWindow(w);
+            }
+
+        }
+
+        case ConfigureNotify:
+            std::cout << "ConfigureNotify " <<
+                xev.xconfigure.window << std::endl;
             break;
+
+
+        case EnterNotify:       // we don't handle
+        case FocusIn:           // any of these
+        case CirculateRequest:
+        case CirculateNotify:
+        case MappingNotify:
+            break;
+
         default:
             if(xev.type == damage + XDamageNotify) {
                 redraw = true;
