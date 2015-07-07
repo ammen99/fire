@@ -84,7 +84,7 @@ struct Fade : public Animation {
     bool destroy;
 
     Fade(FireWindow _win, Mode _mode = FadeIn,
-            int _steps = 60, bool destroy = false);
+            int _steps = 30);
     bool Step();
 };
 

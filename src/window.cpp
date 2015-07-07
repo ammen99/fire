@@ -78,8 +78,11 @@ Rect output;
 bool __FireWindow::allDamaged = false;
 
 bool __FireWindow::shouldBeDrawn() {
+
     if(keepCount)
         return true;
+    else if(destroyed)
+        return false;
 
     if(norender)
         return false;

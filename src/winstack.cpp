@@ -72,7 +72,8 @@ void WinStack::removeWindow(FireWindow win) {
                 return w->id == win->id;
             });
 
-    wins.erase(x);
+    if(x != wins.end())
+        wins.erase(x);
 }
 
 StackIterator WinStack::getTopmostTransientPosition(FireWindow win) {

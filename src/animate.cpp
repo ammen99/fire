@@ -19,8 +19,8 @@ void AnimationHook::step() {
 
 AnimationHook::~AnimationHook() {}
 
-Fade::Fade (FireWindow _win, Mode _mode, int _steps, bool _destroy) :
-    win(_win), mode(_mode), maxstep(_steps), destroy(_destroy) {
+Fade::Fade (FireWindow _win, Mode _mode, int _steps) :
+    win(_win), mode(_mode), maxstep(_steps) {
         win->keepCount++;
         if(mode == FadeIn)
             this->progress = 0,
@@ -38,13 +38,12 @@ bool Fade::Step() {
     if(progress == target) {
 
         win->keepCount--;
-        if(mode == FadeOut && !destroy)
+        if(mode == FadeOut)      // just unmap
             win->norender = true;
 
-        if(mode == FadeOut && destroy && !win->norender && !win->keepCount) {
-            core->closeWindow(win);
+        if(mode == FadeOut && win->destroyed) // window is closed
             core->removeWindow(win);
-        }
+
         return false;
     }
     return true;

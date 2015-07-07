@@ -328,6 +328,9 @@ void Core::addWindow(XCreateWindowEvent xev) {
         w->transientFor = findWindow(xev.parent);
 
     w->xvi = nullptr;
+    //w->destroyed = false;
+    w->keepCount = 0;
+
     wins->addWindow(w);
     WinUtil::initWindow(w);
 
@@ -400,7 +403,6 @@ void Core::mapWindow(FireWindow win) {
 
 void Core::unmapWindow(FireWindow win) {
     win->attrib.map_state = IsUnmapped;
-    win->addDamage();
     new AnimationHook(new Fade(win, Fade::FadeOut), this);
 }
 
@@ -428,6 +430,12 @@ void Core::handleEvent(XEvent xev){
             if(xev.xcreatewindow.window == outputwin)
                 break;
 
+            auto it = findWindow(xev.xcreatewindow.window);
+            if(it != nullptr) {
+                WinUtil::finishWindow(it);
+                wins->removeWindow(it);
+            }
+
             addWindow(xev.xcreatewindow);
             mapWindow(findWindow(xev.xcreatewindow.window));
             break;
@@ -437,14 +445,7 @@ void Core::handleEvent(XEvent xev){
             if(w == nullptr)
                 break;
 
-            if(w->destroyed) {
-                w->norender = true;
-                break;
-            }
-
-            wins->removeWindow(w);
-            WinUtil::finishWindow(w);
-            redraw = true;
+            w->destroyed = true;
             break;
         }
         case MapRequest: {
@@ -611,6 +612,7 @@ int Core::onXError(Display *d, XErrorEvent *xev) {
     if(xev->resourceid == 0) // invalid window
         return 0;
 
+    return 0;
     /* some of the calls to obtain a texture from this window
      * have failed, so don't draw it the next time */
 
@@ -618,7 +620,7 @@ int Core::onXError(Display *d, XErrorEvent *xev) {
        xev->error_code == BadDrawable ||
        xev->error_code == BadWindow   ){
 
-        err << "caught BadMatch/Drawable/Window. Disabling window drawing "
+       std::cout << "caught BadMatch/Drawable/Window. Disabling window drawing "
             << xev->resourceid;
 
         auto x = core->wins->findWindow(xev->resourceid);
@@ -628,13 +630,13 @@ int Core::onXError(Display *d, XErrorEvent *xev) {
         return 0;
     }
 
-    err << std::endl << "____________________________" << std::endl;
-    err << "XError code   " << int(xev->error_code) << std::endl;
+    std::cout << std::endl << "____________________________" << std::endl;
+    std::cout << "XError code   " << int(xev->error_code) << std::endl;
     char buf[512];
     XGetErrorText(d, xev->error_code, buf, 512);
-    err << "XError string " << buf << std::endl;
-    err << "ResourceID = " << xev->resourceid << std::endl;
-    err << "____________________________" << std::endl << std::endl;
+    std::cout << "XError string " << buf << std::endl;
+    std::cout << "ResourceID = " << xev->resourceid << std::endl;
+    std::cout << "____________________________" << std::endl << std::endl;
     return 0;
 }
 
@@ -712,8 +714,8 @@ void Core::focusWindow(FireWindow win) {
 }
 
 void Core::removeWindow(FireWindow win) {
-    wins->removeWindow(win);
     WinUtil::finishWindow(win);
+    wins->removeWindow(win);
 }
 
 FireWindow Core::getWindowAtPoint(Point p) {
