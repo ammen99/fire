@@ -245,6 +245,21 @@ int setWindowTexture(FireWindow win) {
 void initWindow(FireWindow win) {
 
     XGetWindowAttributes(core->d, win->id, &win->attrib);
+    XSizeHints hints;
+    long flags;
+    XGetWMNormalHints(core->d, win->id, &hints, &flags);
+
+    if(flags & USPosition)
+        win->attrib.x = hints.x,
+        win->attrib.y = hints.y;
+
+    if(flags & USSize)
+        win->attrib.width = hints.width,
+        win->attrib.height= hints.height;
+
+    else if(flags & PBaseSize)
+        win->attrib.width = hints.base_width,
+        win->attrib.height = hints.base_height;
 
     if(win->attrib.c_class != InputOnly)
         win->damage =

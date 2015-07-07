@@ -328,7 +328,6 @@ void Core::addWindow(XCreateWindowEvent xev) {
         w->transientFor = findWindow(xev.parent);
 
     w->xvi = nullptr;
-    //w->destroyed = false;
     w->keepCount = 0;
 
     wins->addWindow(w);
@@ -338,12 +337,10 @@ void Core::addWindow(XCreateWindowEvent xev) {
         wins->focusWindow(w);
 }
 void Core::addWindow(Window id) {
-    FireWindow w = std::make_shared<__FireWindow>();
-
-    w->id = id;
-    w->transientFor = nullptr;
-    w->xvi = nullptr;
-    wins->addWindow(w);
+    XCreateWindowEvent xev;
+    xev.window = id;
+    xev.parent = 0;
+    addWindow(xev);
 }
 void Core::closeWindow(FireWindow win) {
     if(!win)
