@@ -279,8 +279,9 @@ void initWindow(FireWindow win) {
             ButtonPressMask | ButtonReleaseMask | Button1MotionMask,
             GrabModeSync, GrabModeSync, None, None );
 
-    win->opacity = readProp(win->id, winOpacityAtom, 0xffff);
     win->transform.color = glm::vec4(1., 1., 1., 1.);
+    win->transform.color[3] = readProp(win->id,
+            winOpacityAtom, 0xffff) / 0xffff;
 }
 
 #define uchar unsigned char
@@ -330,7 +331,6 @@ void finishWindow(FireWindow win) {
 
 void renderWindow(FireWindow win) {
 
-    OpenGLWorker::opacity = 1;
     OpenGLWorker::color = win->transform.color;
     win->remDamage();
 
@@ -350,8 +350,6 @@ void renderWindow(FireWindow win) {
         OpenGLWorker::generateVAOVBO(win->attrib.x, win->attrib.y,
                 win->attrib.width, win->attrib.height,
                 win->vao, win->vbo);
-
-    OpenGLWorker::opacity = float(win->opacity) / float(0xffff);
 
     if(!win->xvi)
         win->xvi = getVisualInfoForWindow(win->id);

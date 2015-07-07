@@ -6,7 +6,6 @@ GLuint OpenGLWorker::program;
 GLuint OpenGLWorker::mvpID;
 GLuint OpenGLWorker::transformID;
 GLuint OpenGLWorker::normalID;
-GLuint OpenGLWorker::opacityID;
 GLuint OpenGLWorker::depthID;
 GLuint OpenGLWorker::colorID;
 
@@ -15,7 +14,6 @@ glm::mat4 OpenGLWorker::View;
 glm::mat4 OpenGLWorker::Proj;
 glm::mat3 OpenGLWorker::NM;
 
-float OpenGLWorker::opacity;
 int   OpenGLWorker::depth;
 glm::vec4 OpenGLWorker::color;
 
@@ -96,7 +94,6 @@ void OpenGLWorker::renderTransformedTexture(GLuint tex,
         MVP = Model;
 
     glUniformMatrix4fv(mvpID, 1, GL_FALSE, &MVP[0][0]);
-    glUniform1f(opacityID, opacity);
     glUniform1i(depthID, depth);
     glUniform4fv(colorID, 1, &color[0]);
 
@@ -239,7 +236,6 @@ void OpenGLWorker::initOpenGL(Core *core, const char *shaderSrcPath) {
 
     mvpID = glGetUniformLocation(program, "MVP");
     normalID = glGetUniformLocation(program, "NormalMatrix");
-    opacityID = glGetUniformLocation(program, "opacity");
     depthID = glGetUniformLocation(program, "depth");
     colorID = glGetUniformLocation(program, "color");
     color = glm::vec4(1.f, 1.f, 1.f, 1.f);

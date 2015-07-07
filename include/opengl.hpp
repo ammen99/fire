@@ -6,14 +6,13 @@ class OpenGLWorker {
     private:
         static GLuint program;
         static GLuint mvpID, transformID, normalID;
-        static GLuint opacityID, depthID, colorID;
+        static GLuint depthID, colorID;
         static glm::mat4 View;
         static glm::mat4 Proj;
         static glm::mat4 MVP;
         static glm::mat3 NM;
     public:
         static bool      transformed;
-        static float     opacity;
         static int       depth;
         static glm::vec4 color;
 

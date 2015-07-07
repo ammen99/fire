@@ -66,7 +66,6 @@ class __FireWindow {
         Pixmap pixmap;
         Window id;
         GLuint texture; // image on screen
-        int opacity;
 
         bool norender = false; // should we draw window?
         bool destroyed = false; // is window dead?
