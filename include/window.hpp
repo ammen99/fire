@@ -90,9 +90,9 @@ class __FireWindow {
         void regenVBOFromAttribs();
         Rect getRect();
 
-        void addDamage();
-        void remDamage();
-        bool getDamage();
+//        void addDamage();
+//        void remDamage();
+//        bool getDamage();
 };
 
 typedef std::shared_ptr<__FireWindow> FireWindow;

@@ -70,8 +70,7 @@ void Move::Terminate(Context *ctx) {
     WinUtil::moveWindow(win, nx, ny);
     XUngrabPointer(core->d, CurrentTime);
     core->focusWindow(win);
-
-    win->addDamage();
+    core->damageWindow(win);
     core->dmg = core->dmg + prev;
 
     core->redraw = true;
@@ -177,7 +176,7 @@ void Resize::Terminate(Context *ctx) {
     XUngrabPointer(core->d, CurrentTime);
     core->focusWindow(win);
 
-    win->addDamage();
+    core->damageWindow(win);
     core->dmg = core->dmg + prev;
     core->redraw = true;
 }

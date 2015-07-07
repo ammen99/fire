@@ -103,10 +103,11 @@ bool __FireWindow::shouldBeDrawn() {
             return false;
     }
 
-    if(getRect() & core->dmg)
-        return true;
-    else
-        return false;
+    return true;
+//    if(getRect() & core->dmg)
+//        return true;
+//    else
+//        return false;
 }
 
 void __FireWindow::regenVBOFromAttribs() {
@@ -126,27 +127,27 @@ Rect __FireWindow::getRect() {
                 this->attrib.x + this->attrib.width,
                 this->attrib.y + this->attrib.height);
 }
-
-void __FireWindow::addDamage() {
-    //if(this->damaged)
-    //    return;
-
-    this->damaged = true;
-    //core->screenDmg++;
-    core->dmg = core->dmg + this->getRect();
-}
-
-void __FireWindow::remDamage() {
-    if(!this->damaged)
-        return;
-
-    this->damaged = false;
-    core->screenDmg--;
-}
-
-bool __FireWindow::getDamage() {
-    return this->damaged;
-}
+//
+//void __FireWindow::addDamage() {
+//    //if(this->damaged)
+//    //    return;
+//
+//    this->damaged = true;
+//    //core->screenDmg++;
+//    core->dmg = core->dmg + this->getRect();
+//}
+//
+//void __FireWindow::remDamage() {
+//    if(!this->damaged)
+//        return;
+//
+//    this->damaged = false;
+//    core->screenDmg--;
+//}
+//
+//bool __FireWindow::getDamage() {
+//    return this->damaged;
+//}
 
 Atom winTypeAtom, winTypeDesktopAtom, winTypeDockAtom,
      winTypeToolbarAtom, winTypeMenuAtom, winTypeUtilAtom,
@@ -332,7 +333,7 @@ void finishWindow(FireWindow win) {
 void renderWindow(FireWindow win) {
 
     OpenGLWorker::color = win->transform.color;
-    win->remDamage();
+    //win->remDamage();
 
     if(win->type == WindowTypeDesktop){
         OpenGLWorker::renderTransformedTexture(win->texture,
@@ -641,7 +642,8 @@ void syncWindowAttrib(FireWindow win) {
     glDeleteBuffers(1, &win->vbo);
     glDeleteVertexArrays(1, &win->vao);
     win->regenVBOFromAttribs();
-    win->addDamage();
+    //win->addDamage();
+    core->damageWindow(win);
 }
 }
 

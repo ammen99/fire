@@ -504,9 +504,6 @@ void Core::handleEvent(XEvent xev){
             break;
 
         case ConfigureRequest: {
-            std::cout << "CofigureRequest " <<
-                xev.xconfigurerequest.window << std::endl;
-
             auto w = findWindow(xev.xconfigurerequest.window);
             if(!w) { // from compiz window manager
                 XWindowChanges xwc;
@@ -561,11 +558,6 @@ void Core::handleEvent(XEvent xev){
         }
 
         case ConfigureNotify:
-            std::cout << "ConfigureNotify " <<
-                xev.xconfigure.window << std::endl;
-            break;
-
-
         case EnterNotify:       // we don't handle
         case FocusIn:           // any of these
         case CirculateRequest:
