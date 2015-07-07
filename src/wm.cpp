@@ -22,7 +22,7 @@ void Exit::init(Core *core) {
     };
 
     exit->active = true;
-    exit->mod = ControlMask;
+    exit->mod = ControlMask | Mod1Mask;
     exit->type = BindingTypePress;
     exit->key = XKeysymToKeycode(core->d, XK_q);
 
