@@ -413,7 +413,10 @@ void Core::renderAllWindows() {
         << dmg->rects[0].y1 << " " << dmg->rects[0].x2
         << " " << dmg->rects[0].y2 << std::endl;;
 
+    std::cout << "Rendering windos # " << wins->getNumOfWindows() << std::endl;
+
     XIntersectRegion(dmg, output, dmg);
+    //dmg = getMaximisedRegion();
     OpenGLWorker::preStage();
     wins->renderWindows();
     GLXUtils::endFrame(outputwin);
