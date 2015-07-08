@@ -378,31 +378,34 @@ void Core::closeWindow(FireWindow win) {
 
     int cnt;
     Atom *atoms;
-    XGetWMProtocols(d, win->id, &atoms, &cnt);
+    auto status = XGetWMProtocols(d, win->id, &atoms, &cnt);
     Atom wmdelete = XInternAtom(d, "WM_DELETE_WINDOW", 0);
     Atom wmproto  = XInternAtom(d, "WM_PROTOCOLS", 0);
 
-    bool send = false; // should we send a wm_delete_window?
-    for(int i = 0; i < cnt; i++)
-        if(atoms[i] == wmdelete)
-            send = true;
+    if(status != 0) {
+        bool send = false; // should we send a wm_delete_window?
+        for(int i = 0; i < cnt; i++)
+            if(atoms[i] == wmdelete)
+                send = true;
 
-    if ( send ) {
-        XEvent xev;
+        if ( send ) {
+            XEvent xev;
 
-        xev.type         = ClientMessage;
-        xev.xclient.window       = win->id;
-        xev.xclient.message_type = wmproto;
-        xev.xclient.format       = 32;
-        xev.xclient.data.l[0]    = wmdelete;
-        xev.xclient.data.l[1]    = CurrentTime;
-        xev.xclient.data.l[2]    = 0;
-        xev.xclient.data.l[3]    = 0;
-        xev.xclient.data.l[4]    = 0;
+            xev.type         = ClientMessage;
+            xev.xclient.window       = win->id;
+            xev.xclient.message_type = wmproto;
+            xev.xclient.format       = 32;
+            xev.xclient.data.l[0]    = wmdelete;
+            xev.xclient.data.l[1]    = CurrentTime;
+            xev.xclient.data.l[2]    = 0;
+            xev.xclient.data.l[3]    = 0;
+            xev.xclient.data.l[4]    = 0;
 
-        XSendEvent ( d, win->id, FALSE, NoEventMask, &xev );
+            XSendEvent ( d, win->id, FALSE, NoEventMask, &xev );
+        } else
+            XKillClient ( d, win->id );
     } else
-        XKillClient ( d, win->id );
+        XKillClient(d, win->id);
 
     wins->focusWindow(wins->getTopmostToplevel());
 }
