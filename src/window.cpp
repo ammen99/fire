@@ -42,6 +42,8 @@ glm::mat4 Transform::compose() {
     float c = -1;
     if(OpenGLWorker::transformed)
         c = 1;
+
+    c = 1;
     auto trans =
         glm::translate(translation,
                 glm::vec3(0.f, 0.f, c * stackID * 1e-2));
@@ -54,7 +56,6 @@ Region output;
 bool __FireWindow::allDamaged = false;
 
 bool __FireWindow::shouldBeDrawn() {
-
     if(keepCount)
         return true;
     else if(destroyed)

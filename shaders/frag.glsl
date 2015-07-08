@@ -1,4 +1,4 @@
-#version 440
+#version 330
 
 in vec2 uvpos;
 out vec4 outColor;
@@ -10,7 +10,7 @@ uniform vec4      color;
 
 void main() {
     if(depth == 32)
-        outColor = texture(smp, guv) * color;
+        outColor = texture(smp, uvpos) * color;
     else
-        outColor = vec4(texture(smp, guv).xyz, 1) * color;
+        outColor = vec4(texture(smp, uvpos).xyz, 1) * color;
 }

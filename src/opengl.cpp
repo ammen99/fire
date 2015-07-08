@@ -170,10 +170,10 @@ void errorHandler(GLenum src, GLenum type,
 
 
 void OpenGLWorker::initOpenGL(Core *core, const char *shaderSrcPath) {
-
-    glEnable(GL_DEBUG_OUTPUT);
-    glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-    glDebugMessageCallback(errorHandler, (void*)0);
+//
+//    glEnable(GL_DEBUG_OUTPUT);
+//    glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+//    glDebugMessageCallback(errorHandler, (void*)0);
     //
     GetTuple(sw, sh, core->getScreenSize());
 
