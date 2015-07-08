@@ -312,25 +312,42 @@ void renderWindow(FireWindow win) {
         OpenGLWorker::renderTransformedTexture(win->texture,
                 win->vao, win->vbo,
                 win->transform.compose());
+
+        std::cout << "drawn desktop" << std::endl;
         return;
     }
 
+    std::cout << "setting window texture" << std::endl;
     if(!setWindowTexture(win)) {
         err <<"failed to paint window " << win->id << " (no texture avail)";
         return;
     }
 
-    if(win->vbo == -1 || win->vao == -1)
-        OpenGLWorker::generateVAOVBO(win->attrib.x, win->attrib.y,
-                win->attrib.width, win->attrib.height,
-                win->vao, win->vbo);
+    std::cout << "set texture" << std::endl;
 
-    if(!win->xvi)
+    if(win->vbo == -1 || win->vao == -1)
+        win->updateVBO();
+
+    std::cout << "looking for visual info" << std::endl;
+    if(!win->xvi) {
+        std::cout << "no visual info, trying to get new one" << std::endl;
         win->xvi = getVisualInfoForWindow(win->id);
+        if(!win->xvi) {
+        if(win->type == WindowTypeDesktop) {
+            std::cout << "problem is a desktop window" << std::endl;
+        }
+        std::cout << "fail " << win->id << std::endl;
+        return;
+        }
+        std::cout << "got new" << std::endl;
+    }
     OpenGLWorker::depth = win->xvi->depth;
 
+    std::cout << "rendering" << std::endl;
     OpenGLWorker::renderTransformedTexture(win->texture,
             win->vao, win->vbo, win->transform.compose());
+
+    std::cout << "rendered window" << std::endl;
 }
 
 XVisualInfo *getVisualInfoForWindow(Window win) {
@@ -346,7 +363,7 @@ XVisualInfo *getVisualInfoForWindow(Window win) {
 
     int dumm;
     xvi = XGetVisualInfo(core->d, VisualIDMask, &dummy, &dumm);
-    if(dumm == 0)
+    if(dumm == 0 || !xvi)
         err << "Cannot get default visual!\n";
     return xvi;
 }

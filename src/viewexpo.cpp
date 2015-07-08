@@ -246,7 +246,7 @@ void Expo::Toggle(Context *ctx) {
 
         save = core->wins->findWindowAtCursorPosition;
         core->wins->findWindowAtCursorPosition =
-            std::bind(std::mem_fn(&Expo::findWindow), this, _1, _1);
+            std::bind(std::mem_fn(&Expo::findWindow), this, _1, _2);
 
         hook.enable();
         __FireWindow::allDamaged = true;
