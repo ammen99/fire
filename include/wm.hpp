@@ -44,7 +44,7 @@ class WindowOperation : public Plugin {
     protected:
         int sx, sy; // starting pointer x, y
         FireWindow win; // window we're operating on
-        Rect prev;
+        Region prevRegion;
 
     protected:
         ButtonBinding press;
@@ -112,11 +112,11 @@ class Expo : public Plugin {
 
         Hook hook;
         bool active;
-        std::function<FireWindow(Point)> save; // used to restore
+        std::function<FireWindow(int, int)> save; // used to restore
 
         void handleKey(Context *ctx);
         void Toggle(Context *ctx);
-        FireWindow findWindow(Point p);
+        FireWindow findWindow(int x, int y);
         void buttonRelease(Context *ctx);
         void buttonPress(Context *ctx);
         void recalc();

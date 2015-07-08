@@ -84,7 +84,7 @@ struct Fade : public Animation {
     bool destroy;
 
     Fade(FireWindow _win, Mode _mode = FadeIn,
-            int _steps = 30);
+            int durationms = 1000);
     bool Step();
 };
 
@@ -93,8 +93,6 @@ class Expo;
 
 #define GetTuple(x,y,t) auto x = std::get<0>(t); \
                         auto y = std::get<1>(t)
-
-// the _lazyfox is used for optimisations, see usage of this macro
 
 class Core {
 
@@ -137,8 +135,7 @@ class Core {
         bool redraw = true; // should we redraw?
         bool terminate = false; // should main loop exit?
         bool resetDMG;
-        int screenDmg = 1;
-        Rect dmg;
+        Region dmg;
         float scaleX = 1, scaleY = 1; // used for operations which
                               // depend on mouse moving
                               // for ex. when using expo
@@ -182,11 +179,15 @@ class Core {
         void mapWindow(FireWindow win);
         void unmapWindow(FireWindow win);
         void damageWindow(FireWindow win);
+        int getRefreshRate();
 
 
         FireWindow findWindow(Window win);
         FireWindow getActiveWindow();
-        FireWindow getWindowAtPoint(Point p);
+        FireWindow getWindowAtPoint(int x, int y);
+
+        Region getMaximisedRegion();
+        Region getRegionFromRect(int tlx, int tly, int brx, int bry);
 
         std::vector<FireWindow> getWindowsOnViewport(std::tuple<int, int>);
         void switchWorkspace(std::tuple<int, int>);

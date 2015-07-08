@@ -53,7 +53,7 @@ void Focus::init(Core *core) {
     focus.action = [core] (Context *ctx){
         auto xev = ctx->xev.xbutton;
         auto w =
-            core->getWindowAtPoint(Point(xev.x_root, xev.y_root));
+            core->getWindowAtPoint(xev.x_root, xev.y_root);
 
         if(w)
             core->focusWindow(w);

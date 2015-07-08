@@ -120,6 +120,7 @@ void print_trace(int nSig) {
 void signalHandle(int sig) {
     switch(sig) {
         case SIGINT:                 // if interrupted, then
+            std::cout << "EXITING BECAUSE OF SIGINT" << std::endl;
             shdata[0] = 0;         // make main loop exit
             core->terminate = true;  // and make core exit
             break;
@@ -175,7 +176,6 @@ int main(int argc, const char **argv ) {
     signal(SIGFPE, signalHandle);
     signal(SIGILL, signalHandle);
 
-
     /* get a bit of shared memory
      * it is used to check if fork() wants us to exit
      * or just to reload(in case of crash for ex.) */
@@ -208,4 +208,6 @@ int main(int argc, const char **argv ) {
 
     shmdt(dataid);
     shmctl(shmid, IPC_RMID, NULL);
+
+    std::cout << "Gracefully exiting" << std::endl;
 }

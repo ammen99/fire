@@ -106,12 +106,14 @@ void OpenGLWorker::renderTransformedTexture(GLuint tex,
 void OpenGLWorker::preStage() {
     GetTuple(sw, sh, core->getScreenSize());
 
-    int blx = core->dmg.tlx;
-    int bly = sh - core->dmg.bry;
+    XRectangle rect;
+    XClipBox(core->dmg, &rect);
+
+    int blx = rect.x;
+    int bly = sh - (rect.y + rect.height);
 
     if(!__FireWindow::allDamaged) // do not scissor if damaging everything
-        glScissor(blx, bly, core->dmg.brx - core->dmg.tlx,
-              core->dmg.bry - core->dmg.tly);
+        glScissor(blx, bly, rect.width, rect.height);
     else
         glScissor(0, 0, sw, sh);
 

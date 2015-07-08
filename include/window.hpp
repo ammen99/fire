@@ -35,26 +35,8 @@ class Transform {
         glm::mat4 compose();
 };
 
-class Point {
-    public:
-        int x, y;
-        Point();
-        Point(int, int);
-};
-class Rect{
-    public:
-        int tlx, tly;
-        int brx, bry;
-    public:
-        Rect();
-        Rect(int, int, int, int);
-        bool operator &(const Rect  &other) const;
-        bool operator &(const Point &other) const;
-        Rect operator +(const Rect  &other) const;
-};
-std::ostream& operator<<(std::ostream& stream, const Rect& rect);
-
-extern Rect output;
+extern Region output;
+Region copyRegion(Region r);
 
 class __FireWindow {
     private:
@@ -84,15 +66,12 @@ class __FireWindow {
         char *name;
         WindowType type;
         XWindowAttributes attrib;
+        Region region = nullptr;
 
         bool shouldBeDrawn();
         void recalcWorkspace();
-        void regenVBOFromAttribs();
-        Rect getRect();
-
-//        void addDamage();
-//        void remDamage();
-//        bool getDamage();
+        void updateVBO();
+        void updateRegion();
 };
 
 typedef std::shared_ptr<__FireWindow> FireWindow;

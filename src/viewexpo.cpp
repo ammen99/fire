@@ -35,13 +35,13 @@ void WSSwitch::beginSwitch() {
     int brx2 = tlx2 + sw;
     int bry2 = tly2 + sh;
 
-    output = Rect(std::min(tlx1, tlx2),
+    output = core->getRegionFromRect(std::min(tlx1, tlx2),
             std::min(tly1, tly2),
             std::max(brx1, brx2),
             std::max(bry1, bry2));
 
     __FireWindow::allDamaged = true;
-    core->dmg = Rect(0, 0, sw, sh);
+    core->dmg = core->getMaximisedRegion();
     core->resetDMG = false;
     stepNum = 0;
 }
@@ -81,7 +81,7 @@ void WSSwitch::moveStep() {
         Transform::gtrs = glm::mat4();
         core->switchWorkspace(std::make_tuple(nx, ny));
         core->redraw = true;
-        output = Rect(0, 0, w, h);
+        output = core->getMaximisedRegion();
 
         if(dirs.size() == 0) {
             hook.disable();
@@ -219,7 +219,7 @@ void Expo::recalc() {
     sclXtarget = scaleX;
     sclYtarget = scaleY;
 
-    output = Rect(-vx * width, -vy * height, // output everything
+    output = core->getRegionFromRect(-vx * width, -vy * height,
             (vwidth  - vx) * width, (vheight - vy) * height);
 }
 
@@ -246,13 +246,12 @@ void Expo::Toggle(Context *ctx) {
 
         save = core->wins->findWindowAtCursorPosition;
         core->wins->findWindowAtCursorPosition =
-            std::bind(std::mem_fn(&Expo::findWindow), this, _1);
+            std::bind(std::mem_fn(&Expo::findWindow), this, _1, _1);
 
-        GetTuple(sw, sh, core->getScreenSize());
         hook.enable();
         __FireWindow::allDamaged = true;
         core->resetDMG = false;
-        core->dmg = Rect(0, 0, sw, sh);
+        core->dmg = core->getMaximisedRegion();
         stepNum = MAXSTEP;
         recalc();
 
@@ -314,7 +313,7 @@ void Expo::zoom() {
         finalizeZoom();
         hook.disable();
         if(!active) {
-            output = Rect(0, 0, core->width, core->height);
+            output = core->getMaximisedRegion();
             __FireWindow::allDamaged = false;
             core->resetDMG = true;
             core->wins->findWindowAtCursorPosition = save;
@@ -324,7 +323,7 @@ void Expo::zoom() {
     core->redraw = true;
 }
 
-FireWindow Expo::findWindow(Point p) {
+FireWindow Expo::findWindow(int px, int py) {
     GetTuple(w, h, core->getScreenSize());
     GetTuple(vw, vh, core->getWorksize());
     GetTuple(cvx, cvy, core->getWorkspace());
@@ -332,15 +331,15 @@ FireWindow Expo::findWindow(Point p) {
     int vpw = w / vw;
     int vph = h / vh;
 
-    int vx = p.x / vpw;
-    int vy = p.y / vph;
-    int x =  p.x % vpw;
-    int y =  p.y % vph;
+    int vx = px / vpw;
+    int vy = py / vph;
+    int x =  px % vpw;
+    int y =  py % vph;
 
     int realx = (vx - cvx) * w + x * vw;
     int realy = (vy - cvy) * h + y * vh;
 
-    return save(Point(realx, realy));
+    return save(realx, realy);
 }
 void Expo::handleKey(Context *ctx) {
 }

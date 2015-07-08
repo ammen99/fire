@@ -25,7 +25,7 @@ void Move::init(Core *c) {
 
 void Move::Initiate(Context *ctx) {
     auto xev = ctx->xev.xbutton;
-    auto w = core->getWindowAtPoint((Point(xev.x_root, xev.y_root)));
+    auto w = core->getWindowAtPoint(xev.x_root, xev.y_root);
 
     if(w){
         err << "moving";
@@ -45,7 +45,8 @@ void Move::Initiate(Context *ctx) {
                 GrabModeAsync, GrabModeAsync,
                 core->root, None, CurrentTime);
 
-        prev = win->getRect();
+        std::cout << "Called from here" << std::endl;
+        prevRegion = copyRegion(win->region);
     }
 }
 
@@ -67,11 +68,14 @@ void Move::Terminate(Context *ctx) {
     int nx = win->attrib.x + dx;
     int ny = win->attrib.y + dy;
 
+
+    XUnionRegion(core->dmg, prevRegion, core->dmg);
+    XDestroyRegion(prevRegion);
+
     WinUtil::moveWindow(win, nx, ny);
     XUngrabPointer(core->d, CurrentTime);
     core->focusWindow(win);
     core->damageWindow(win);
-    core->dmg = core->dmg + prev;
 
     core->redraw = true;
 }
@@ -88,13 +92,15 @@ void Move::Intermediate() {
                     0.f));
 
     auto newrect =
-        Rect (win->attrib.x + cmx - sx, win->attrib.y + cmy - sy,
+        core->getRegionFromRect(win->attrib.x + cmx - sx,
+              win->attrib.y + cmy - sy,
               win->attrib.x + cmx - sx + win->attrib.width,
               win->attrib.x + cmy - sy + win->attrib.height);
 
-    core->dmg = core->dmg + newrect + prev;
-    prev = newrect;
-
+    XUnionRegion(core->dmg, newrect, core->dmg);
+    XUnionRegion(core->dmg, prevRegion, core->dmg);
+    XDestroyRegion(prevRegion);
+    prevRegion = newrect;
     core->redraw = true;
 }
 
@@ -127,7 +133,7 @@ void Resize::Initiate(Context *ctx) {
         return;
 
     auto xev = ctx->xev.xbutton;
-    auto w = core->getWindowAtPoint(Point(xev.x_root,xev.y_root));
+    auto w = core->getWindowAtPoint(xev.x_root,xev.y_root);
 
     if(w){
 
@@ -150,7 +156,7 @@ void Resize::Initiate(Context *ctx) {
                 GrabModeAsync, GrabModeAsync,
                 core->root, None, CurrentTime);
 
-        prev = win->getRect();
+        prevRegion = copyRegion(win->region);
     }
 }
 
@@ -177,7 +183,7 @@ void Resize::Terminate(Context *ctx) {
     core->focusWindow(win);
 
     core->damageWindow(win);
-    core->dmg = core->dmg + prev;
+    XUnionRegion(core->dmg, prevRegion, core->dmg);
     core->redraw = true;
 }
 
@@ -216,12 +222,14 @@ void Resize::Intermediate() {
 
 
     auto newrect =
-        Rect(win->attrib.x - 1, win->attrib.y - 1,
+        core->getRegionFromRect(win->attrib.x - 1, win->attrib.y - 1,
              win->attrib.x + int(float(win->attrib.width ) * kW) + 2,
              win->attrib.y + int(float(win->attrib.height) * kH) + 2);
 
-    core->dmg = core->dmg + newrect + prev;
-    prev = newrect;
+    XUnionRegion(core->dmg, newrect, core->dmg);
+    XUnionRegion(core->dmg, prevRegion, core->dmg);
+    XDestroyRegion(prevRegion);
+    prevRegion = newrect;
 
     core->redraw = true;
 }

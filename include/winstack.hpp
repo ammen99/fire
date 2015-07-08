@@ -23,7 +23,7 @@ class WinStack {
         StackIterator getIteratorPositionForWindow(FireWindow win);
         StackIterator getIteratorPositionForWindow(Window win);
 
-        FireWindow __findWindowAtCursorPosition(Point p);
+        FireWindow __findWindowAtCursorPosition(int x, int y);
 
     public:
         WinStack();
@@ -36,7 +36,7 @@ class WinStack {
 
         void focusWindow(FireWindow win);
         void restackAbove(FireWindow above, FireWindow below);
-        std::function<FireWindow(Point)> findWindowAtCursorPosition;
+        std::function<FireWindow(int, int)> findWindowAtCursorPosition;
 
         void updateTransientsAttrib(FireWindow win, int, int, int, int);
 };

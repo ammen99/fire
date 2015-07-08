@@ -9,7 +9,7 @@ WinStack::WinStack() {
     using namespace std::placeholders;
     findWindowAtCursorPosition =
         std::bind(std::mem_fn(&WinStack::__findWindowAtCursorPosition),
-                this, _1);
+                this, _1, _2);
 }
 
 void WinStack::addWindow(FireWindow win) {
@@ -57,6 +57,7 @@ FireWindow WinStack::findWindow(Window win) {
 void WinStack::renderWindows() {
     int num = 0;
     auto it = wins.rbegin();
+
     while(it != wins.rend()) {
         auto w = *it;
         if(w && w->shouldBeDrawn())
@@ -203,13 +204,14 @@ void WinStack::focusWindow(FireWindow win) {
     core->redraw = true;
 }
 
-FireWindow WinStack::__findWindowAtCursorPosition(Point p) {
+FireWindow WinStack::__findWindowAtCursorPosition(int x, int y) {
     for(auto w : wins)
         if(w->attrib.map_state == IsViewable && // desktop and invisible
            w->type != WindowTypeDesktop      && // windows should be
            !w->norender                      && // ignored
            !w->destroyed                     &&
-           (w->getRect() & p))
+           w->region                         &&
+           XPointInRegion(w->region, x, y))
                return w;
 
     return nullptr;

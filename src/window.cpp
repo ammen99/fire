@@ -9,6 +9,28 @@ glm::mat4 Transform::grot;
 glm::mat4 Transform::gscl;
 glm::mat4 Transform::gtrs;
 
+Region copyRegion(Region reg) {
+    if(!reg) {
+        auto tmp = XCreateRegion();
+        std::memset(tmp, 0, sizeof(REGION));
+        tmp->numRects = 1;
+        return tmp;
+    }
+
+    std::cout << "Before crash" << std::endl;
+    Region newreg = XCreateRegion();
+
+    newreg->rects = new BOX[reg->numRects];
+    newreg->size = reg->size;
+    newreg->numRects = reg->numRects;
+    newreg->extents = reg->extents;
+    std::cout << "Before memcpy" << std::endl;
+    std::memcpy(newreg->rects, reg->rects, reg->numRects * sizeof(BOX));
+
+    std::cout << "After crahs" << std::endl;
+    return newreg;
+}
+
 Transform::Transform() {
     this->translation = glm::mat4();
     this->rotation = glm::mat4();
@@ -28,53 +50,7 @@ glm::mat4 Transform::compose() {
         (grot * rotation) * (gscl * scalation);
 }
 
-Point::Point() : Point(0, 0){}
-Point::Point(int _x, int _y) : x(_x), y(_y) {}
-
-Rect::Rect() : Rect(0, 0, 0, 0){}
-Rect::Rect(int tx, int ty, int bx, int by):
-    tlx(tx), tly(ty), brx(bx), bry(by){}
-
-bool Rect::operator&(const Rect &other) const {
-    bool result = true;
-
-    if(this->tly >= other.bry || this->bry <= other.tly)
-        result = false;
-    else if(this->brx <= other.tlx || this->tlx >= other.brx)
-        result = false;
-
-    return result;
-}
-
-bool Rect::operator&(const Point &other) const {
-    if(this->tlx <= other.x && other.x <= this->brx &&
-       this->tly <= other.y && other.y <= this->bry)
-        return true;
-    else
-        return false;
-}
-
-Rect Rect::operator+(const Rect &other) const {
-    Rect r;
-    r.tlx = std::min(this->tlx, other.tlx);
-    r.tly = std::min(this->tly, other.tly);
-    r.brx = std::max(this->brx, other.brx);
-    r.bry = std::max(this->bry, other.bry);
-
-    return r;
-}
-
-std::ostream& operator<<(std::ostream &stream, const Rect& rect) {
-
-    stream << "Debug rect\n";
-    stream << rect.tlx << " " << rect.tly << " ";
-    stream << rect.brx << " " << rect.bry;
-    stream << "\n";
-
-    return stream;
-}
-
-Rect output;
+Region output;
 bool __FireWindow::allDamaged = false;
 
 bool __FireWindow::shouldBeDrawn() {
@@ -96,21 +72,32 @@ bool __FireWindow::shouldBeDrawn() {
     }
 
     if(allDamaged) {
+        if(!region)
+            return false;
 
-        if(getRect() & output)
+        // TODO: XXX:
+        // workaround, no time to investigate
+        return true;
+
+        std::cout << "All damaged" << std::endl;
+        if(!region)
+            std::cout << "Failed region" << std::endl;
+        if(!output)
+            std::cout << "Failed output" << std::endl;
+        REGION tmp;
+        XIntersectRegion(region, output, &tmp);
+
+        std::cout << "jetzt hire" << std::endl;
+        if(!XEmptyRegion(&tmp))
             return true;
         else
             return false;
     }
 
     return true;
-//    if(getRect() & core->dmg)
-//        return true;
-//    else
-//        return false;
 }
 
-void __FireWindow::regenVBOFromAttribs() {
+void __FireWindow::updateVBO() {
     if(type == WindowTypeDesktop)
         OpenGLWorker::generateVAOVBO(attrib.x,
             attrib.y + attrib.height,
@@ -122,32 +109,13 @@ void __FireWindow::regenVBOFromAttribs() {
             vao, vbo);
 }
 
-Rect __FireWindow::getRect() {
-    return Rect(this->attrib.x, this->attrib.y,
-                this->attrib.x + this->attrib.width,
-                this->attrib.y + this->attrib.height);
+void __FireWindow::updateRegion() {
+    if(region)
+        XDestroyRegion(region);
+
+    region = core->getRegionFromRect( attrib.x, attrib.y,
+            attrib.x + attrib.width, attrib.y + attrib.height);
 }
-//
-//void __FireWindow::addDamage() {
-//    //if(this->damaged)
-//    //    return;
-//
-//    this->damaged = true;
-//    //core->screenDmg++;
-//    core->dmg = core->dmg + this->getRect();
-//}
-//
-//void __FireWindow::remDamage() {
-//    if(!this->damaged)
-//        return;
-//
-//    this->damaged = false;
-//    core->screenDmg--;
-//}
-//
-//bool __FireWindow::getDamage() {
-//    return this->damaged;
-//}
 
 Atom winTypeAtom, winTypeDesktopAtom, winTypeDockAtom,
      winTypeToolbarAtom, winTypeMenuAtom, winTypeUtilAtom,
@@ -262,6 +230,8 @@ void initWindow(FireWindow win) {
         win->attrib.width = hints.base_width,
         win->attrib.height = hints.base_height;
 
+    win->updateRegion();
+
     if(win->attrib.c_class != InputOnly)
         win->damage =
             XDamageCreate(core->d, win->id, XDamageReportRawRectangles);
@@ -332,10 +302,13 @@ void finishWindow(FireWindow win) {
 
 void renderWindow(FireWindow win) {
 
+
+    std::cout << "begin render window" << std::endl;
     OpenGLWorker::color = win->transform.color;
     //win->remDamage();
 
     if(win->type == WindowTypeDesktop){
+        std::cout << "desktop window" << std::endl;
         OpenGLWorker::renderTransformedTexture(win->texture,
                 win->vao, win->vbo,
                 win->transform.compose());
@@ -572,18 +545,27 @@ void setInputFocusToWindow(Window win) {
 
 }
 
+
 void moveWindow(FireWindow win, int x, int y) {
-    auto prev = win->getRect();
+    
+    bool existPreviousRegion = !(win->region == nullptr);
+
+    Region prevRegion = nullptr;
+    if(existPreviousRegion)
+        prevRegion = copyRegion(win->region);
 
     win->attrib.x = x;
     win->attrib.y = y;
+    win->updateRegion();
 
-    core->dmg = core->dmg + prev + win->getRect();
+    if(existPreviousRegion)
+        XUnionRegion(core->dmg, prevRegion,  core->dmg);
+    XUnionRegion(core->dmg, win->region, core->dmg);
 
     if(win->type == WindowTypeDesktop) {
         glDeleteBuffers(1, &win->vbo);
         glDeleteVertexArrays(1, &win->vao);
-        win->regenVBOFromAttribs();
+        win->updateVBO();
         return;
     }
 
@@ -595,17 +577,23 @@ void moveWindow(FireWindow win, int x, int y) {
     glDeleteVertexArrays(1, &win->vao);
 
     XConfigureWindow(core->d, win->id, CWX | CWY, &xwc);
-    win->regenVBOFromAttribs();
+    win->updateVBO();
 }
 
 void resizeWindow(FireWindow win, int w, int h) {
 
-    auto prev = win->getRect();
+    bool existPreviousRegion = !(win->region == nullptr);
+    Region prevRegion = nullptr;
+    if(existPreviousRegion)
+         prevRegion = copyRegion(win->region);
 
     win->attrib.width  = w;
     win->attrib.height = h;
+    win->updateRegion();
 
-    core->dmg = core->dmg + prev + win->getRect();
+    if(existPreviousRegion)
+        XUnionRegion(core->dmg, prevRegion,  core->dmg);
+    XUnionRegion(core->dmg, win->region, core->dmg);
 
     XWindowChanges xwc;
     xwc.width  = w;
@@ -615,7 +603,7 @@ void resizeWindow(FireWindow win, int w, int h) {
     glDeleteVertexArrays(1, &win->vao);
 
     XConfigureWindow(core->d, win->id, CWWidth | CWHeight, &xwc);
-    win->regenVBOFromAttribs();
+    win->updateVBO();
 
 }
 void syncWindowAttrib(FireWindow win) {
@@ -641,8 +629,8 @@ void syncWindowAttrib(FireWindow win) {
 
     glDeleteBuffers(1, &win->vbo);
     glDeleteVertexArrays(1, &win->vao);
-    win->regenVBOFromAttribs();
-    //win->addDamage();
+    win->updateVBO();
+    win->updateRegion();
     core->damageWindow(win);
 }
 }

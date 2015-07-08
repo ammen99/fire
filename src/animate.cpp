@@ -19,8 +19,11 @@ void AnimationHook::step() {
 
 AnimationHook::~AnimationHook() {}
 
-Fade::Fade (FireWindow _win, Mode _mode, int _steps) :
-    win(_win), mode(_mode), maxstep(_steps) {
+Fade::Fade (FireWindow _win, Mode _mode, int duration) :
+    win(_win), mode(_mode) {
+
+        duration = 150;
+        maxstep = duration * 1000 / core->getRefreshRate();
         win->keepCount++;
         if(mode == FadeIn)
             this->progress = 0,

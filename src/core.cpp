@@ -90,7 +90,7 @@ Core::Core(int vx, int vy) {
     XDamageQueryExtension(d, &damage, &dummy);
 
     cntHooks = 0;
-    output = Rect(0, 0, width, height);
+    output = getMaximisedRegion();
 
     initDefaultPlugins();
 
@@ -122,7 +122,7 @@ Core::Core(int vx, int vy) {
     for(auto p : plugins)
         p->init(this);
 
-    dmg = Rect(0, 0, width, height);
+    dmg = getMaximisedRegion();
 }
 
 void Core::enableInputPass(Window win) {
@@ -270,6 +270,35 @@ void Core::remBut(uint id) {
     buttons.erase(it);
 }
 
+Region Core::getMaximisedRegion() {
+    REGION r;
+    r.rects = &r.extents;
+    r.numRects = r.size = 1;
+    r.extents.x1 = r.extents.y1 = 0;
+    r.extents.x2 = width;
+    r.extents.y2 = height;
+
+    Region ret;
+    ret = XCreateRegion();
+    XUnionRegion(&r, ret, ret);
+    return ret;
+}
+
+Region Core::getRegionFromRect(int tlx, int tly, int brx, int bry) {
+    REGION r;
+    r.rects = &r.extents;
+    r.numRects = r.size = 1;
+    r.extents.x1 = tlx;
+    r.extents.y1 = tly;
+    r.extents.x2 = brx;
+    r.extents.y2 = bry;
+
+    Region ret;
+    ret = XCreateRegion();
+    XUnionRegion(&r, ret, ret);
+    return ret;
+}
+
 
 void Core::setBackground(const char *path) {
 
@@ -302,8 +331,9 @@ void Core::setBackground(const char *path) {
             backgrounds[i][j]->attrib.height = height;
 
             backgrounds[i][j]->type = WindowTypeDesktop;
-            backgrounds[i][j]->regenVBOFromAttribs();
+            backgrounds[i][j]->updateVBO();
             backgrounds[i][j]->transform.color = glm::vec4(1,1,1,1);
+            backgrounds[i][j]->updateRegion();
             wins->addWindow(backgrounds[i][j]);
         }
     }
@@ -378,9 +408,24 @@ void Core::closeWindow(FireWindow win) {
 }
 
 void Core::renderAllWindows() {
+
+    std::cout << "Reg " << dmg->rects[0].x1 << " "
+        << dmg->rects[0].y1 << " " << dmg->rects[0].x2
+        << " " << dmg->rects[0].y2 << std::endl;;
     OpenGLWorker::preStage();
     wins->renderWindows();
     GLXUtils::endFrame(outputwin);
+    //std::cout << "Frame ended" << std::endl;
+
+    if(resetDMG) {
+        XDestroyRegion(dmg);
+        dmg = XCreateRegion();
+        dmg->numRects = 1;
+        dmg->rects[0].x1 = 0;
+        dmg->rects[0].x2 = 0;
+        dmg->rects[0].y1 = 0;
+        dmg->rects[0].y2 = 0;
+    }
 }
 
 void Core::wait(int timeout) {
@@ -406,7 +451,7 @@ void Core::unmapWindow(FireWindow win) {
 void Core::handleEvent(XEvent xev){
     switch(xev.type) {
         case Expose:
-            dmg = Rect(0, 0, width, height);
+            dmg = getMaximisedRegion();
             redraw = true;
         case KeyPress: {
             // check keybindings
@@ -575,21 +620,28 @@ void Core::handleEvent(XEvent xev){
                 if(!w)
                     return;
 
-                auto damagedArea =
-                    Rect(x->area.x + w->attrib.x,
-                         x->area.y + w->attrib.y,
-                         x->area.x + w->attrib.x + x->area.width,
-                         x->area.y + w->attrib.y + x->area.height);
 
-                if(!__FireWindow::allDamaged)
-                    if(damagedArea & output)
-                    dmg = dmg + damagedArea;
-            }
+                Region damagedArea = getRegionFromRect(
+                        x->area.x + w->attrib.x,
+                        x->area.y + w->attrib.y,
+                        x->area.x + w->attrib.x + x->area.width,
+                        x->area.y + w->attrib.y + x->area.height);
+
+                //if(__FireWindow::allDamaged)
+                //    break;
+                std::cout << "Adding new damage" << std::endl;
+
+                REGION tmp;
+                XIntersectRegion(damagedArea, output, &tmp);
+                XUnionRegion(&tmp, dmg, dmg);
+                XDestroyRegion(damagedArea);
+
             break;
+            }
     }
 }
 
-#define RefreshRate 200
+#define RefreshRate 60
 #define Second 1000000
 #define MaxDelay 1000
 #define MinRR 61
@@ -637,17 +689,15 @@ void Core::loop(){
                         hook.second->action();
             }
 
-            if(redraw ||
-                    ((dmg.brx - dmg.tlx != 0 &&  // if we have damage
-                      dmg.bry - dmg.tly != 0) ||
-                        __FireWindow::allDamaged)) // or we just redraw
-                renderAllWindows(),                // everything
-                redraw = false;
+            if(redraw || __FireWindow::allDamaged || !XEmptyRegion(dmg))
+                renderAllWindows(),   // we just redraw
+                redraw = false;       // everything
 
             /* optimisation when too slow,
              * so we can update more rarely,
              * i.e reduce lagging */
-            if(diff - currentCycle > MaxDelay && Second / MinRR <= currentCycle)
+            if(diff - currentCycle > MaxDelay &&
+                    Second / MinRR <= currentCycle)
                 currentCycle += 2000; // 1ms slower redraws
 
             /* optimisation when idle */
@@ -733,16 +783,40 @@ void Core::switchWorkspace(std::tuple<int, int> nPos) {
 }
 
 std::vector<FireWindow> Core::getWindowsOnViewport(std::tuple<int, int> vp) {
+
+    std::cout << "gwov stawrt" << std::endl;
     auto x = std::get<0>(vp);
     auto y = std::get<1>(vp);
 
-    Rect view((x - vx    ) * width, (y - vy    ) * height,
-            (x - vx + 1) * width, (y - vy + 1) * height);
+    auto view = getRegionFromRect((x - vx) * width, (y - vy) * height,
+                       (x - vx + 1) * width, (y - vy + 1) * height);
+
+    std::cout << "got visible part" << std::endl;
 
     std::vector<FireWindow> ret;
-    for(auto w : wins->wins)
-        if(w->getRect() & view && !w->norender)
+    Region tmp = XCreateRegion();
+    for(auto w : wins->wins) {
+
+        std::cout << "itereating" << std::endl;
+
+        if(!w->region) {
+            std::cout << "Window without region!!!" << std::endl;
+            continue;
+        }
+        if(!view)
+            continue;
+
+        std::cout << "intersecting" << std::endl;
+
+        XIntersectRegion(view, w->region, tmp);
+        if(tmp && !XEmptyRegion(tmp) && !w->norender)
             ret.push_back(w);
+
+        std::cout << "end iter" << std::endl;
+    }
+    XDestroyRegion(view);
+    XDestroyRegion(tmp);
+    std::cout << "end gwov" << std::endl;
 
     return ret;
 }
@@ -753,14 +827,19 @@ void Core::damageWindow(FireWindow win) {
 
     if(win->norender)
         return;
+    if(!win->region) {
 
-    XserverRegion reg =
-        XFixesCreateRegionFromWindow(core->d, win->id,
-                WindowRegionBounding);
+        XserverRegion reg =
+            XFixesCreateRegionFromWindow(core->d, win->id,
+                    WindowRegionBounding);
 
-    XDamageAdd(core->d, win->id, reg);
+        XDamageAdd(core->d, win->id, reg);
 
-    XFixesDestroyRegion(core->d, reg);
+        XFixesDestroyRegion(core->d, reg);
+        return;
+    }
+    redraw = true;
+    XUnionRegion(dmg, win->region, dmg);
 }
 
 void Core::focusWindow(FireWindow win) {
@@ -776,13 +855,17 @@ void Core::removeWindow(FireWindow win) {
     wins->removeWindow(win);
 }
 
-FireWindow Core::getWindowAtPoint(Point p) {
-    return wins->findWindowAtCursorPosition(p);
+FireWindow Core::getWindowAtPoint(int x, int y) {
+    return wins->findWindowAtCursorPosition(x, y);
 }
 
 template<class T>
 PluginPtr Core::createPlugin() {
     return std::static_pointer_cast<Plugin>(std::make_shared<T>());
+}
+
+int Core::getRefreshRate() {
+    return Second / RefreshRate - 50;
 }
 
 void Core::initDefaultPlugins() {

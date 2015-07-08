@@ -10,6 +10,7 @@
 #include <X11/keysym.h>
 #include <X11/Xmu/Xmu.h>
 #include <X11/Xmu/WinUtil.h>
+#include <X11/Xregion.h>
 
 
 #include <sys/time.h>
