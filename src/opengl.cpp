@@ -81,8 +81,8 @@ void OpenGLWorker::renderTexture(GLuint tex, GLuint vao, GLuint vbo) {
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glBindTexture(GL_TEXTURE_2D, tex);
 
-    glPatchParameteri(GL_PATCH_VERTICES, 3);
-    glDrawArrays (GL_PATCHES, 0, 6);
+    //glPatchParameteri(GL_PATCH_VERTICES, 3);
+    glDrawArrays (GL_TRIANGLES, 0, 6);
 }
 
 void OpenGLWorker::renderTransformedTexture(GLuint tex,
@@ -157,23 +157,23 @@ void errorHandler(GLenum src, GLenum type,
                GLsizei len, const GLchar *msg,
                const void *dummy) {
 
-    cout << "_______________________________________________";
-    cout << "OGL debug: ";
-    cout << "Source: " << getStrSrc(src);
-    cout << "Type: " << getStrType(type);
-    cout << "ID: " << id;
-    cout << "Severity: " << getStrSeverity(severity);
-    cout << "Msg: " << msg;
-    cout << "_______________________________________________";
+    cout << "_______________________________________________" << std::endl;
+    cout << "OGL debug: " << std::endl;
+    cout << "Source: " << getStrSrc(src) << std::endl;
+    cout << "Type: " << getStrType(type) << std::endl;
+    cout << "ID: " << id << std::endl;
+    cout << "Severity: " << getStrSeverity(severity) << std::endl;
+    cout << "Msg: " << msg << std::endl;
+    cout << "_______________________________________________" << std::endl;
 }
 
 
 
 void OpenGLWorker::initOpenGL(Core *core, const char *shaderSrcPath) {
 
-    //glEnable(GL_DEBUG_OUTPUT);
-    //glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-    //glDebugMessageCallback(errorHandler, (void*)0);
+    glEnable(GL_DEBUG_OUTPUT);
+    glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+    glDebugMessageCallback(errorHandler, (void*)0);
     //
     GetTuple(sw, sh, core->getScreenSize());
 
@@ -200,30 +200,10 @@ void OpenGLWorker::initOpenGL(Core *core, const char *shaderSrcPath) {
                 .append("/frag.glsl").c_str(),
                 GL_FRAGMENT_SHADER);
 
-    GLuint tcs =
-        GLXUtils::loadShader(std::string(shaderSrcPath)
-                .append("/tcs.glsl").c_str(),
-                GL_TESS_CONTROL_SHADER);
-
-    GLuint tes =
-        GLXUtils::loadShader(std::string(shaderSrcPath)
-                .append("/tes.glsl").c_str(),
-                GL_TESS_EVALUATION_SHADER);
-
-    GLuint gss =
-        GLXUtils::loadShader(std::string(shaderSrcPath)
-                .append("/geom.glsl").c_str(),
-                GL_GEOMETRY_SHADER);
-
-
     program = glCreateProgram();
 
     glAttachShader (program, vss);
     glAttachShader (program, fss);
-    glAttachShader (program, tcs);
-    glAttachShader (program, tes);
-    glAttachShader (program, gss);
-
 
     glBindFragDataLocation (program, 0, "outColor");
     glLinkProgram (program);

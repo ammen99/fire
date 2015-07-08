@@ -412,6 +412,8 @@ void Core::renderAllWindows() {
     std::cout << "Reg " << dmg->rects[0].x1 << " "
         << dmg->rects[0].y1 << " " << dmg->rects[0].x2
         << " " << dmg->rects[0].y2 << std::endl;;
+
+    XIntersectRegion(dmg, output, dmg);
     OpenGLWorker::preStage();
     wins->renderWindows();
     GLXUtils::endFrame(outputwin);
@@ -629,11 +631,9 @@ void Core::handleEvent(XEvent xev){
 
                 //if(__FireWindow::allDamaged)
                 //    break;
-                std::cout << "Adding new damage" << std::endl;
+                //std::cout << "Adding new damage" << std::endl;
 
-                REGION tmp;
-                XIntersectRegion(damagedArea, output, &tmp);
-                XUnionRegion(&tmp, dmg, dmg);
+                XUnionRegion(damagedArea, dmg, dmg);
                 XDestroyRegion(damagedArea);
 
             break;
@@ -641,7 +641,7 @@ void Core::handleEvent(XEvent xev){
     }
 }
 
-#define RefreshRate 60
+#define RefreshRate 100
 #define Second 1000000
 #define MaxDelay 1000
 #define MinRR 61
@@ -784,14 +784,14 @@ void Core::switchWorkspace(std::tuple<int, int> nPos) {
 
 std::vector<FireWindow> Core::getWindowsOnViewport(std::tuple<int, int> vp) {
 
-    std::cout << "gwov stawrt" << std::endl;
+    //std::cout << "gwov stawrt" << std::endl;
     auto x = std::get<0>(vp);
     auto y = std::get<1>(vp);
 
     auto view = getRegionFromRect((x - vx) * width, (y - vy) * height,
                        (x - vx + 1) * width, (y - vy + 1) * height);
 
-    std::cout << "got visible part" << std::endl;
+    //std::cout << "got visible part" << std::endl;
 
     std::vector<FireWindow> ret;
     Region tmp = XCreateRegion();

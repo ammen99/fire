@@ -1,7 +1,6 @@
 #version 440
 
-in vec2 guv;
-in vec3 gFacetNormal;
+in vec2 uvpos;
 out vec4 outColor;
 
 
