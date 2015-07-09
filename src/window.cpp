@@ -371,17 +371,6 @@ XVisualInfo *getVisualInfoForWindow(Window win) {
     return xvi;
 }
 
-bool isTopLevelWindow(FireWindow win) {
-    if(win->transientFor) return false;
-    if(win->leader) return false;
-
-    Window client = XmuClientWindow(core->d, win->id);
-    if(!client || client != win->id)
-        return false;
-
-    return true;
-}
-
 FireWindow getClientLeader(FireWindow win) {
     unsigned long nitems = 0;
     unsigned char* data = 0;

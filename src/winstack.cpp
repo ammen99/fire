@@ -67,6 +67,7 @@ void WinStack::renderWindows() {
             w->transform.stackID = num++,
             std::cout << "rendering window " << w->id <<
                 " with stackID = " << w->transform.stackID <<
+                " and type " << w->type <<
                 std::endl,
             WinUtil::renderWindow(w);
         ++it;
@@ -218,9 +219,6 @@ void WinStack::restackTransients(FireWindow win) {
     if(win == nullptr)
         return;
 
-    if(win->transientFor)
-        restackTransients(win);
-
     std::vector<FireWindow> winsToRestack;
     for(auto w : wins)
         if(isAncestorTo(win, w) || isTransientInGroup(w, win))
@@ -228,9 +226,6 @@ void WinStack::restackTransients(FireWindow win) {
 
     for(auto w : winsToRestack)
         restackAbove(w, win, false);
-
-    for(auto w : winsToRestack)
-        restackTransients(w);
 }
 
 void WinStack::updateTransientsAttrib(FireWindow win,

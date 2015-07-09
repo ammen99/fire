@@ -103,7 +103,6 @@ namespace WinUtil {
     FireWindow getClientLeader(FireWindow win);
 
     void getWindowName(FireWindow win, char *name);
-    bool isTopLevelWindow(FireWindow win);
     WindowType getWindowType(FireWindow win);
     int readProp(Window win, Atom prop, int def);
 };

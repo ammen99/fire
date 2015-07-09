@@ -34,8 +34,8 @@ class WinStack {
         int getNumOfWindows();
 
         void focusWindow(FireWindow win);
-        /* x shows whether we have to restack transients also */
-        void restackAbove(FireWindow above, FireWindow below, bool x = true);
+        /* rstr shows whether we have to restack transients also */
+        void restackAbove(FireWindow above, FireWindow below, bool rstr = true);
         std::function<FireWindow(int, int)> findWindowAtCursorPosition;
 
         void updateTransientsAttrib(FireWindow win, int, int, int, int);

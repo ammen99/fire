@@ -608,6 +608,26 @@ void Core::handleEvent(XEvent xev){
 
         }
 
+        case PropertyNotify: {
+            auto w = findWindow(xev.xproperty.window);
+            if(!w)
+                break;
+
+            if(xev.xproperty.atom == winTypeAtom)
+                w->type = WinUtil::getWindowType(w),
+                wins->restackTransients(w);
+
+            if(xev.xproperty.atom == XA_WM_TRANSIENT_FOR)
+                w->transientFor = WinUtil::getTransient(w),
+                wins->restackTransients(w);
+
+            if(xev.xproperty.atom == wmClientLeaderAtom)
+                w->leader = WinUtil::getClientLeader(w),
+                wins->restackTransients(w);
+
+            break;
+        }
+
         case ConfigureNotify:
         case EnterNotify:       // we don't handle
         case FocusIn:           // any of these

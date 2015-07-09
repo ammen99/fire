@@ -223,18 +223,9 @@ void OpenGLWorker::initOpenGL(Core *core, const char *shaderSrcPath) {
     glAttachShader (program, tcs);
     glAttachShader (program, tes);
     glAttachShader (program, gss);
-
-
     glBindFragDataLocation (program, 0, "outColor");
     glLinkProgram (program);
     glUseProgram (program);
-
-
-//    GLuint dummyVAO, dummyVBO;
-//    glGenVertexArrays(1, &dummyVAO);
-//    glBindVertexArray(dummyVAO);
-//    generateVAOVBO(0, 0, core->width, core->height, dummyVAO, dummyVBO);
-//
 
     mvpID = glGetUniformLocation(program, "MVP");
     normalID = glGetUniformLocation(program, "NormalMatrix");
