@@ -23,7 +23,6 @@ Region copyRegion(Region reg) {
     newreg->numRects = reg->numRects;
     newreg->extents = reg->extents;
     std::memcpy(newreg->rects, reg->rects, reg->numRects * sizeof(BOX));
-
     return newreg;
 }
 
@@ -71,30 +70,6 @@ bool __FireWindow::shouldBeDrawn() {
     else
         return true;
 
-    if(allDamaged) {
-        if(!region)
-            return false;
-
-        // TODO: XXX:
-        // workaround, no time to investigate
-        return true;
-
-        std::cout << "All damaged" << std::endl;
-        if(!region)
-            std::cout << "Failed region" << std::endl;
-        if(!output)
-            std::cout << "Failed output" << std::endl;
-        REGION tmp;
-        XIntersectRegion(region, output, &tmp);
-
-        std::cout << "jetzt hire" << std::endl;
-        if(!XEmptyRegion(&tmp))
-            return true;
-        else
-            return false;
-    }
-
-    return true;
 }
 
 void __FireWindow::updateVBO() {
