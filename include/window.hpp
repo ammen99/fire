@@ -1,6 +1,5 @@
 #include "commonincludes.hpp"
 
-
 enum WindowType {
     WindowTypeNormal,
     WindowTypeWidget,
@@ -8,13 +7,6 @@ enum WindowType {
     WindowTypeDock,
     WindowTypeDesktop,
     WindowTypeOther
-};
-
-enum StackType{
-    StackTypeSibling    = 1,
-    StackTypeAncestor   = 2,
-    StackTypeChild      = 4,
-    StackTypeNoStacking = 8
 };
 
 class Transform {
@@ -51,6 +43,7 @@ class __FireWindow {
 
         bool norender = false; // should we draw window?
         bool destroyed = false; // is window dead?
+
         int mapTryNum = 5; // how many times have we tried to map this window?
         int keepCount = 0; // used to determine whether to destory window
         Transform transform;
@@ -69,7 +62,6 @@ class __FireWindow {
         Region region = nullptr;
 
         bool shouldBeDrawn();
-        void recalcWorkspace();
         void updateVBO();
         void updateRegion();
 };
@@ -92,7 +84,6 @@ extern Atom winOpacityAtom;
 class Core;
 
 namespace WinUtil {
-    bool recurseIsAncestor(FireWindow parent, FireWindow win);
     void init(Core *core);
 
     void renderWindow(FireWindow win);
@@ -107,17 +98,12 @@ namespace WinUtil {
     void syncWindowAttrib(FireWindow win);
 
     XVisualInfo *getVisualInfoForWindow(Window win);
+
     FireWindow getTransient(FireWindow win);
     FireWindow getClientLeader(FireWindow win);
+
     void getWindowName(FireWindow win, char *name);
     bool isTopLevelWindow(FireWindow win);
-
     WindowType getWindowType(FireWindow win);
-
-    FireWindow getAncestor(FireWindow win);
-
-    bool isAncestorTo(FireWindow parent, FireWindow win);
-    StackType getStackType(FireWindow win1, FireWindow win2);
-
     int readProp(Window win, Atom prop, int def);
 };

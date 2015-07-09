@@ -442,8 +442,9 @@ void Core::mapWindow(FireWindow win) {
     damageWindow(win);
 
     WinUtil::syncWindowAttrib(win);
-    auto parent = WinUtil::getAncestor(win);
-    wins->restackTransients(parent);
+    std::cout << "restacking transients mapWindow" << std::endl;
+    if(win->transientFor)
+        wins->restackTransients(win->transientFor);
 }
 
 void Core::unmapWindow(FireWindow win) {
@@ -592,6 +593,8 @@ void Core::handleEvent(XEvent xev){
                 if(xev.xconfigurerequest.above) {
                     auto below = findWindow(xev.xconfigurerequest.above);
                     if(below) {
+                        std::cout << "Configuring in XConfigureRequest" 
+                            << std::endl;
                         if(xev.xconfigurerequest.detail == Above)
                             wins->restackAbove(w, below);
                         else
