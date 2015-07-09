@@ -61,14 +61,14 @@ void WinStack::renderWindows() {
     int num = 0;
     auto it = wins.rbegin();
 
+    if(__FireWindow::allDamaged)
+        XDestroyRegion(core->dmg),
+        core->dmg = copyRegion(output);
+
     while(it != wins.rend()) {
         auto w = *it;
         if(w && w->shouldBeDrawn())
             w->transform.stackID = num++,
-            std::cout << "rendering window " << w->id <<
-                " with stackID = " << w->transform.stackID <<
-                " and type " << w->type <<
-                std::endl,
             WinUtil::renderWindow(w);
         ++it;
     }
