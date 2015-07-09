@@ -17,17 +17,13 @@ Region copyRegion(Region reg) {
         return tmp;
     }
 
-    std::cout << "Before crash" << std::endl;
     Region newreg = XCreateRegion();
-
     newreg->rects = new BOX[reg->numRects];
     newreg->size = reg->size;
     newreg->numRects = reg->numRects;
     newreg->extents = reg->extents;
-    std::cout << "Before memcpy" << std::endl;
     std::memcpy(newreg->rects, reg->rects, reg->numRects * sizeof(BOX));
 
-    std::cout << "After crahs" << std::endl;
     return newreg;
 }
 
@@ -55,9 +51,7 @@ bool __FireWindow::allDamaged = false;
 
 bool __FireWindow::shouldBeDrawn() {
 
-    if(keepCount)
-        return true;
-    else if(destroyed)
+    if(destroyed && !keepCount)
         return false;
 
     if(norender)
@@ -70,6 +64,12 @@ bool __FireWindow::shouldBeDrawn() {
         norender = true;
         return false;
     }
+
+    if(XRectInRegion(core->dmg,
+       attrib.x, attrib.y, attrib.width, attrib.height) == RectangleOut)
+        return false;
+    else
+        return true;
 
     if(allDamaged) {
         if(!region)

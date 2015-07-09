@@ -415,10 +415,12 @@ void Core::renderAllWindows() {
     std::cout << "Reg " << dmg->rects[0].x1 << " "
         << dmg->rects[0].y1 << " " << dmg->rects[0].x2
         << " " << dmg->rects[0].y2 << std::endl;;
+
+    XIntersectRegion(dmg, output, dmg);
+
     OpenGLWorker::preStage();
     wins->renderWindows();
     GLXUtils::endFrame(outputwin);
-    //std::cout << "Frame ended" << std::endl;
 
     if(resetDMG) {
         XDestroyRegion(dmg);
