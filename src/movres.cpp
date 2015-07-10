@@ -28,10 +28,8 @@ void Move::Initiate(Context *ctx) {
     auto w = core->getWindowAtPoint(xev.x_root, xev.y_root);
 
     if(w){
-        err << "moving";
         core->focusWindow(w);
         win = w;
-
         release.active = true;
         hook.enable();
 
@@ -45,8 +43,6 @@ void Move::Initiate(Context *ctx) {
                 GrabModeAsync, GrabModeAsync,
                 core->root, None, CurrentTime);
 
-        std::cout << "Called from here" << std::endl;
-        prevRegion = copyRegion(win->region);
         __FireWindow::allDamaged = true;
     }
 }
@@ -69,12 +65,9 @@ void Move::Terminate(Context *ctx) {
     int nx = win->attrib.x + dx;
     int ny = win->attrib.y + dy;
 
-
-    XUnionRegion(core->dmg, prevRegion, core->dmg);
-    XDestroyRegion(prevRegion);
-
     WinUtil::moveWindow(win, nx, ny);
     __FireWindow::allDamaged = false;
+
     XUngrabPointer(core->d, CurrentTime);
     core->focusWindow(win);
     core->damageWindow(win);
@@ -93,16 +86,6 @@ void Move::Intermediate() {
                     float(sy - cmy) / float(h / 2.0),
                     0.f));
 
-    auto newrect =
-        core->getRegionFromRect(win->attrib.x + cmx - sx,
-              win->attrib.y + cmy - sy,
-              win->attrib.x + cmx - sx + win->attrib.width,
-              win->attrib.x + cmy - sy + win->attrib.height);
-
-    XUnionRegion(core->dmg, newrect, core->dmg);
-    XUnionRegion(core->dmg, prevRegion, core->dmg);
-    XDestroyRegion(prevRegion);
-    prevRegion = newrect;
     core->redraw = true;
 }
 
