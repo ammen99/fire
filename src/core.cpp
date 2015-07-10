@@ -57,6 +57,8 @@ Core::Core(int vx, int vy) {
     fd.fd = ConnectionNumber(d);
     fd.events = POLLIN;
 
+    XSelectInput(d, root, SubstructureNotifyMask);
+
     XWindowAttributes xwa;
     XGetWindowAttributes(d, root, &xwa);
     width = xwa.width;
@@ -132,7 +134,7 @@ void Core::enableInputPass(Window win) {
     XFixesSetWindowShapeRegion(d, win, ShapeInput, 0, 0, region);
     XFixesDestroyRegion(d, region);
 }
-;
+
 void Core::addExistingWindows() {
     Window dummy1, dummy2;
     uint size;
@@ -140,29 +142,25 @@ void Core::addExistingWindows() {
 
     XQueryTree(d, root, &dummy1, &dummy2, &children, &size);
 
+    std::cout << "Query is " << size << std::endl;
+
     if(size == 0)
         return;
 
     for(int i = size - 1; i >= 0; i--)
         if(children[i] != overlay   &&
            children[i] != outputwin &&
-           children[i] != s0owner    )
+           children[i] != s0owner   &&
+           children[i] != root       )
 
             addWindow(children[i]);
 
     for(int i = 0; i < size; i++) {
         auto w = findWindow(children[i]);
-        if(w)
-            w->transientFor = WinUtil::getTransient(w);
+        if(w) mapWindow(w);
     }
-
-    for(auto i = 0; i < size; i++) {
-        auto w = findWindow(children[i]);
-        if(w)
-            WinUtil::initWindow(w);
-    }
-
 }
+
 Core::~Core(){
 
     for(auto p : plugins)
@@ -367,6 +365,8 @@ void Core::addWindow(XCreateWindowEvent xev) {
         wins->focusWindow(w);
 }
 void Core::addWindow(Window id) {
+
+    std::cout << "Adding window" << std::endl;
     XCreateWindowEvent xev;
     xev.window = id;
     xev.parent = 0;
@@ -486,6 +486,7 @@ void Core::handleEvent(XEvent xev){
 
             addWindow(xev.xcreatewindow);
             mapWindow(findWindow(xev.xcreatewindow.window));
+            focusWindow(findWindow(xev.xcreatewindow.window));
             break;
         }
         case DestroyNotify: {
@@ -595,7 +596,7 @@ void Core::handleEvent(XEvent xev){
                 if(xev.xconfigurerequest.above) {
                     auto below = findWindow(xev.xconfigurerequest.above);
                     if(below) {
-                        std::cout << "Configuring in XConfigureRequest" 
+                        std::cout << "Configuring in XConfigureRequest"
                             << std::endl;
                         if(xev.xconfigurerequest.detail == Above)
                             wins->restackAbove(w, below);
@@ -631,6 +632,8 @@ void Core::handleEvent(XEvent xev){
         }
 
         case ConfigureNotify:
+            if(xev.xconfigure.window == root)
+                terminate = true, mainrestart = true;
         case EnterNotify:       // we don't handle
         case FocusIn:           // any of these
         case CirculateRequest:
@@ -657,13 +660,19 @@ void Core::handleEvent(XEvent xev){
 
                 //if(__FireWindow::allDamaged)
                 //    break;
+
                 std::cout << "Adding new damage" << std::endl;
 
-                REGION tmp;
-                XIntersectRegion(damagedArea, output, &tmp);
-                XUnionRegion(&tmp, dmg, dmg);
-                XDestroyRegion(damagedArea);
+                if(!dmg)
+                    err << "dmg is null!!!!" << std::endl;
 
+                Region tmp = XCreateRegion();
+                XIntersectRegion(damagedArea, output, tmp);
+                XUnionRegion(tmp, dmg, dmg);
+                XDestroyRegion(damagedArea);
+                XDestroyRegion(tmp);
+
+                std::cout << "Breaking away" << std::endl;
             break;
             }
     }
@@ -680,7 +689,6 @@ void Core::loop(){
     redraw = true;
 
     int currentCycle = Second / RefreshRate;
-    currentCycle -= 50;
     int baseCycle = currentCycle;
 
     timeval before, after;
@@ -855,6 +863,7 @@ void Core::damageWindow(FireWindow win) {
 
     if(win->norender)
         return;
+
     if(!win->region) {
 
         XserverRegion reg =
@@ -867,6 +876,9 @@ void Core::damageWindow(FireWindow win) {
         return;
     }
     redraw = true;
+    if(!dmg)
+        dmg = getRegionFromRect(0, 0, 0, 0);
+
     XUnionRegion(dmg, win->region, dmg);
 }
 

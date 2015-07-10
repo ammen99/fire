@@ -163,6 +163,9 @@ void runOnce() { // simulates launching a new program
     new Refresh();
     core->loop();
 
+    if(core->mainrestart)
+        shdata[0] = 1;
+
     GetTuple(vx, vy, core->getWorkspace());
 
     shdata[1] = int(vx);

@@ -134,6 +134,7 @@ class Core {
 
         bool redraw = true; // should we redraw?
         bool terminate = false; // should main loop exit?
+        bool mainrestart = false; // should main() restart us?
         bool resetDMG;
         Region dmg;
         float scaleX = 1, scaleY = 1; // used for operations which
