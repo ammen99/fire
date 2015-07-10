@@ -179,11 +179,11 @@ void OpenGLWorker::initOpenGL(Core *core, const char *shaderSrcPath) {
 
     glClearColor (.0f, .0f, .0f, 1.f);
     glClearDepth (1.f);
-    glEnable     (GL_DEPTH_TEST);
+//    glEnable     (GL_DEPTH_TEST);
     glEnable     (GL_ALPHA_TEST);
     glEnable     (GL_BLEND);
     glBlendFunc  (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glDepthFunc  (GL_LESS);
+//    glDepthFunc  (GL_LESS);
     glViewport   (0, 0, sw, sh);
     glDisable    (GL_CULL_FACE);
     glEnable     (GL_SCISSOR_TEST);
