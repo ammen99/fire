@@ -41,8 +41,8 @@ void WSSwitch::beginSwitch() {
             std::max(bry1, bry2));
 
     __FireWindow::allDamaged = true;
-    core->dmg = core->getMaximisedRegion();
     core->resetDMG = false;
+
     stepNum = 0;
 }
 
@@ -249,9 +249,9 @@ void Expo::Toggle(Context *ctx) {
             std::bind(std::mem_fn(&Expo::findWindow), this, _1, _2);
 
         hook.enable();
+
         __FireWindow::allDamaged = true;
         core->resetDMG = false;
-        core->dmg = core->getMaximisedRegion();
         stepNum = MAXSTEP;
         recalc();
 
@@ -272,7 +272,6 @@ void Expo::Toggle(Context *ctx) {
         core->scaleY = 1;
 
         core->redraw = true;
-
 
         hook.enable();
         stepNum = MAXSTEP;

@@ -107,7 +107,6 @@ void ATSwitcher::Initiate() {
     index = 0;
 
     __FireWindow::allDamaged = true;
-    core->dmg = core->getMaximisedRegion();
     core->resetDMG = false;
 
     render();
@@ -172,6 +171,7 @@ void ATSwitcher::Terminate() {
         background->transform.scalation   = glm::mat4();
 
     __FireWindow::allDamaged = false;
+    core->resetDMG = true;
 
     std::cout << "terminated" << std::endl;
 }

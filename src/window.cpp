@@ -17,17 +17,12 @@ Region copyRegion(Region reg) {
         return tmp;
     }
 
-    std::cout << "Before crash" << std::endl;
     Region newreg = XCreateRegion();
-
     newreg->rects = new BOX[reg->numRects];
     newreg->size = reg->size;
     newreg->numRects = reg->numRects;
     newreg->extents = reg->extents;
-    std::cout << "Before memcpy" << std::endl;
     std::memcpy(newreg->rects, reg->rects, reg->numRects * sizeof(BOX));
-
-    std::cout << "After crahs" << std::endl;
     return newreg;
 }
 
@@ -56,9 +51,8 @@ Region output;
 bool __FireWindow::allDamaged = false;
 
 bool __FireWindow::shouldBeDrawn() {
-    if(keepCount)
-        return true;
-    else if(destroyed)
+
+    if(destroyed && !keepCount)
         return false;
 
     if(norender)
@@ -72,30 +66,12 @@ bool __FireWindow::shouldBeDrawn() {
         return false;
     }
 
-    if(allDamaged) {
-        if(!region)
-            return false;
-
-        // TODO: XXX:
-        // workaround, no time to investigate
+    if(XRectInRegion(core->dmg,
+       attrib.x, attrib.y, attrib.width, attrib.height) == RectangleOut)
+        return false;
+    else
         return true;
 
-        std::cout << "All damaged" << std::endl;
-        if(!region)
-            std::cout << "Failed region" << std::endl;
-        if(!output)
-            std::cout << "Failed output" << std::endl;
-        REGION tmp;
-        XIntersectRegion(region, output, &tmp);
-
-        std::cout << "jetzt hire" << std::endl;
-        if(!XEmptyRegion(&tmp))
-            return true;
-        else
-            return false;
-    }
-
-    return true;
 }
 
 void __FireWindow::updateVBO() {
@@ -134,8 +110,8 @@ Atom winOpacityAtom;
 namespace WinUtil {
 void init(Core *core) {
 
-    activeWinAtom = XInternAtom(core->d, "_NET_ACTIVE_WINDOW", 0);
-    wmNameAtom    = XInternAtom(core->d, "WM_NAME", 0);
+    activeWinAtom  = XInternAtom(core->d, "_NET_ACTIVE_WINDOW", 0);
+    wmNameAtom     = XInternAtom(core->d, "WM_NAME", 0);
     winOpacityAtom = XInternAtom(core->d, "_NET_WM_WINDOW_OPACITY", 0);
 
     wmProtocolsAtom    = XInternAtom (core->d, "WM_PROTOCOLS", 0);
@@ -152,12 +128,18 @@ void init(Core *core) {
     winTypeDialogAtom  = XInternAtom (core->d, "_NET_WM_WINDOW_TYPE_DIALOG", 0);
     winTypeNormalAtom  = XInternAtom (core->d, "_NET_WM_WINDOW_TYPE_NORMAL", 0);
 
-    winTypeDropdownMenuAtom = XInternAtom (core->d, "_NET_WM_WINDOW_TYPE_DROPDOWN_MENU", 0);
-    winTypePopupMenuAtom    = XInternAtom (core->d, "_NET_WM_WINDOW_TYPE_POPUP_MENU", 0);
-    winTypeTooltipAtom      = XInternAtom (core->d, "_NET_WM_WINDOW_TYPE_TOOLTIP", 0);
-    winTypeNotificationAtom = XInternAtom (core->d, "_NET_WM_WINDOW_TYPE_NOTIFICATION", 0);
-    winTypeComboAtom        = XInternAtom (core->d, "_NET_WM_WINDOW_TYPE_COMBO", 0);
-    winTypeDndAtom          = XInternAtom (core->d, "_NET_WM_WINDOW_TYPE_DND", 0);
+    winTypeDropdownMenuAtom =
+        XInternAtom (core->d, "_NET_WM_WINDOW_TYPE_DROPDOWN_MENU", 0);
+    winTypePopupMenuAtom    =
+        XInternAtom (core->d, "_NET_WM_WINDOW_TYPE_POPUP_MENU", 0);
+    winTypeTooltipAtom      =
+        XInternAtom (core->d, "_NET_WM_WINDOW_TYPE_TOOLTIP", 0);
+    winTypeNotificationAtom =
+        XInternAtom (core->d, "_NET_WM_WINDOW_TYPE_NOTIFICATION", 0);
+    winTypeComboAtom        =
+        XInternAtom (core->d, "_NET_WM_WINDOW_TYPE_COMBO", 0);
+    winTypeDndAtom          =
+        XInternAtom (core->d, "_NET_WM_WINDOW_TYPE_DND", 0);
 
 
 }
@@ -247,9 +229,9 @@ void initWindow(FireWindow win) {
     XSelectInput(core->d, win->id,   FocusChangeMask  |
                 PropertyChangeMask | EnterWindowMask);
 
-    XGrabButton ( core->d, AnyButton, AnyModifier, win->id, TRUE,
+    XGrabButton (core->d, AnyButton, AnyModifier, win->id, TRUE,
             ButtonPressMask | ButtonReleaseMask | Button1MotionMask,
-            GrabModeSync, GrabModeSync, None, None );
+            GrabModeSync, GrabModeSync, None, None);
 
     win->transform.color = glm::vec4(1., 1., 1., 1.);
     win->transform.color[3] = readProp(win->id,
@@ -263,23 +245,20 @@ int readProp(Window win, Atom prop, int def) {
     ulong n, left;
     uchar *data;
 
-    result = XGetWindowProperty ( core->d, win, prop,
+    result = XGetWindowProperty (core->d, win, prop,
             0L, 1L, FALSE, XA_CARDINAL, &actual, &format,
-            &n, &left, &data );
+            &n, &left, &data);
 
-    if ( result == Success && data ) {
-        if ( n ) {
-            result = *(int *)data;
+    if (result == Success && data) {
+        if (n)
+            result = *(int *)data,
             result >>= 16;
-        }
-
-        XFree ( data );
+        XFree(data);
     }
     else
         result = def;
     return result;
 }
-
 
 void finishWindow(FireWindow win) {
     if(win->pixmap != 0)
@@ -304,51 +283,51 @@ void finishWindow(FireWindow win) {
 void renderWindow(FireWindow win) {
 
 
-    std::cout << "begin render window" << std::endl;
+    //std::cout << "begin render window" << std::endl;
     OpenGLWorker::color = win->transform.color;
     //win->remDamage();
 
     if(win->type == WindowTypeDesktop){
-        std::cout << "desktop window" << std::endl;
+      //  std::cout << "desktop window" << std::endl;
         OpenGLWorker::renderTransformedTexture(win->texture,
                 win->vao, win->vbo,
                 win->transform.compose());
 
-        std::cout << "drawn desktop" << std::endl;
+     //   std::cout << "drawn desktop" << std::endl;
         return;
     }
 
-    std::cout << "setting window texture" << std::endl;
+    //std::cout << "setting window texture" << std::endl;
     if(!setWindowTexture(win)) {
         err <<"failed to paint window " << win->id << " (no texture avail)";
         return;
     }
 
-    std::cout << "set texture" << std::endl;
+    //std::cout << "set texture" << std::endl;
 
     if(win->vbo == -1 || win->vao == -1)
         win->updateVBO();
 
-    std::cout << "looking for visual info" << std::endl;
+   // std::cout << "looking for visual info" << std::endl;
     if(!win->xvi) {
-        std::cout << "no visual info, trying to get new one" << std::endl;
+        //std::cout << "no visual info, trying to get new one" << std::endl;
         win->xvi = getVisualInfoForWindow(win->id);
         if(!win->xvi) {
-        if(win->type == WindowTypeDesktop) {
-            std::cout << "problem is a desktop window" << std::endl;
-        }
-        std::cout << "fail " << win->id << std::endl;
+        //if(win->type == WindowTypeDesktop) {
+        //    std::cout << "problem is a desktop window" << std::endl;
+        //}
+        //std::cout << "fail " << win->id << std::endl;
         return;
         }
-        std::cout << "got new" << std::endl;
+        //std::cout << "got new" << std::endl;
     }
     OpenGLWorker::depth = win->xvi->depth;
 
-    std::cout << "rendering" << std::endl;
+//    std::cout << "rendering" << std::endl;
     OpenGLWorker::renderTransformedTexture(win->texture,
             win->vao, win->vbo, win->transform.compose());
 
-    std::cout << "rendered window" << std::endl;
+//    std::cout << "rendered window" << std::endl;
 }
 
 XVisualInfo *getVisualInfoForWindow(Window win) {
@@ -367,18 +346,6 @@ XVisualInfo *getVisualInfoForWindow(Window win) {
     if(dumm == 0 || !xvi)
         err << "Cannot get default visual!\n";
     return xvi;
-}
-
-
-bool isTopLevelWindow(FireWindow win) {
-    if(win->transientFor) return false;
-    if(win->leader) return false;
-
-    Window client = XmuClientWindow(core->d, win->id);
-    if(!client || client != win->id)
-        return false;
-
-    return true;
 }
 
 FireWindow getClientLeader(FireWindow win) {
@@ -401,7 +368,6 @@ FireWindow getClientLeader(FireWindow win) {
     return core->findWindow(x);
 }
 
-
 FireWindow getTransient(FireWindow win) {
 
     Window dumm;
@@ -412,7 +378,6 @@ FireWindow getTransient(FireWindow win) {
         return core->findWindow(dumm);
 }
 
-
 void getWindowName(FireWindow win, char *name) {
     Atom type;
     int form;
@@ -422,71 +387,6 @@ void getWindowName(FireWindow win, char *name) {
                 0, 1024, False, XA_STRING,
                 &type, &form, &len, &remain, (unsigned char**)&name)) {
         }
-}
-
-FireWindow getAncestor(FireWindow win) {
-
-    if(!win)
-        return nullptr;
-
-    if(win->type == WindowTypeNormal)
-        return win;
-
-    FireWindow w1, w2;
-    w1 = w2 = nullptr;
-
-    if(win->transientFor)
-        w1 = getAncestor(win->transientFor);
-
-    if(win->leader)
-        w2 = getAncestor(win->leader);
-
-    if(w1 == nullptr && w2 == nullptr)
-        return win;
-
-    else if(w1)
-        return w1;
-
-    else if(w2)
-        return w2;
-
-    else
-        return nullptr;
-}
-
-bool recurseIsAncestor(FireWindow parent, FireWindow win) {
-    if(parent->id == win->id)
-        return true;
-
-    bool mask = false;
-
-    if(win->transientFor)
-        mask |= recurseIsAncestor(parent, win->transientFor);
-
-    if(win->leader)
-        mask |= recurseIsAncestor(parent, win->leader);
-
-    return mask;
-}
-
-bool isAncestorTo(FireWindow parent, FireWindow win) {
-    if(win->id == parent->id) // a window is not its own ancestor
-        return false;
-
-    return recurseIsAncestor(parent, win);
-}
-
-StackType getStackType(FireWindow win1, FireWindow win2) {
-    if(win1->id == win2->id)
-        return StackTypeNoStacking;
-
-    if(isAncestorTo(win1, win2))
-        return StackTypeAncestor;
-
-    if(isAncestorTo(win2, win1))
-        return StackTypeChild;
-
-    return StackTypeSibling;
 }
 
 WindowType getWindowType(FireWindow win) {
@@ -525,7 +425,7 @@ WindowType getWindowType(FireWindow win) {
         else if ( a == winTypeDialogAtom )
             return WindowTypeModal;
         else if ( a == winTypeDropdownMenuAtom )
-            return WindowTypeModal;
+            return WindowTypeWidget;
         else if ( a == winTypePopupMenuAtom )
             return WindowTypeModal;
         else if ( a == winTypeTooltipAtom )
@@ -565,7 +465,7 @@ void setInputFocusToWindow(Window win) {
 
 
 void moveWindow(FireWindow win, int x, int y) {
-    
+
     bool existPreviousRegion = !(win->region == nullptr);
 
     Region prevRegion = nullptr;
@@ -641,8 +541,6 @@ void syncWindowAttrib(FireWindow win) {
     if(!mask)
         return;
 
-
-    err << "setting new attribs";
     win->attrib = xwa;
 
     glDeleteBuffers(1, &win->vbo);
@@ -652,4 +550,3 @@ void syncWindowAttrib(FireWindow win) {
     core->damageWindow(win);
 }
 }
-

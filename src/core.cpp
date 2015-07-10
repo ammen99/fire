@@ -378,31 +378,34 @@ void Core::closeWindow(FireWindow win) {
 
     int cnt;
     Atom *atoms;
-    XGetWMProtocols(d, win->id, &atoms, &cnt);
+    auto status = XGetWMProtocols(d, win->id, &atoms, &cnt);
     Atom wmdelete = XInternAtom(d, "WM_DELETE_WINDOW", 0);
     Atom wmproto  = XInternAtom(d, "WM_PROTOCOLS", 0);
 
-    bool send = false; // should we send a wm_delete_window?
-    for(int i = 0; i < cnt; i++)
-        if(atoms[i] == wmdelete)
-            send = true;
+    if(status != 0) {
+        bool send = false; // should we send a wm_delete_window?
+        for(int i = 0; i < cnt; i++)
+            if(atoms[i] == wmdelete)
+                send = true;
 
-    if ( send ) {
-        XEvent xev;
+        if ( send ) {
+            XEvent xev;
 
-        xev.type         = ClientMessage;
-        xev.xclient.window       = win->id;
-        xev.xclient.message_type = wmproto;
-        xev.xclient.format       = 32;
-        xev.xclient.data.l[0]    = wmdelete;
-        xev.xclient.data.l[1]    = CurrentTime;
-        xev.xclient.data.l[2]    = 0;
-        xev.xclient.data.l[3]    = 0;
-        xev.xclient.data.l[4]    = 0;
+            xev.type         = ClientMessage;
+            xev.xclient.window       = win->id;
+            xev.xclient.message_type = wmproto;
+            xev.xclient.format       = 32;
+            xev.xclient.data.l[0]    = wmdelete;
+            xev.xclient.data.l[1]    = CurrentTime;
+            xev.xclient.data.l[2]    = 0;
+            xev.xclient.data.l[3]    = 0;
+            xev.xclient.data.l[4]    = 0;
 
-        XSendEvent ( d, win->id, FALSE, NoEventMask, &xev );
+            XSendEvent ( d, win->id, FALSE, NoEventMask, &xev );
+        } else
+            XKillClient ( d, win->id );
     } else
-        XKillClient ( d, win->id );
+        XKillClient(d, win->id);
 
     wins->focusWindow(wins->getTopmostToplevel());
 }
@@ -413,14 +416,11 @@ void Core::renderAllWindows() {
         << dmg->rects[0].y1 << " " << dmg->rects[0].x2
         << " " << dmg->rects[0].y2 << std::endl;;
 
-    std::cout << "Rendering windos # " << wins->getNumOfWindows() << std::endl;
-
     XIntersectRegion(dmg, output, dmg);
-    //dmg = getMaximisedRegion();
+
     OpenGLWorker::preStage();
     wins->renderWindows();
     GLXUtils::endFrame(outputwin);
-    //std::cout << "Frame ended" << std::endl;
 
     if(resetDMG) {
         XDestroyRegion(dmg);
@@ -444,8 +444,9 @@ void Core::mapWindow(FireWindow win) {
     damageWindow(win);
 
     WinUtil::syncWindowAttrib(win);
-    auto parent = WinUtil::getAncestor(win);
-    wins->restackTransients(parent);
+    std::cout << "restacking transients mapWindow" << std::endl;
+    if(win->transientFor)
+        wins->restackTransients(win->transientFor);
 }
 
 void Core::unmapWindow(FireWindow win) {
@@ -594,6 +595,8 @@ void Core::handleEvent(XEvent xev){
                 if(xev.xconfigurerequest.above) {
                     auto below = findWindow(xev.xconfigurerequest.above);
                     if(below) {
+                        std::cout << "Configuring in XConfigureRequest" 
+                            << std::endl;
                         if(xev.xconfigurerequest.detail == Above)
                             wins->restackAbove(w, below);
                         else
@@ -605,6 +608,26 @@ void Core::handleEvent(XEvent xev){
                         focusWindow(w);
             }
 
+        }
+
+        case PropertyNotify: {
+            auto w = findWindow(xev.xproperty.window);
+            if(!w)
+                break;
+
+            if(xev.xproperty.atom == winTypeAtom)
+                w->type = WinUtil::getWindowType(w),
+                wins->restackTransients(w);
+
+            if(xev.xproperty.atom == XA_WM_TRANSIENT_FOR)
+                w->transientFor = WinUtil::getTransient(w),
+                wins->restackTransients(w);
+
+            if(xev.xproperty.atom == wmClientLeaderAtom)
+                w->leader = WinUtil::getClientLeader(w),
+                wins->restackTransients(w);
+
+            break;
         }
 
         case ConfigureNotify:
@@ -644,7 +667,11 @@ void Core::handleEvent(XEvent xev){
     }
 }
 
+<<<<<<< HEAD
 #define RefreshRate 100
+=======
+#define RefreshRate 61
+>>>>>>> master
 #define Second 1000000
 #define MaxDelay 1000
 #define MinRR 61
