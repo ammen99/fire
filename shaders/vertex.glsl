@@ -4,7 +4,7 @@ in vec3 position;
 in vec2 uvPosition;
 
 out vec2 uvpos;
-out vec3 vPos;
+vec3 vPos;
 
 uniform mat4 MVP;
 uniform float w2;

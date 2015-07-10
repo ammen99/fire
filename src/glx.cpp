@@ -263,9 +263,12 @@ GLuint textureFromPixmap(Pixmap pixmap,
     if (fbconf == nullptr)
         return -1;
 
+    std::cout << "generating texture" << std::endl;
     GLuint tex;
     glGenTextures(1, &tex);
     glBindTexture(GL_TEXTURE_2D, tex);
+
+    std::cout << "setting tex parema" << std::endl;
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -273,11 +276,19 @@ GLuint textureFromPixmap(Pixmap pixmap,
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
+    std::cout << "glxpixmap" << std::endl;
 
     auto gpix = glxPixmap(pixmap, fbconf, w, h);
+    std::cout << "magic" << std::endl;
+
+    if(gpix == 0)
+        return -1;
 
     glXBindTexImageEXT_func (core->d, gpix, GLX_FRONT_LEFT_EXT, NULL);
+
+    std::cout << "end" << std::endl;
     glXDestroyPixmap(core->d, gpix);
+    std::cout << "nun hier" << std::endl;
 
     return tex;
 }

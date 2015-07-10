@@ -35,7 +35,11 @@ Fade::Fade (FireWindow _win, Mode _mode, int duration) :
 
 bool Fade::Step() {
     progress += mode;
-    win->transform.color[3] = (float(progress) / float(maxstep));
+    if(maxstep != 0)
+        win->transform.color[3] = (float(progress) / float(maxstep));
+    else
+        win->transform.color[3] = 1;
+
     core->damageWindow(win);
 
     if(progress == target) {

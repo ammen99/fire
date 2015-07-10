@@ -423,7 +423,9 @@ void Core::renderAllWindows() {
     GLXUtils::endFrame(outputwin);
 
     if(resetDMG) {
-        XDestroyRegion(dmg);
+        if(dmg)
+            XDestroyRegion(dmg);
+
         dmg = XCreateRegion();
         dmg->numRects = 1;
         dmg->rects[0].x1 = 0;
@@ -707,6 +709,7 @@ void Core::loop(){
                 continue;
             }
             fd.revents = 0;
+
         }
         else {
             if(cntHooks) { // if running hooks, run them

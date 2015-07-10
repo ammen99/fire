@@ -118,6 +118,9 @@ void ATSwitcher::reset() {
 
     std::cout << "resetting" << std::endl;
     auto size = windows.size();
+    if(size == 0)
+        return;
+
     auto prev = (index + size - 1) % size;
     auto next = (index + size + 1) % size;
 
