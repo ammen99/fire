@@ -243,5 +243,11 @@ void OpenGLWorker::initOpenGL(Core *core, const char *shaderSrcPath) {
 
     glUniformMatrix4fv(mvpID, 1, GL_FALSE, &MVP[0][0]);
     glUniformMatrix3fv(normalID, 1, GL_FALSE, &NM[0][0]);
+
+    auto w2ID = glGetUniformLocation(program, "w2");
+    auto h2ID = glGetUniformLocation(program, "h2");
+
+    glUniform1f(w2ID, sw / 2);
+    glUniform1f(h2ID, sh / 2);
 }
 

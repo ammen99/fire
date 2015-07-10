@@ -669,7 +669,7 @@ void Core::handleEvent(XEvent xev){
     }
 }
 
-#define RefreshRate 60
+#define RefreshRate 61
 #define Second 1000000
 #define MaxDelay 1000
 #define MinRR 61

@@ -47,6 +47,7 @@ void Move::Initiate(Context *ctx) {
 
         std::cout << "Called from here" << std::endl;
         prevRegion = copyRegion(win->region);
+        __FireWindow::allDamaged = true;
     }
 }
 
@@ -73,6 +74,7 @@ void Move::Terminate(Context *ctx) {
     XDestroyRegion(prevRegion);
 
     WinUtil::moveWindow(win, nx, ny);
+    __FireWindow::allDamaged = false;
     XUngrabPointer(core->d, CurrentTime);
     core->focusWindow(win);
     core->damageWindow(win);
