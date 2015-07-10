@@ -15,7 +15,6 @@
 
 #include <sys/time.h>
 #include <poll.h>
-#include <glog/logging.h>
 
 #include <cstdlib>
 #include <memory>
@@ -44,6 +43,7 @@
 //
 //#define err (cout<<__FILE__<<" "<<__LINE__<<" ")
 #include <fstream>
+#include <unistd.h>
 extern std::fstream err;
 
 #ifdef YCM

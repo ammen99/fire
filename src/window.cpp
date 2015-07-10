@@ -1,6 +1,5 @@
 #include "../include/core.hpp"
 #include "../include/opengl.hpp"
-#include <X11/extensions/XTest.h>
 
 
 glm::mat4 Transform::proj;
@@ -66,7 +65,7 @@ bool __FireWindow::shouldBeDrawn() {
         return false;
     }
 
-    if(XRectInRegion(core->dmg,
+    if(core->dmg && XRectInRegion(core->dmg,
        attrib.x, attrib.y, attrib.width, attrib.height) == RectangleOut)
         return false;
     else

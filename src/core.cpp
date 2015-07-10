@@ -37,7 +37,7 @@ bool Hook::getState() {
 
 Core::Core(int vx, int vy) {
 
-    err.open("/home/ilex/work/cwork/fire/log2",
+    err.open("/home/ilex/work/fire/log2",
             std::ios::out | std::ios::trunc);
 
     if(!err.is_open())
@@ -108,7 +108,7 @@ Core::Core(int vx, int vy) {
 
     WinUtil::init(this);
     GLXUtils::initGLX(this);
-    OpenGLWorker::initOpenGL(this, "/home/ilex/work/cwork/fire/shaders");
+    OpenGLWorker::initOpenGL(this, "/home/ilex/work/fire/shaders");
     resetDMG = true;
 
     core = this;
@@ -302,8 +302,8 @@ Region Core::getRegionFromRect(int tlx, int tly, int brx, int bry) {
 
 void Core::setBackground(const char *path) {
 
-    this->run(const_cast<char*>(std::string("feh --bg-scale ")
-                .append(path).c_str()));
+    //this->run(const_cast<char*>(std::string("feh --bg-scale ")
+    //            .append(path).c_str()));
 
     auto texture = GLXUtils::loadImage(const_cast<char*>(path));
 

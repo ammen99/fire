@@ -143,6 +143,7 @@ void signalHandle(int sig) {
 
 void runOnce() { // simulates launching a new program
 
+    std::cout << "runonce" << std::endl;
                  // get the shared memory from the main process
     shmid = shmget(shmkey, shmsize, 0666);
     auto dataid = shmat(shmid, 0, 0);
@@ -158,10 +159,16 @@ void runOnce() { // simulates launching a new program
     Transform::grot = Transform::gscl =
     Transform::gtrs = glm::mat4();
 
+    std::cout << "set up everything" << std::endl;
     core = new Core(shdata[1], shdata[2]);
-    core->setBackground("/tarball/backgrounds/last.jpg");
+    std::cout << "Did init of core" << std::endl;
+    core->setBackground("/home/ilex/Desktop/maxresdefault.jpg");
+    std::cout << "set background" << std::endl;
     new Refresh();
+
+    std::cout << "hier" << std::endl;
     core->loop();
+    std::cout << "after loop" << std::endl;
 
     GetTuple(vx, vy, core->getWorkspace());
 
@@ -193,6 +200,7 @@ int main(int argc, const char **argv ) {
 
     int times = 0;
     while(shdata[0]) {
+        std::cout << "In cycle" << std::endl;
         if(times++) // print a message if there has been crash
                     // but note that it could have just been a refresh
             std::cout << "Crash detected or just refresh" << std::endl;
@@ -204,6 +212,7 @@ int main(int argc, const char **argv ) {
         }
         int status = 0;
         waitpid(pid, &status, 0); // wait for fork() to finish
+        std::cout << "end cycle" << std::endl;
     }
 
     shmdt(dataid);

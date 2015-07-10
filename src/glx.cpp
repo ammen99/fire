@@ -222,16 +222,16 @@ GLuint compileShader(const char *src, GLuint type) {
     if ( s == GL_FALSE ) {
         std::stringstream srcStream, errorStream;
         std::string line;
-        err << "shader compilation failed!";
-        err << "src: *****************************";
-        srcStream << src;
+        err << "shader compilation failed!" << std::endl;
+        err << "src: *****************************" << std::endl;
+        srcStream << src << std::endl;
         while(std::getline(srcStream, line))
-            err << line;
-        err << "**********************************";
-        errorStream << b1;
+            err << line << std::endl;
+        err << "**********************************" << std::endl;
+        errorStream << b1 << std::endl;
         while(std::getline(errorStream, line))
-            err << line;
-        err << "**********************************";
+            err << line << std::endl;
+        err << "**********************************" << std::endl;
         return -1;
     }
     return shader;
