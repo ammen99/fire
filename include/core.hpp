@@ -82,6 +82,7 @@ struct Fade : public Animation {
     int maxstep = 0;
     int target = 0;
     bool destroy;
+    bool savetr; // used to restore transparency
 
     Fade(FireWindow _win, Mode _mode = FadeIn,
             int durationms = 1000);

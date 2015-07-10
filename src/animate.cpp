@@ -21,6 +21,8 @@ AnimationHook::~AnimationHook() {}
 
 Fade::Fade (FireWindow _win, Mode _mode, int duration) :
     win(_win), mode(_mode) {
+        savetr = win->transparent;
+        win->transparent = true;
 
         duration = 150;
         maxstep = duration * 1000 / core->getRefreshRate();
@@ -39,6 +41,7 @@ bool Fade::Step() {
     core->damageWindow(win);
 
     if(progress == target) {
+        win->transparent = savetr;
 
         win->keepCount--;
         if(mode == FadeOut)      // just unmap
