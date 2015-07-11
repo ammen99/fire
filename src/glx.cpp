@@ -273,11 +273,16 @@ GLuint textureFromPixmap(Pixmap pixmap,
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
+    auto xim = XGetImage(core->d, pixmap, 0, 0, w, h, AllPlanes, ZPixmap);
+    if(xim == nullptr){
+        std::cout << "xgetimage returned null!!" << std::endl;
+        return -1;
+    }
 
-    auto gpix = glxPixmap(pixmap, fbconf, w, h);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0,
+            GL_BGRA, GL_UNSIGNED_BYTE, (void*)(&xim->data[0]));
 
-    glXBindTexImageEXT_func (core->d, gpix, GLX_FRONT_LEFT_EXT, NULL);
-    glXDestroyPixmap(core->d, gpix);
+    XDestroyImage(xim);
 
     return tex;
 }
