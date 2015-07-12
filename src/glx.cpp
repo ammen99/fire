@@ -32,7 +32,7 @@ GLuint loadImage (char* path) {
     if ( infoi.Origin == IL_ORIGIN_UPPER_LEFT )
         iluFlipImage();
 
-    if ( !ilConvertImage ( IL_RGB, IL_UNSIGNED_BYTE ) )
+    if ( !ilConvertImage (IL_BGR, IL_UNSIGNED_BYTE))
         err << "Can't convert image!", std::exit ( 1 );
 
     glGenTextures ( 1, &textureID );
@@ -46,11 +46,12 @@ GLuint loadImage (char* path) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
     glTexImage2D ( GL_TEXTURE_2D, 0,
-            ilGetInteger ( IL_IMAGE_FORMAT ),
-            ilGetInteger ( IL_IMAGE_WIDTH ),
-            ilGetInteger ( IL_IMAGE_HEIGHT ),
+            GL_RGBA,
+            ilGetInteger (IL_IMAGE_WIDTH),
+            ilGetInteger (IL_IMAGE_HEIGHT),
             0,
-            ilGetInteger ( IL_IMAGE_FORMAT ),
+//            ilGetInteger(IL_IMAGE_FORMAT)
+            GL_RGB,
             GL_UNSIGNED_BYTE,
             ilGetData() );
     return textureID;
