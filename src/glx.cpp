@@ -280,7 +280,7 @@ GLuint textureFromPixmap(Pixmap pixmap,
     }
 
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0,
-            GL_BGRA, GL_UNSIGNED_BYTE, (void*)(&xim->data[0]));
+            GL_RGBA, GL_UNSIGNED_BYTE, (void*)(&xim->data[0]));
 
     XDestroyImage(xim);
 

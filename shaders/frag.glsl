@@ -11,7 +11,7 @@ uniform vec4      color;
 
 void main() {
     if(depth == 32)
-        outColor = texture(smp, guv) * color;
+        outColor = texture(smp, guv).zyxw * color;
     else
-        outColor = vec4(texture(smp, guv).xyz, 1) * color;
+        outColor = vec4(texture(smp, guv).zyx, 1) * color;
 }
