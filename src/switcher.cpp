@@ -102,10 +102,7 @@ void ATSwitcher::Initiate() {
             GrabModeAsync, GrabModeAsync, CurrentTime);
 
     index = 0;
-
-    __FireWindow::allDamaged = true;
-    core->resetDMG = false;
-
+    core->setRedrawEverything(true);
     render();
 }
 
@@ -159,9 +156,7 @@ void ATSwitcher::Terminate() {
         background->transform.color = glm::vec4(1, 1, 1, 1),
         background->transform.translation = glm::mat4(),
         background->transform.scalation   = glm::mat4();
-
-    __FireWindow::allDamaged = false;
-    core->resetDMG = true;
+    core->setRedrawEverything(false);
     core->dmg = core->getMaximisedRegion();
 }
 

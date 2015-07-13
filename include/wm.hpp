@@ -44,7 +44,6 @@ class WindowOperation : public Plugin {
     protected:
         int sx, sy; // starting pointer x, y
         FireWindow win; // window we're operating on
-        Region prevRegion;
 
     protected:
         ButtonBinding press;

@@ -40,9 +40,7 @@ void WSSwitch::beginSwitch() {
             std::max(brx1, brx2),
             std::max(bry1, bry2));
 
-    __FireWindow::allDamaged = true;
-    core->resetDMG = false;
-
+    core->setRedrawEverything(true);
     stepNum = 0;
 }
 
@@ -85,8 +83,7 @@ void WSSwitch::moveStep() {
 
         if(dirs.size() == 0) {
             hook.disable();
-            __FireWindow::allDamaged = false;
-            core->resetDMG = true;
+            core->setRedrawEverything(false);
         }
         else
             beginSwitch();
@@ -250,8 +247,7 @@ void Expo::Toggle(Context *ctx) {
 
         hook.enable();
 
-        __FireWindow::allDamaged = true;
-        core->resetDMG = false;
+        core->setRedrawEverything(true);
         stepNum = MAXSTEP;
         recalc();
 
@@ -313,8 +309,7 @@ void Expo::zoom() {
         hook.disable();
         if(!active) {
             output = core->getMaximisedRegion();
-            __FireWindow::allDamaged = false;
-            core->resetDMG = true;
+            core->setRedrawEverything(false);
             core->wins->findWindowAtCursorPosition = save;
         }
 

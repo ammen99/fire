@@ -43,7 +43,7 @@ void Move::Initiate(Context *ctx) {
                 GrabModeAsync, GrabModeAsync,
                 core->root, None, CurrentTime);
 
-        __FireWindow::allDamaged = true;
+        core->setRedrawEverything(true);
     }
 }
 
@@ -66,7 +66,7 @@ void Move::Terminate(Context *ctx) {
     int ny = win->attrib.y + dy;
 
     WinUtil::moveWindow(win, nx, ny);
-    __FireWindow::allDamaged = false;
+    core->setRedrawEverything(false);
 
     XUngrabPointer(core->d, CurrentTime);
     core->focusWindow(win);
@@ -141,7 +141,7 @@ void Resize::Initiate(Context *ctx) {
                 GrabModeAsync, GrabModeAsync,
                 core->root, None, CurrentTime);
 
-        prevRegion = copyRegion(win->region);
+        core->setRedrawEverything(true);
     }
 }
 
@@ -165,10 +165,8 @@ void Resize::Terminate(Context *ctx) {
     WinUtil::resizeWindow(win, nw, nh);
 
     XUngrabPointer(core->d, CurrentTime);
-    core->focusWindow(win);
-
+    core->setRedrawEverything(false);
     core->damageWindow(win);
-    XUnionRegion(core->dmg, prevRegion, core->dmg);
     core->redraw = true;
 }
 
@@ -204,17 +202,5 @@ void Resize::Intermediate() {
 
     win->transform.scalation =
         glm::scale(glm::mat4(), glm::vec3(kW, kH, 1.f));
-
-
-    auto newrect =
-        core->getRegionFromRect(win->attrib.x - 1, win->attrib.y - 1,
-             win->attrib.x + int(float(win->attrib.width ) * kW) + 2,
-             win->attrib.y + int(float(win->attrib.height) * kH) + 2);
-
-    XUnionRegion(core->dmg, newrect, core->dmg);
-    XUnionRegion(core->dmg, prevRegion, core->dmg);
-    XDestroyRegion(prevRegion);
-    prevRegion = newrect;
-
     core->redraw = true;
 }

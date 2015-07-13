@@ -138,6 +138,7 @@ class Core {
         bool mainrestart = false; // should main() restart us?
         bool resetDMG;
         Region dmg;
+
         float scaleX = 1, scaleY = 1; // used for operations which
                               // depend on mouse moving
                               // for ex. when using expo
@@ -190,6 +191,10 @@ class Core {
 
         Region getMaximisedRegion();
         Region getRegionFromRect(int tlx, int tly, int brx, int bry);
+        /* use this function to draw all windows
+         * but do not forget to turn it off
+         * as it is extremely bad for performance */
+        void setRedrawEverything(bool value);
 
         std::vector<FireWindow> getWindowsOnViewport(std::tuple<int, int>);
         void switchWorkspace(std::tuple<int, int>);

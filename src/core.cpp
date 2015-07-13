@@ -840,6 +840,21 @@ void Core::damageWindow(FireWindow win) {
     XUnionRegion(dmg, win->region, dmg);
 }
 
+namespace {
+    int fullRedraw = 0;
+}
+
+void Core::setRedrawEverything(bool val) {
+    if(val) {
+        fullRedraw++;
+        __FireWindow::allDamaged = true;
+        core->resetDMG = false;
+    }
+    else if(--fullRedraw == 0)
+        __FireWindow::allDamaged = false,
+        core->resetDMG = true;
+}
+
 void Core::focusWindow(FireWindow win) {
     if(!win)
         return;
@@ -863,7 +878,7 @@ PluginPtr Core::createPlugin() {
 }
 
 int Core::getRefreshRate() {
-    return Second / RefreshRate - 50;
+    return Second / RefreshRate;
 }
 
 void Core::initDefaultPlugins() {
