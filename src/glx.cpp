@@ -269,7 +269,7 @@ void endFrame(Window win) {
     glXSwapBuffers(core->d, win);
 }
 
-GLuint textureFromPixmap(Pixmap pixmap, int w, int h, SharedImage *sim) {
+GLuint textureFromPixmap(Window pixmap, int w, int h, SharedImage *sim) {
     GLuint tex;
     glGenTextures(1, &tex);
     glBindTexture(GL_TEXTURE_2D, tex);
@@ -291,11 +291,13 @@ GLuint textureFromPixmap(Pixmap pixmap, int w, int h, SharedImage *sim) {
 
             /* Get the shared memory and check for errors */
             sim->shminfo.shmid = shmget(IPC_PRIVATE,
-                    sim->image->bytes_per_line * sim->image->height, IPC_CREAT | 0777);
+                    sim->image->bytes_per_line * sim->image->height,
+                    IPC_CREAT | 0777);
 
             if(sim->shminfo.shmid < 0) return -1;
 
-            sim->shminfo.shmaddr = sim->image->data = (char *)shmat(sim->shminfo.shmid, 0, 0);
+            sim->shminfo.shmaddr = sim->image->data =
+                (char *)shmat(sim->shminfo.shmid, 0, 0);
             if(sim->shminfo.shmaddr == (char *) -1) return -1;
 
             /* set as read/write, and attach to the display */

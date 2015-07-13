@@ -158,6 +158,17 @@ int setWindowTexture(FireWindow win) {
         return 0;
     }
 
+
+    if(win->pixmap != 0) {
+        glDeleteTextures(1, &win->texture);
+    }
+
+    win->texture = GLXUtils::textureFromPixmap(win->id,
+            win->attrib.width, win->attrib.height, &win->shared);
+    win->pixmap = 1;
+    XUngrabServer(core->d);
+    return 1;
+
     Pixmap pix = win->pixmap;
     if(!win->destroyed)
         pix = XCompositeNameWindowPixmap(core->d, win->id);
@@ -169,10 +180,6 @@ int setWindowTexture(FireWindow win) {
         return 1;
     }
 
-    if(win->pixmap != 0) {
-        XFreePixmap(core->d, win->pixmap);
-        glDeleteTextures(1, &win->texture);
-    }
 
     win->pixmap = pix;
 
@@ -185,11 +192,6 @@ int setWindowTexture(FireWindow win) {
         return 0;
     }
 
-    win->texture = GLXUtils::textureFromPixmap(win->pixmap,
-            win->attrib.width, win->attrib.height, &win->shared);
-
-    XUngrabServer(core->d);
-    return 1;
 }
 
 void initWindow(FireWindow win) {
