@@ -3,7 +3,6 @@
 
 namespace GLXUtils {
 
-
     namespace {
         typedef GLXContext (*glXCreateContextAttribsARBProc) (Display*,
                 GLXFBConfig, GLXContext,
@@ -209,9 +208,6 @@ void initGLX(Core *core) {
     glXReleaseTexImageEXT_func = (PFNGLXRELEASETEXIMAGEEXTPROC)
         glXGetProcAddress((GLubyte*) "glXReleaseTexImageEXT");
 
-    initFBConf(core);
-
-
     int ignore, major, minor;
     Bool pixmaps;
 
@@ -269,7 +265,7 @@ void endFrame(Window win) {
     glXSwapBuffers(core->d, win);
 }
 
-GLuint textureFromPixmap(Window pixmap, int w, int h, SharedImage *sim) {
+GLuint textureFromWindow(Window pixmap, int w, int h, SharedImage *sim) {
     GLuint tex;
     glGenTextures(1, &tex);
     glBindTexture(GL_TEXTURE_2D, tex);
@@ -327,60 +323,5 @@ GLuint textureFromPixmap(Window pixmap, int w, int h, SharedImage *sim) {
 
     return tex;
 }
-
-void initFBConf(Core *core) {
-    int nfbs;
-    auto fbs = glXGetFBConfigs (core->d, DefaultScreen(core->d), &nfbs);
-    int value;
-
-    for(int d = 0; d < 33; d++) {
-        for (int i = 0; i < nfbs; i++) {
-
-            auto visinfo = glXGetVisualFromFBConfig (core->d, fbs[i]);
-            if (!visinfo || visinfo->depth != d)
-                continue;
-
-            glXGetFBConfigAttrib (core->d, fbs[i],
-                    GLX_DRAWABLE_TYPE, &value);
-
-            if (!(value & GLX_PIXMAP_BIT))
-                continue;
-
-            glXGetFBConfigAttrib (core->d, fbs[i],
-                    GLX_BIND_TO_TEXTURE_TARGETS_EXT,
-                    &value);
-            if (!(value & GLX_TEXTURE_2D_BIT_EXT))
-                continue;
-
-            glXGetFBConfigAttrib (core->d, fbs[i],
-                    GLX_BIND_TO_TEXTURE_RGBA_EXT,
-                    &value);
-            if (value == FALSE && d != 32) {
-                glXGetFBConfigAttrib (core->d, fbs[i],
-                        GLX_BIND_TO_TEXTURE_RGB_EXT,
-                        &value);
-                if (value == FALSE)
-                    continue;
-            }
-
-            else if (value == FALSE)
-                continue;
-
-            fbconfigs[d] = fbs[i];
-        }
-    }
-}
-
-
-GLXPixmap glxPixmap(Pixmap pixmap, GLXFBConfig config, int w, int h) {
-   const int pixmapAttribs[] = {
-      GLX_TEXTURE_TARGET_EXT, GLX_TEXTURE_2D_EXT,
-      GLX_TEXTURE_FORMAT_EXT, GLX_TEXTURE_FORMAT_RGBA_EXT,
-      None
-   };
-
-   return glXCreatePixmap(core->d, config, pixmap, pixmapAttribs);
-}
-
 }
 

@@ -142,8 +142,6 @@ void Core::addExistingWindows() {
 
     XQueryTree(d, root, &dummy1, &dummy2, &children, &size);
 
-    std::cout << "Query is " << size << std::endl;
-
     if(size == 0)
         return;
 
@@ -355,9 +353,7 @@ void Core::addWindow(XCreateWindowEvent xev) {
     if(xev.parent != root && xev.parent != 0)
         w->transientFor = findWindow(xev.parent);
 
-    w->xvi = nullptr;
     w->keepCount = 0;
-
     wins->addWindow(w);
     WinUtil::initWindow(w);
 
@@ -365,8 +361,6 @@ void Core::addWindow(XCreateWindowEvent xev) {
         wins->focusWindow(w);
 }
 void Core::addWindow(Window id) {
-
-    std::cout << "Adding window" << std::endl;
     XCreateWindowEvent xev;
     xev.window = id;
     xev.parent = 0;
@@ -411,26 +405,15 @@ void Core::closeWindow(FireWindow win) {
 }
 
 void Core::renderAllWindows() {
-
-    std::cout << "Reg " << dmg->rects[0].x1 << " "
-        << dmg->rects[0].y1 << " " << dmg->rects[0].x2
-        << " " << dmg->rects[0].y2 << std::endl;;
-
     XIntersectRegion(dmg, output, dmg);
 
     OpenGLWorker::preStage();
     wins->renderWindows();
     GLXUtils::endFrame(outputwin);
 
-    if(resetDMG) {
-        XDestroyRegion(dmg);
-        dmg = XCreateRegion();
-        dmg->numRects = 1;
-        dmg->rects[0].x1 = 0;
-        dmg->rects[0].x2 = 0;
-        dmg->rects[0].y1 = 0;
-        dmg->rects[0].y2 = 0;
-    }
+    if(resetDMG)
+        XDestroyRegion(dmg),
+        dmg = getRegionFromRect(0, 0, 0, 0);
 }
 
 void Core::wait(int timeout) {
@@ -445,7 +428,6 @@ void Core::mapWindow(FireWindow win) {
     damageWindow(win);
 
     WinUtil::syncWindowAttrib(win);
-    std::cout << "restacking transients mapWindow" << std::endl;
     if(win->transientFor)
         wins->restackTransients(win->transientFor);
 }
@@ -597,8 +579,6 @@ void Core::handleEvent(XEvent xev){
                 if(xev.xconfigurerequest.above) {
                     auto below = findWindow(xev.xconfigurerequest.above);
                     if(below) {
-                        std::cout << "Configuring in XConfigureRequest"
-                            << std::endl;
                         if(xev.xconfigurerequest.detail == Above)
                             wins->restackAbove(w, below);
                         else
@@ -660,21 +640,12 @@ void Core::handleEvent(XEvent xev){
                         x->area.x + w->attrib.x + x->area.width,
                         x->area.y + w->attrib.y + x->area.height);
 
-                //if(__FireWindow::allDamaged)
-                //    break;
-
-                std::cout << "Adding new damage" << std::endl;
 
                 if(!dmg)
                     err << "dmg is null!!!!" << std::endl;
 
-                Region tmp = XCreateRegion();
-                XIntersectRegion(damagedArea, output, tmp);
-                XUnionRegion(tmp, dmg, dmg);
+                XUnionRegion(damagedArea, dmg, dmg);
                 XDestroyRegion(damagedArea);
-                XDestroyRegion(tmp);
-
-                std::cout << "Breaking away" << std::endl;
             break;
             }
     }
@@ -821,40 +792,26 @@ void Core::switchWorkspace(std::tuple<int, int> nPos) {
 }
 
 std::vector<FireWindow> Core::getWindowsOnViewport(std::tuple<int, int> vp) {
-
-    std::cout << "gwov stawrt" << std::endl;
     auto x = std::get<0>(vp);
     auto y = std::get<1>(vp);
 
     auto view = getRegionFromRect((x - vx) * width, (y - vy) * height,
                        (x - vx + 1) * width, (y - vy + 1) * height);
 
-    std::cout << "got visible part" << std::endl;
-
     std::vector<FireWindow> ret;
     Region tmp = XCreateRegion();
     for(auto w : wins->wins) {
-
-        std::cout << "itereating" << std::endl;
-
-        if(!w->region) {
-            std::cout << "Window without region!!!" << std::endl;
+        if(!w->region)
             continue;
-        }
         if(!view)
             continue;
-
-        std::cout << "intersecting" << std::endl;
 
         XIntersectRegion(view, w->region, tmp);
         if(tmp && !XEmptyRegion(tmp) && !w->norender)
             ret.push_back(w);
-
-        std::cout << "end iter" << std::endl;
     }
     XDestroyRegion(view);
     XDestroyRegion(tmp);
-    std::cout << "end gwov" << std::endl;
 
     return ret;
 }
@@ -873,7 +830,6 @@ void Core::damageWindow(FireWindow win) {
                     WindowRegionBounding);
 
         XDamageAdd(core->d, win->id, reg);
-
         XFixesDestroyRegion(core->d, reg);
         return;
     }

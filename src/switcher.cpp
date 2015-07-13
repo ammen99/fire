@@ -61,12 +61,9 @@ void ATSwitcher::handleKey(Context *ctx) {
 
 void ATSwitcher::Initiate() {
 
-    std::cout << "Initing switcher" << std::endl;
     windows.clear();
     windows = core->getWindowsOnViewport(core->getWorkspace());
     active = true;
-
-    std::cout << "got windows" << std::endl;
 
     background = nullptr;
     auto it = windows.begin();
@@ -110,13 +107,10 @@ void ATSwitcher::Initiate() {
     core->resetDMG = false;
 
     render();
-
-    std::cout << "Switcher inited" << std::endl;
 }
 
 void ATSwitcher::reset() {
 
-    std::cout << "resetting" << std::endl;
     auto size = windows.size();
     auto prev = (index + size - 1) % size;
     auto next = (index + size + 1) % size;
@@ -136,14 +130,10 @@ void ATSwitcher::reset() {
     windows[index]->norender = true;
     windows[next ]->norender = true;
     windows[prev ]->norender = true;
-
-    std::cout << "reset" << std::endl;
 }
 
 void ATSwitcher::Terminate() {
 
-
-    std::cout << "terminating" << std::endl;
     active = false;
     reset();
     for(auto w : windows)
@@ -173,8 +163,6 @@ void ATSwitcher::Terminate() {
     __FireWindow::allDamaged = false;
     core->resetDMG = true;
     core->dmg = core->getMaximisedRegion();
-
-    std::cout << "terminated" << std::endl;
 }
 
 float ATSwitcher::getFactor(int x, int y, float percent) {
@@ -190,7 +178,6 @@ float ATSwitcher::getFactor(int x, int y, float percent) {
 }
 
 void ATSwitcher::render() {
-    std::cout << "rendering" << std::endl;
     auto size = windows.size();
     if(size < 1)
         return;
@@ -239,8 +226,6 @@ void ATSwitcher::render() {
             glm::vec3(c3, c3, 1.0));
 
     core->focusWindow(windows[index]);
-
-    std::cout << "rendered" << std::endl;
 }
 
 void ATSwitcher::moveLeft() {

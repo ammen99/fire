@@ -165,19 +165,11 @@ int setWindowTexture(FireWindow win) {
     }
 
     glDeleteTextures(1, &win->texture);
-    win->texture = GLXUtils::textureFromPixmap(win->id,
+    win->texture = GLXUtils::textureFromWindow(win->id,
             win->attrib.width, win->attrib.height, &win->shared);
 
-    win->pixmap = 1;
     XUngrabServer(core->d);
     return 1;
-
-//    if(win->pixmap == pix ||
-//            (win->keepCount && win->attrib.map_state != IsViewable)) {
-//        glBindTexture(GL_TEXTURE_2D, win->texture);
-//        XUngrabServer(core->d);
-//        return 1;
-//    }
 }
 
 void initWindow(FireWindow win) {
@@ -249,73 +241,34 @@ int readProp(Window win, Atom prop, int def) {
 }
 
 void finishWindow(FireWindow win) {
-    if(win->pixmap != 0)
-        XFreePixmap(core->d, win->pixmap);
 
-    GLboolean check;
-    glAreTexturesResidentEXT(1, &win->texture, &check);
-    if(check)
-        glDeleteTextures(1, &win->texture);
-
-    bool res = glIsBufferResidentNV(win->vbo);
-    if(res)
-        glDeleteBuffers(1, &win->vbo);
-
-    res = glIsVertexArray(win->vao);
-    if(res)
-        glDeleteVertexArrays(1, &win->vao);
-
+    glDeleteTextures(1, &win->texture);
+    glDeleteBuffers(1, &win->vbo);
+    glDeleteVertexArrays(1, &win->vao);
     XDamageDestroy(core->d, win->damage);
 }
 
 void renderWindow(FireWindow win) {
 
-
-    //std::cout << "begin render window" << std::endl;
     OpenGLWorker::color = win->transform.color;
-    //win->remDamage();
-
     if(win->type == WindowTypeDesktop){
-      //  std::cout << "desktop window" << std::endl;
         OpenGLWorker::renderTransformedTexture(win->texture,
                 win->vao, win->vbo,
                 win->transform.compose());
-
-     //   std::cout << "drawn desktop" << std::endl;
         return;
     }
 
-    //std::cout << "setting window texture" << std::endl;
     if(!setWindowTexture(win)) {
         err <<"failed to paint window " << win->id << " (no texture avail)";
         return;
     }
 
-    //std::cout << "set texture" << std::endl;
-
     if(win->vbo == -1 || win->vao == -1)
         win->updateVBO();
 
-   // std::cout << "looking for visual info" << std::endl;
-    if(!win->xvi) {
-        //std::cout << "no visual info, trying to get new one" << std::endl;
-        win->xvi = getVisualInfoForWindow(win->id);
-        if(!win->xvi) {
-        //if(win->type == WindowTypeDesktop) {
-        //    std::cout << "problem is a desktop window" << std::endl;
-        //}
-        //std::cout << "fail " << win->id << std::endl;
-        return;
-        }
-        //std::cout << "got new" << std::endl;
-    }
-    OpenGLWorker::depth = win->xvi->depth;
-
-//    std::cout << "rendering" << std::endl;
+    OpenGLWorker::depth = win->attrib.depth;
     OpenGLWorker::renderTransformedTexture(win->texture,
             win->vao, win->vbo, win->transform.compose());
-
-//    std::cout << "rendered window" << std::endl;
 }
 
 XVisualInfo *getVisualInfoForWindow(Window win) {

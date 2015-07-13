@@ -41,8 +41,6 @@ class __FireWindow {
     public:
 
         static bool allDamaged;
-        XVisualInfo *xvi;
-        Pixmap pixmap;
         Window id;
         GLuint texture; // image on screen
 
