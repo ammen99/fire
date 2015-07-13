@@ -11,6 +11,9 @@ namespace GLXUtils {
 
         PFNGLXBINDTEXIMAGEEXTPROC glXBindTexImageEXT_func = NULL;
         PFNGLXRELEASETEXIMAGEEXTPROC glXReleaseTexImageEXT_func = NULL;
+
+        bool useXShm = false;
+        XVisualInfo *defaultVisual;
     }
 
 
@@ -125,15 +128,16 @@ static int attrListVisual[] = {
  };
 
 Window createNewWindowWithContext(Window parent, Core *core) {
-    XVisualInfo *vi;
     Colormap cmap;
     XSetWindowAttributes winAttr;
 
-    vi = glXChooseVisual ( core->d, DefaultScreen(core->d), attrListVisual );
-    if ( vi == NULL )
+    defaultVisual = glXChooseVisual ( core->d,
+            DefaultScreen(core->d), attrListVisual );
+    if ( defaultVisual == NULL )
         err << "Couldn't get visual!", std::exit (1);
 
-    cmap = XCreateColormap ( core->d, core->root, vi->visual, AllocNone );
+    cmap = XCreateColormap ( core->d, core->root,
+            defaultVisual->visual, AllocNone );
     winAttr.colormap = cmap;
     winAttr.border_pixel = 0;
     winAttr.event_mask = ExposureMask;
@@ -144,7 +148,7 @@ Window createNewWindowWithContext(Window parent, Core *core) {
 
     auto window = XCreateWindow ( core->d,core->root,
             0, 0, w, h, 0,
-            vi->depth, InputOutput, vi->visual,
+            defaultVisual->depth, InputOutput, defaultVisual->visual,
             CWBorderPixel | CWColormap | CWEventMask,
             &winAttr );
 
@@ -207,6 +211,14 @@ void initGLX(Core *core) {
 
     initFBConf(core);
 
+
+    int ignore, major, minor;
+    Bool pixmaps;
+
+    /* Check for the XShm extension */
+    if( XQueryExtension(core->d, "MIT-SHM", &ignore, &ignore, &ignore))
+        if(XShmQueryVersion(core->d, &major, &minor, &pixmaps) == True)
+            useXShm = true;
 }
 
 GLuint compileShader(const char *src, GLuint type) {
@@ -274,16 +286,50 @@ GLuint textureFromPixmap(Pixmap pixmap,
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
-    auto xim = XGetImage(core->d, pixmap, 0, 0, w, h, AllPlanes, ZPixmap);
-    if(xim == nullptr){
-        std::cout << "xgetimage returned null!!" << std::endl;
-        return -1;
+    if(useXShm) {
+        XImage *image;
+        XShmSegmentInfo shminfo;
+
+        image = XShmCreateImage(core->d, defaultVisual->visual,
+                defaultVisual->depth, ZPixmap, NULL, &shminfo, w, h);
+
+        if(image == NULL) return -1;
+
+        /* Get the shared memory and check for errors */
+        shminfo.shmid = shmget(IPC_PRIVATE, image->bytes_per_line*image->height,
+                IPC_CREAT | 0777 );
+
+        if(shminfo.shmid < 0) return -1;
+
+        shminfo.shmaddr = image->data = (char *)shmat(shminfo.shmid, 0, 0);
+        if(shminfo.shmaddr == (char *) -1) return -1;
+
+        /* set as read/write, and attach to the display */
+        shminfo.readOnly = False;
+        XShmAttach(core->d, &shminfo);
+
+        XShmGetImage(core->d, pixmap, image, 0, 0, AllPlanes);
+
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0,
+                GL_RGBA, GL_UNSIGNED_BYTE, (void*)(&image->data[0]));
+
+        XShmDetach(core->d, &shminfo);
+        XDestroyImage(image);
+        shmdt(shminfo.shmaddr);
+        shmctl(shminfo.shmid, IPC_RMID, NULL);
     }
+    else { /* we cannot use XShm extension, so fallback to
+              the *slower* XGetImage */
+        auto xim = XGetImage(core->d, pixmap, 0, 0, w, h, AllPlanes, ZPixmap);
+        if(xim == nullptr){
+            std::cout << "xgetimage returned null!!" << std::endl;
+            return -1;
+        }
 
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0,
-            GL_RGBA, GL_UNSIGNED_BYTE, (void*)(&xim->data[0]));
-
-    XDestroyImage(xim);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0,
+                GL_RGBA, GL_UNSIGNED_BYTE, (void*)(&xim->data[0]));
+        XDestroyImage(xim);
+    }
 
     return tex;
 }

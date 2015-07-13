@@ -5,6 +5,7 @@
 #include <X11/extensions/Xcomposite.h>
 #include <X11/extensions/Xfixes.h>
 #include <X11/extensions/shape.h>
+#include <X11/extensions/XShm.h>
 #include <X11/Xatom.h>
 #include <X11/extensions/Xdamage.h>
 #include <X11/keysym.h>
@@ -18,6 +19,8 @@
 #include <glog/logging.h>
 
 #include <cstdlib>
+#include <sys/ipc.h>
+#include <sys/shm.h>
 #include <memory>
 #include <mutex>
 #include <cstring>
