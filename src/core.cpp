@@ -441,6 +441,7 @@ void Core::wait(int timeout) {
 
 void Core::mapWindow(FireWindow win) {
     win->norender = false;
+    win->damaged = true;
     new AnimationHook(new Fade(win), this);
     win->attrib.map_state = IsViewable;
     damageWindow(win);
@@ -653,6 +654,7 @@ void Core::handleEvent(XEvent xev){
                 if(!w)
                     return;
 
+                w->damaged = true;
 
                 Region damagedArea = getRegionFromRect(
                         x->area.x + w->attrib.x,
