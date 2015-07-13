@@ -172,6 +172,7 @@ void ATSwitcher::Terminate() {
 
     __FireWindow::allDamaged = false;
     core->resetDMG = true;
+    core->dmg = core->getMaximisedRegion();
 
     std::cout << "terminated" << std::endl;
 }
