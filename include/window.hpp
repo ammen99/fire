@@ -30,6 +30,13 @@ class Transform {
 extern Region output;
 Region copyRegion(Region r);
 
+struct SharedImage {
+    XShmSegmentInfo shminfo;
+    XImage *image;
+    bool init = true;
+    bool existing = false;
+};
+
 class __FireWindow {
     private:
         bool damaged = false;
@@ -61,6 +68,7 @@ class __FireWindow {
         WindowType type;
         XWindowAttributes attrib;
         Region region = nullptr;
+        SharedImage shared;
 
         bool shouldBeDrawn();
         void updateVBO();

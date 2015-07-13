@@ -3,6 +3,7 @@
 
 #include "commonincludes.hpp"
 class Core;
+struct SharedImage;
 namespace GLXUtils {
     void initGLX(Core *core);
 
@@ -16,7 +17,7 @@ namespace GLXUtils {
     GLuint loadImage(char *path);
     GLuint loadShader(const char *path, GLuint type);
     GLuint compileShader(const char* src, GLuint type);
-    GLuint textureFromPixmap(Pixmap pixmap, int, int, XVisualInfo*);
+    GLuint textureFromPixmap(Pixmap pixmap, int w, int h, SharedImage *sh);
 
     void initFBConf(Core *core);
     GLXPixmap glxPixmap(Pixmap pixmap, GLXFBConfig, int, int);

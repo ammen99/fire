@@ -269,13 +269,7 @@ void endFrame(Window win) {
     glXSwapBuffers(core->d, win);
 }
 
-GLuint textureFromPixmap(Pixmap pixmap,
-        int w, int h, XVisualInfo* xvi) {
-
-    auto fbconf = fbconfigs[xvi->depth];
-    if (fbconf == nullptr)
-        return -1;
-
+GLuint textureFromPixmap(Pixmap pixmap, int w, int h, SharedImage *sim) {
     GLuint tex;
     glGenTextures(1, &tex);
     glBindTexture(GL_TEXTURE_2D, tex);
@@ -287,36 +281,34 @@ GLuint textureFromPixmap(Pixmap pixmap,
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
     if(useXShm) {
-        XImage *image;
-        XShmSegmentInfo shminfo;
 
-        image = XShmCreateImage(core->d, defaultVisual->visual,
-                defaultVisual->depth, ZPixmap, NULL, &shminfo, w, h);
+        if(sim->init) {
 
-        if(image == NULL) return -1;
+            sim->image = XShmCreateImage(core->d, defaultVisual->visual,
+                    defaultVisual->depth, ZPixmap, NULL, &sim->shminfo, w, h);
 
-        /* Get the shared memory and check for errors */
-        shminfo.shmid = shmget(IPC_PRIVATE, image->bytes_per_line*image->height,
-                IPC_CREAT | 0777 );
+            if(sim->image == NULL) return -1;
 
-        if(shminfo.shmid < 0) return -1;
+            /* Get the shared memory and check for errors */
+            sim->shminfo.shmid = shmget(IPC_PRIVATE,
+                    sim->image->bytes_per_line * sim->image->height, IPC_CREAT | 0777);
 
-        shminfo.shmaddr = image->data = (char *)shmat(shminfo.shmid, 0, 0);
-        if(shminfo.shmaddr == (char *) -1) return -1;
+            if(sim->shminfo.shmid < 0) return -1;
 
-        /* set as read/write, and attach to the display */
-        shminfo.readOnly = False;
-        XShmAttach(core->d, &shminfo);
+            sim->shminfo.shmaddr = sim->image->data = (char *)shmat(sim->shminfo.shmid, 0, 0);
+            if(sim->shminfo.shmaddr == (char *) -1) return -1;
 
-        XShmGetImage(core->d, pixmap, image, 0, 0, AllPlanes);
+            /* set as read/write, and attach to the display */
+            sim->shminfo.readOnly = False;
+            sim->init = false;
+            sim->existing = true;
+            XShmAttach(core->d, &sim->shminfo);
+        }
+
+        XShmGetImage(core->d, pixmap, sim->image, 0, 0, AllPlanes);
 
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0,
-                GL_RGBA, GL_UNSIGNED_BYTE, (void*)(&image->data[0]));
-
-        XShmDetach(core->d, &shminfo);
-        XDestroyImage(image);
-        shmdt(shminfo.shmaddr);
-        shmctl(shminfo.shmid, IPC_RMID, NULL);
+                GL_RGBA, GL_UNSIGNED_BYTE, (void*)(&sim->image->data[0]));
     }
     else { /* we cannot use XShm extension, so fallback to
               the *slower* XGetImage */

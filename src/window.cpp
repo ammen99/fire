@@ -186,7 +186,7 @@ int setWindowTexture(FireWindow win) {
     }
 
     win->texture = GLXUtils::textureFromPixmap(win->pixmap,
-            win->attrib.width, win->attrib.height, win->xvi);
+            win->attrib.width, win->attrib.height, &win->shared);
 
     XUngrabServer(core->d);
     return 1;
@@ -520,6 +520,15 @@ void resizeWindow(FireWindow win, int w, int h) {
 
     XConfigureWindow(core->d, win->id, CWWidth | CWHeight, &xwc);
     win->updateVBO();
+
+    if(win->shared.existing) {
+        XShmDetach(core->d, &win->shared.shminfo);
+        XDestroyImage(win->shared.image);
+        shmdt(win->shared.shminfo.shmaddr);
+        shmctl(win->shared.shminfo.shmid, IPC_RMID, NULL);
+        win->shared.existing = false;
+        win->shared.init = true;
+    }
 
 }
 void syncWindowAttrib(FireWindow win) {
