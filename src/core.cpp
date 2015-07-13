@@ -27,6 +27,7 @@ void Hook::enable() {
 void Hook::disable() {
     if(!this->active)
         return;
+
     this->active = false;
     core->cntHooks--;
 }
@@ -93,9 +94,6 @@ Core::Core(int vx, int vy) {
 
     cntHooks = 0;
     output = getMaximisedRegion();
-
-    initDefaultPlugins();
-
     // enable compositing to be recognized by other programs
     Atom a;
     s0owner = XCreateSimpleWindow (d, root, 0, 0, 1, 1, 0, None, None);
@@ -121,8 +119,13 @@ Core::Core(int vx, int vy) {
     this->vx = vx;
     this->vy = vy;
 
-    for(auto p : plugins)
+    initDefaultPlugins();
+    for(auto p : plugins) {
+        p->owner = std::make_shared<_Ownership>();
+        p->initOwnership();
+        regOwner(p->owner);
         p->init(this);
+    }
 
     dmg = getMaximisedRegion();
 }
@@ -172,6 +175,7 @@ Core::~Core(){
         nx += width; ny += height;
         ny %= width; ny %= height;
 
+        std::cout << "moving from here" << std::endl;
         WinUtil::moveWindow(w, nx, ny);
     }
 
@@ -437,13 +441,24 @@ void Core::unmapWindow(FireWindow win) {
     new AnimationHook(new Fade(win, Fade::FadeOut), this);
 }
 
+void Core::regOwner(Ownership owner) {
+    owners.insert(owner);
+}
+
 bool Core::activateOwner(Ownership owner) {
 
-    if(owner->active)
+    if(!owner) {
+        std::cout << "Error detected ?? calling with nullptr!!1" << std::endl;
+        return false;
+    }
+
+    if(owner->active || owner->special) {
+        owner->active = true;
         return true;
+    }
 
     for(auto o : owners)
-        if(o->active)
+        if(o && o->active)
             if(o->compat.find(owner->name) ==
                o->compat.end() && !o->compatAll)
                 return false;
@@ -453,24 +468,36 @@ bool Core::activateOwner(Ownership owner) {
 }
 
 bool Core::deactivateOwner(Ownership owner) {
+    owner->ungrab();
     owner->active = false;
     return true;
 }
 
 bool Core::checkKey(KeyBinding *kb, XKeyEvent xkey) {
+    bool debug = false;
+    if(kb->key == XKeysymToKeycode(d, XK_r)) {
+        debug = true;
+    }
+
+    if(debug)
+        std::cout << "hello" << std::endl;
     if(!kb->active)
         return false;
+
+    if(debug)
+        std::cout << "setp 1" << std::endl;
 
     if(kb->key != xkey.keycode)
         return false;
 
+    if(debug)
+        std::cout << "step 2" << std::endl;
     if(kb->mod != xkey.state)
         return false;
+    if(debug)
+        std::cout << "step 3" << std::endl;
 
-    if(activateOwner(kb->owner))
-        return true;
-    else
-        return false;
+    return true;
 }
 
 bool Core::checkButPress(ButtonBinding *bb, XButtonEvent xb) {
@@ -486,23 +513,19 @@ bool Core::checkButPress(ButtonBinding *bb, XButtonEvent xb) {
     if(bb->button != xb.button)
         return false;
 
-    if(activateOwner(bb->owner))
-        return true;
-    else
-        return false;
+    return true;
 }
 
 bool Core::checkButRelease(ButtonBinding *bb, XButtonEvent kb) {
+    std::cout << "pressed" << std::endl;
     if(!bb->active)
         return false;
-
+    std::cout << "second" << std::endl;
     if(bb->type != BindingTypeRelease)
         return false;
+    std::cout << "third" << std::endl;
 
-    if(activateOwner(bb->owner))
-        return true;
-    else
-        return false;
+    return true;
 }
 
 void Core::handleEvent(XEvent xev){
@@ -632,6 +655,7 @@ void Core::handleEvent(XEvent xev){
             if(xev.xconfigurerequest.value_mask & CWY)
                 y = xev.xconfigurerequest.y;
 
+            std::cout << "moving window" << std::endl;
             WinUtil::moveWindow(w, x, y);
             WinUtil::resizeWindow(w, width, height);
 
@@ -767,7 +791,7 @@ void Core::loop(){
              * i.e reduce lagging */
             if(diff - currentCycle > MaxDelay &&
                     Second / MinRR <= currentCycle)
-                currentCycle += 2000; // 1ms slower redraws
+                currentCycle += 2000; // 2ms slower redraws
 
             /* optimisation when idle */
             if(!cntHooks && !hadEvents && currentCycle < Second && resetDMG)
@@ -840,6 +864,7 @@ void Core::switchWorkspace(std::tuple<int, int> nPos) {
     auto dx = (vx - nx) * width;
     auto dy = (vy - ny) * height;
 
+    std::cout << "Moving from switch workspace" << std::endl;
     for(auto w : wins->wins)
         WinUtil::moveWindow(w, w->attrib.x + dx, w->attrib.y + dy);
 
@@ -952,5 +977,4 @@ void Core::initDefaultPlugins() {
     plugins.push_back(createPlugin<Close>());
     plugins.push_back(createPlugin<ATSwitcher>());
     plugins.push_back(createPlugin<Grid>());
-    plugins.push_back(createPlugin<RefreshWin>());
 }

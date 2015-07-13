@@ -1,5 +1,10 @@
 #include "../include/wm.hpp"
 
+void Move::initOwnership() {
+    owner->name = "move";
+    owner->compatAll = true;
+}
+
 void Move::init(Core *c) {
     win = nullptr;
     hook.action = std::bind(std::mem_fn(&Move::Intermediate), this);
@@ -14,7 +19,6 @@ void Move::init(Core *c) {
     press.action = std::bind(std::mem_fn(&Move::Initiate), this, _1);
     c->addBut(&press);
 
-
     release.active = false;
     release.type   = BindingTypeRelease;
     release.mod    = AnyModifier;
@@ -27,24 +31,24 @@ void Move::Initiate(Context *ctx) {
     auto xev = ctx->xev.xbutton;
     auto w = core->getWindowAtPoint(xev.x_root, xev.y_root);
 
-    if(w){
-        core->focusWindow(w);
-        win = w;
-        release.active = true;
-        hook.enable();
+    if(!w)
+        return;
+    win = w;
 
-
-        this->sx = xev.x_root;
-        this->sy = xev.y_root;
-
-        XGrabPointer(core->d, core->overlay, TRUE,
-                ButtonPressMask | ButtonReleaseMask |
-                PointerMotionMask,
-                GrabModeAsync, GrabModeAsync,
-                core->root, None, CurrentTime);
-
-        core->setRedrawEverything(true);
+    if(!core->activateOwner(owner)){
+        std::cout << "cannot activate move" << std::endl;
+        return;
     }
+
+    owner->grab();
+
+    core->focusWindow(w);
+    hook.enable();
+    release.active = true;
+
+    this->sx = xev.x_root;
+    this->sy = xev.y_root;
+    core->setRedrawEverything(true);
 }
 
 void Move::Terminate(Context *ctx) {
@@ -52,8 +56,12 @@ void Move::Terminate(Context *ctx) {
     if(!ctx)
         return;
 
+    std::cout << "Called" << std::endl;
+
     hook.disable();
     release.active = false;
+    core->deactivateOwner(owner);
+
 
     auto xev = ctx->xev.xbutton;
 
@@ -68,14 +76,13 @@ void Move::Terminate(Context *ctx) {
     WinUtil::moveWindow(win, nx, ny);
     core->setRedrawEverything(false);
 
-    XUngrabPointer(core->d, CurrentTime);
     core->focusWindow(win);
     core->damageWindow(win);
-
     core->redraw = true;
 }
 
 void Move::Intermediate() {
+    std::cout << "Intermediate" << std::endl;
 
     GetTuple(cmx, cmy, core->getMouseCoord());
     GetTuple(w, h, core->getScreenSize());
@@ -87,6 +94,12 @@ void Move::Intermediate() {
                     0.f));
 
     core->redraw = true;
+}
+
+
+void Resize::initOwnership() {
+    owner->name = "resize";
+    owner->compatAll = true;
 }
 
 void Resize::init(Core *c) {
@@ -120,29 +133,31 @@ void Resize::Initiate(Context *ctx) {
     auto xev = ctx->xev.xbutton;
     auto w = core->getWindowAtPoint(xev.x_root,xev.y_root);
 
-    if(w){
+    if(!w)
+        return;
 
-        core->focusWindow(w);
-        win = w;
-        hook.enable();
-        release.active = true;
-
-        if(w->attrib.width == 0)
-            w->attrib.width = 1;
-        if(w->attrib.height == 0)
-            w->attrib.height = 1;
-
-        this->sx = xev.x_root;
-        this->sy = xev.y_root;
-
-        XGrabPointer(core->d, core->overlay, TRUE,
-                ButtonPressMask | ButtonReleaseMask |
-                PointerMotionMask,
-                GrabModeAsync, GrabModeAsync,
-                core->root, None, CurrentTime);
-
-        core->setRedrawEverything(true);
+    if(!core->activateOwner(owner)) {
+        std::cout << "Failed to activate move" << std::endl;
+        return;
     }
+
+    owner->grab();
+
+    core->focusWindow(w);
+    win = w;
+    hook.enable();
+    release.active = true;
+
+    if(w->attrib.width == 0)
+        w->attrib.width = 1;
+    if(w->attrib.height == 0)
+        w->attrib.height = 1;
+
+    this->sx = xev.x_root;
+    this->sy = xev.y_root;
+
+    owner->active = true;
+    core->setRedrawEverything(true);
 }
 
 void Resize::Terminate(Context *ctx) {
@@ -164,10 +179,9 @@ void Resize::Terminate(Context *ctx) {
     int nh = win->attrib.height + dh;
     WinUtil::resizeWindow(win, nw, nh);
 
-    XUngrabPointer(core->d, CurrentTime);
     core->setRedrawEverything(false);
     core->damageWindow(win);
-    core->redraw = true;
+    core->deactivateOwner(owner);
 }
 
 void Resize::Intermediate() {

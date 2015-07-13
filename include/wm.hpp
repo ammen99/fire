@@ -23,13 +23,6 @@ class Close : public Plugin {
         void init(Core*);
 };
 
-class RefreshWin : public Plugin {
-    KeyBinding r;
-    public:
-        void init(Core*);
-};
-
-
 class Focus : public Plugin {
     private:
         ButtonBinding focus;
@@ -61,7 +54,7 @@ class Move : public WindowOperation {
 
     public:
     void init(Core*);
-
+    void initOwnership();
 };
 
 class Resize : public WindowOperation {
@@ -71,6 +64,7 @@ class Resize : public WindowOperation {
 
     public:
     void init(Core*);
+    void initOwnership();
 };
 
 class WSSwitch : public Plugin {
@@ -91,6 +85,7 @@ class WSSwitch : public Plugin {
 
     public:
         void init(Core*);
+        void initOwnership();
 };
 
 class Expo : public Plugin {
@@ -124,6 +119,7 @@ class Expo : public Plugin {
 
     public:
         void init(Core*);
+        void initOwnership();
 };
 
 class ATSwitcher : public Plugin {
@@ -148,6 +144,7 @@ class ATSwitcher : public Plugin {
 
     public:
         void init(Core*);
+        void initOwnership();
 };
 
 class Grid : public Plugin {

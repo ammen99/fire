@@ -1,6 +1,11 @@
 #include "../include/wm.hpp"
 #include "../include/opengl.hpp"
 
+void ATSwitcher::initOwnership() {
+    owner->name = "atswitcher";
+    owner->compatAll = false;
+}
+
 void ATSwitcher::init(Core *core) {
     using namespace std::placeholders;
 
@@ -33,10 +38,6 @@ void ATSwitcher::init(Core *core) {
     terminate.action = initiate.action;
     terminate.active = false;
     core->addKey(&terminate);
-
-    //rnd.action = std::bind(std::mem_fn(&ATSwitcher::render), this);
-    //core->addHook(&rnd);
-
 }
 
 void ATSwitcher::handleKey(Context *ctx) {
@@ -60,6 +61,11 @@ void ATSwitcher::handleKey(Context *ctx) {
 }
 
 void ATSwitcher::Initiate() {
+
+    if(!core->activateOwner(owner))
+        return;
+
+    owner->grab();
 
     windows.clear();
     windows = core->getWindowsOnViewport(core->getWorkspace());
@@ -98,9 +104,6 @@ void ATSwitcher::Initiate() {
     forward.active   = true;
     terminate.active = true;
 
-    XGrabKeyboard(core->d, core->overlay, True,
-            GrabModeAsync, GrabModeAsync, CurrentTime);
-
     index = 0;
     core->setRedrawEverything(true);
     render();
@@ -131,6 +134,9 @@ void ATSwitcher::reset() {
 
 void ATSwitcher::Terminate() {
 
+    core->deactivateOwner(owner);
+    owner->ungrab();
+
     active = false;
     reset();
     for(auto w : windows)
@@ -144,7 +150,6 @@ void ATSwitcher::Terminate() {
                 w->attrib.height,
                 w->vao, w->vbo);
 
-    XUngrabKeyboard(core->d, CurrentTime);
     OpenGLWorker::transformed = false;
 
     backward.active  = false;

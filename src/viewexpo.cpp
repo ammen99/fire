@@ -1,6 +1,11 @@
 #include "../include/wm.hpp"
 #include "../include/winstack.hpp"
 
+void WSSwitch::initOwnership() {
+    this->owner->name = "wsswitch";
+    this->owner->compatAll = false;
+}
+
 void WSSwitch::beginSwitch() {
     auto tup = dirs.front();
     dirs.pop();
@@ -41,6 +46,7 @@ void WSSwitch::beginSwitch() {
             std::max(bry1, bry2));
 
     core->setRedrawEverything(true);
+    core->activateOwner(owner);
     stepNum = 0;
 }
 
@@ -83,6 +89,7 @@ void WSSwitch::moveStep() {
 
         if(dirs.size() == 0) {
             hook.disable();
+            core->deactivateOwner(owner);
             core->setRedrawEverything(false);
         }
         else
@@ -169,6 +176,12 @@ void Expo::init(Core *core) {
     hook.action = std::bind(std::mem_fn(&Expo::zoom), this);
     core->addHook(&hook);
 }
+void Expo::initOwnership() {
+    owner->name = "expo";
+    owner->compatAll = false;
+    owner->compat.insert("move");
+    owner->compat.insert("resize");
+}
 
 void Expo::buttonRelease(Context *ctx) {
 
@@ -235,11 +248,11 @@ void Expo::Toggle(Context *ctx) {
 
         press.active = true;
         release.active = true;
-        XGrabPointer(core->d, core->overlay, TRUE,
-                ButtonPressMask | ButtonReleaseMask |
-                PointerMotionMask,
-                GrabModeAsync, GrabModeAsync,
-                core->root, None, CurrentTime);
+
+        if(!core->activateOwner(owner))
+            return;
+
+        owner->grab();
 
         save = core->wins->findWindowAtCursorPosition;
         core->wins->findWindowAtCursorPosition =
@@ -262,7 +275,8 @@ void Expo::Toggle(Context *ctx) {
 
         press.active = false;
         release.active = false;
-        XUngrabPointer(core->d, CurrentTime);
+
+        core->deactivateOwner(owner);
 
         core->scaleX = 1;
         core->scaleY = 1;

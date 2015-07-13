@@ -9,7 +9,7 @@
  * Core and destroyed when core is destroyed
  *
  * Plugins aren't run at any time(i.e between redraws)
- * They must have at least the methon init()
+ * They must have at least the method init()
  * which is the method when they register on the Core()
  * their bindings and hooks
  *
@@ -27,14 +27,15 @@
 class Core;
 
 using Owner = std::string;
-/* owners are used to acquire screen grab and to add bindings */
+/* owners are used to acquire screen grab and to activate */
 struct _Ownership {
     Owner name;
     /* list of plugins which we are compatible with */
     std::unordered_set<Owner> compat;
     bool active;
+    bool special = false; // set this if the plugin can bypass all checks
     // if we are compatible with all plugins
-    bool compatAll = false;
+    bool compatAll = true;
 
     // call these functions to (un)grab keyboard and mouse
     void grab();

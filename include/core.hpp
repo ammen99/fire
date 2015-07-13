@@ -28,9 +28,6 @@ struct Binding{
     bool active;
     BindingType type;
     uint mod;
-
-    Ownership owner = nullptr;
-
     std::function<void(Context*)> action;
 
 };

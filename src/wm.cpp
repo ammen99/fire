@@ -2,6 +2,7 @@
 
 
 void Run::init(Core *core) {
+    this->owner->special = true;
     KeyBinding *run = new KeyBinding();
     run->action = [core](Context *ctx){
         core->run(const_cast<char*>("dmenu_run"));
@@ -16,6 +17,7 @@ void Run::init(Core *core) {
 }
 
 void Exit::init(Core *core) {
+    this->owner->special = true;
     KeyBinding *exit = new KeyBinding();
     exit->action = [core](Context *ctx){
         core->terminate = true;
@@ -45,6 +47,7 @@ void Close::init(Core *core) {
 }
 
 void Focus::init(Core *core) {
+    this->owner->special = true;
     focus.type = BindingTypePress;
     focus.button = Button1;
     focus.mod = NoMods;
@@ -59,18 +62,4 @@ void Focus::init(Core *core) {
             core->focusWindow(w);
     };
     core->addBut(&focus);
-}
-
-void RefreshWin::init(Core *core) {
-    r.type = BindingTypePress;
-    r.key = XKeysymToKeycode(core->d, XK_r);
-    r.mod = ControlMask | Mod4Mask;
-    r.active = true;
-    r.action = [core] (Context *ctx) {
-        auto w = core->getActiveWindow();
-        if(!w)
-            return;
-        w->mapTryNum = 100;
-        w->norender = false;
-    };
 }
