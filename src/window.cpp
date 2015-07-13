@@ -151,6 +151,7 @@ int setWindowTexture(FireWindow win) {
         syncWindowAttrib(win);        // in order to get a
         XSync(core->d, 0);            // pixmap
     }
+
     if(win->attrib.map_state != IsViewable && !win->keepCount) {
         err << "Invisible window";
         win->norender = true;
@@ -158,38 +159,25 @@ int setWindowTexture(FireWindow win) {
         return 0;
     }
 
-    Pixmap pix = win->pixmap;
-    if(!win->destroyed)
-        pix = XCompositeNameWindowPixmap(core->d, win->id);
-
-    if(win->pixmap == pix ||
-            (win->keepCount && win->attrib.map_state != IsViewable)) {
+    if(!win->damaged) {
         glBindTexture(GL_TEXTURE_2D, win->texture);
-        XUngrabServer(core->d);
         return 1;
     }
 
-    if(win->pixmap != 0) {
-        XFreePixmap(core->d, win->pixmap);
-        glDeleteTextures(1, &win->texture);
-    }
+    glDeleteTextures(1, &win->texture);
+    win->texture = GLXUtils::textureFromPixmap(win->id,
+            win->attrib.width, win->attrib.height, &win->shared);
 
-    win->pixmap = pix;
-
-    if(win->xvi == nullptr)
-        win->xvi = getVisualInfoForWindow(win->id);
-    if (win->xvi == nullptr) {
-        err << "No visual info, deny rendering";
-        win->norender = true;
-        XUngrabServer(core->d);
-        return 0;
-    }
-
-    win->texture = GLXUtils::textureFromPixmap(win->pixmap,
-            win->attrib.width, win->attrib.height, win->xvi);
-
+    win->pixmap = 1;
     XUngrabServer(core->d);
     return 1;
+
+//    if(win->pixmap == pix ||
+//            (win->keepCount && win->attrib.map_state != IsViewable)) {
+//        glBindTexture(GL_TEXTURE_2D, win->texture);
+//        XUngrabServer(core->d);
+//        return 1;
+//    }
 }
 
 void initWindow(FireWindow win) {
@@ -234,6 +222,8 @@ void initWindow(FireWindow win) {
     win->transform.color = glm::vec4(1., 1., 1., 1.);
     win->transform.color[3] = readProp(win->id,
             winOpacityAtom, 0xffff) / 0xffff;
+
+    glGenTextures(1, &win->texture);
 }
 
 #define uchar unsigned char
@@ -520,6 +510,15 @@ void resizeWindow(FireWindow win, int w, int h) {
 
     XConfigureWindow(core->d, win->id, CWWidth | CWHeight, &xwc);
     win->updateVBO();
+
+    if(win->shared.existing) {
+        XShmDetach(core->d, &win->shared.shminfo);
+        XDestroyImage(win->shared.image);
+        shmdt(win->shared.shminfo.shmaddr);
+        shmctl(win->shared.shminfo.shmid, IPC_RMID, NULL);
+        win->shared.existing = false;
+        win->shared.init = true;
+    }
 
 }
 void syncWindowAttrib(FireWindow win) {
