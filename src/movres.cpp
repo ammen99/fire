@@ -36,7 +36,6 @@ void Move::Initiate(Context *ctx) {
     win = w;
 
     if(!core->activateOwner(owner)){
-        std::cout << "cannot activate move" << std::endl;
         return;
     }
 
@@ -55,8 +54,6 @@ void Move::Terminate(Context *ctx) {
 
     if(!ctx)
         return;
-
-    std::cout << "Called" << std::endl;
 
     hook.disable();
     release.active = false;
@@ -82,7 +79,6 @@ void Move::Terminate(Context *ctx) {
 }
 
 void Move::Intermediate() {
-    std::cout << "Intermediate" << std::endl;
 
     GetTuple(cmx, cmy, core->getMouseCoord());
     GetTuple(w, h, core->getScreenSize());
@@ -137,7 +133,6 @@ void Resize::Initiate(Context *ctx) {
         return;
 
     if(!core->activateOwner(owner)) {
-        std::cout << "Failed to activate move" << std::endl;
         return;
     }
 

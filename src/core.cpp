@@ -175,7 +175,6 @@ Core::~Core(){
         nx += width; ny += height;
         ny %= width; ny %= height;
 
-        std::cout << "moving from here" << std::endl;
         WinUtil::moveWindow(w, nx, ny);
     }
 
@@ -474,28 +473,14 @@ bool Core::deactivateOwner(Ownership owner) {
 }
 
 bool Core::checkKey(KeyBinding *kb, XKeyEvent xkey) {
-    bool debug = false;
-    if(kb->key == XKeysymToKeycode(d, XK_r)) {
-        debug = true;
-    }
-
-    if(debug)
-        std::cout << "hello" << std::endl;
     if(!kb->active)
         return false;
-
-    if(debug)
-        std::cout << "setp 1" << std::endl;
 
     if(kb->key != xkey.keycode)
         return false;
 
-    if(debug)
-        std::cout << "step 2" << std::endl;
     if(kb->mod != xkey.state)
         return false;
-    if(debug)
-        std::cout << "step 3" << std::endl;
 
     return true;
 }
@@ -517,13 +502,11 @@ bool Core::checkButPress(ButtonBinding *bb, XButtonEvent xb) {
 }
 
 bool Core::checkButRelease(ButtonBinding *bb, XButtonEvent kb) {
-    std::cout << "pressed" << std::endl;
     if(!bb->active)
         return false;
-    std::cout << "second" << std::endl;
+
     if(bb->type != BindingTypeRelease)
         return false;
-    std::cout << "third" << std::endl;
 
     return true;
 }
@@ -655,7 +638,6 @@ void Core::handleEvent(XEvent xev){
             if(xev.xconfigurerequest.value_mask & CWY)
                 y = xev.xconfigurerequest.y;
 
-            std::cout << "moving window" << std::endl;
             WinUtil::moveWindow(w, x, y);
             WinUtil::resizeWindow(w, width, height);
 
@@ -864,7 +846,6 @@ void Core::switchWorkspace(std::tuple<int, int> nPos) {
     auto dx = (vx - nx) * width;
     auto dy = (vy - ny) * height;
 
-    std::cout << "Moving from switch workspace" << std::endl;
     for(auto w : wins->wins)
         WinUtil::moveWindow(w, w->attrib.x + dx, w->attrib.y + dy);
 
