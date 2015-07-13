@@ -25,13 +25,11 @@ void Move::init(Core *c) {
 
 void Move::Initiate(Context *ctx) {
     auto xev = ctx->xev.xbutton;
-    auto w = core->getWindowAtPoint((Point(xev.x_root, xev.y_root)));
+    auto w = core->getWindowAtPoint(xev.x_root, xev.y_root);
 
     if(w){
-        err << "moving";
         core->focusWindow(w);
         win = w;
-
         release.active = true;
         hook.enable();
 
@@ -45,7 +43,7 @@ void Move::Initiate(Context *ctx) {
                 GrabModeAsync, GrabModeAsync,
                 core->root, None, CurrentTime);
 
-        prev = win->getRect();
+        core->setRedrawEverything(true);
     }
 }
 
@@ -68,11 +66,11 @@ void Move::Terminate(Context *ctx) {
     int ny = win->attrib.y + dy;
 
     WinUtil::moveWindow(win, nx, ny);
+    core->setRedrawEverything(false);
+
     XUngrabPointer(core->d, CurrentTime);
     core->focusWindow(win);
-
-    win->addDamage();
-    core->dmg = core->dmg + prev;
+    core->damageWindow(win);
 
     core->redraw = true;
 }
@@ -87,14 +85,6 @@ void Move::Intermediate() {
                     float(cmx - sx) / float(w / 2.0),
                     float(sy - cmy) / float(h / 2.0),
                     0.f));
-
-    auto newrect =
-        Rect (win->attrib.x + cmx - sx, win->attrib.y + cmy - sy,
-              win->attrib.x + cmx - sx + win->attrib.width,
-              win->attrib.x + cmy - sy + win->attrib.height);
-
-    core->dmg = core->dmg + newrect + prev;
-    prev = newrect;
 
     core->redraw = true;
 }
@@ -128,7 +118,7 @@ void Resize::Initiate(Context *ctx) {
         return;
 
     auto xev = ctx->xev.xbutton;
-    auto w = core->getWindowAtPoint(Point(xev.x_root,xev.y_root));
+    auto w = core->getWindowAtPoint(xev.x_root,xev.y_root);
 
     if(w){
 
@@ -151,7 +141,7 @@ void Resize::Initiate(Context *ctx) {
                 GrabModeAsync, GrabModeAsync,
                 core->root, None, CurrentTime);
 
-        prev = win->getRect();
+        core->setRedrawEverything(true);
     }
 }
 
@@ -175,10 +165,8 @@ void Resize::Terminate(Context *ctx) {
     WinUtil::resizeWindow(win, nw, nh);
 
     XUngrabPointer(core->d, CurrentTime);
-    core->focusWindow(win);
-
-    win->addDamage();
-    core->dmg = core->dmg + prev;
+    core->setRedrawEverything(false);
+    core->damageWindow(win);
     core->redraw = true;
 }
 
@@ -214,15 +202,5 @@ void Resize::Intermediate() {
 
     win->transform.scalation =
         glm::scale(glm::mat4(), glm::vec3(kW, kH, 1.f));
-
-
-    auto newrect =
-        Rect(win->attrib.x - 1, win->attrib.y - 1,
-             win->attrib.x + int(float(win->attrib.width ) * kW) + 2,
-             win->attrib.y + int(float(win->attrib.height) * kH) + 2);
-
-    core->dmg = core->dmg + newrect + prev;
-    prev = newrect;
-
     core->redraw = true;
 }

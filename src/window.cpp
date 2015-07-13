@@ -9,6 +9,23 @@ glm::mat4 Transform::grot;
 glm::mat4 Transform::gscl;
 glm::mat4 Transform::gtrs;
 
+Region copyRegion(Region reg) {
+    if(!reg) {
+        auto tmp = XCreateRegion();
+        std::memset(tmp, 0, sizeof(REGION));
+        tmp->numRects = 1;
+        return tmp;
+    }
+
+    Region newreg = XCreateRegion();
+    newreg->rects = new BOX[reg->numRects];
+    newreg->size = reg->size;
+    newreg->numRects = reg->numRects;
+    newreg->extents = reg->extents;
+    std::memcpy(newreg->rects, reg->rects, reg->numRects * sizeof(BOX));
+    return newreg;
+}
+
 Transform::Transform() {
     this->translation = glm::mat4();
     this->rotation = glm::mat4();
@@ -28,58 +45,14 @@ glm::mat4 Transform::compose() {
         (grot * rotation) * (gscl * scalation);
 }
 
-Point::Point() : Point(0, 0){}
-Point::Point(int _x, int _y) : x(_x), y(_y) {}
-
-Rect::Rect() : Rect(0, 0, 0, 0){}
-Rect::Rect(int tx, int ty, int bx, int by):
-    tlx(tx), tly(ty), brx(bx), bry(by){}
-
-bool Rect::operator&(const Rect &other) const {
-    bool result = true;
-
-    if(this->tly >= other.bry || this->bry <= other.tly)
-        result = false;
-    else if(this->brx <= other.tlx || this->tlx >= other.brx)
-        result = false;
-
-    return result;
-}
-
-bool Rect::operator&(const Point &other) const {
-    if(this->tlx <= other.x && other.x <= this->brx &&
-       this->tly <= other.y && other.y <= this->bry)
-        return true;
-    else
-        return false;
-}
-
-Rect Rect::operator+(const Rect &other) const {
-    Rect r;
-    r.tlx = std::min(this->tlx, other.tlx);
-    r.tly = std::min(this->tly, other.tly);
-    r.brx = std::max(this->brx, other.brx);
-    r.bry = std::max(this->bry, other.bry);
-
-    return r;
-}
-
-std::ostream& operator<<(std::ostream &stream, const Rect& rect) {
-
-    stream << "Debug rect\n";
-    stream << rect.tlx << " " << rect.tly << " ";
-    stream << rect.brx << " " << rect.bry;
-    stream << "\n";
-
-    return stream;
-}
-
-Rect output;
+Region output;
 bool __FireWindow::allDamaged = false;
 
 bool __FireWindow::shouldBeDrawn() {
-    if(fading)
-        return true;
+
+    if(destroyed && !keepCount)
+        return false;
+
     if(norender)
         return false;
 
@@ -91,21 +64,15 @@ bool __FireWindow::shouldBeDrawn() {
         return false;
     }
 
-    if(allDamaged) {
-
-        if(getRect() & output)
-            return true;
-        else
-            return false;
-    }
-
-    if(getRect() & core->dmg)
-        return true;
-    else
+    if(core->dmg && XRectInRegion(core->dmg,
+       attrib.x, attrib.y, attrib.width, attrib.height) == RectangleOut)
         return false;
+    else
+        return true;
+
 }
 
-void __FireWindow::regenVBOFromAttribs() {
+void __FireWindow::updateVBO() {
     if(type == WindowTypeDesktop)
         OpenGLWorker::generateVAOVBO(attrib.x,
             attrib.y + attrib.height,
@@ -117,31 +84,12 @@ void __FireWindow::regenVBOFromAttribs() {
             vao, vbo);
 }
 
-Rect __FireWindow::getRect() {
-    return Rect(this->attrib.x, this->attrib.y,
-                this->attrib.x + this->attrib.width,
-                this->attrib.y + this->attrib.height);
-}
+void __FireWindow::updateRegion() {
+    if(region)
+        XDestroyRegion(region);
 
-void __FireWindow::addDamage() {
-    //if(this->damaged)
-    //    return;
-
-    this->damaged = true;
-    //core->screenDmg++;
-    core->dmg = core->dmg + this->getRect();
-}
-
-void __FireWindow::remDamage() {
-    if(!this->damaged)
-        return;
-
-    this->damaged = false;
-    core->screenDmg--;
-}
-
-bool __FireWindow::getDamage() {
-    return this->damaged;
+    region = core->getRegionFromRect( attrib.x, attrib.y,
+            attrib.x + attrib.width, attrib.y + attrib.height);
 }
 
 Atom winTypeAtom, winTypeDesktopAtom, winTypeDockAtom,
@@ -160,8 +108,8 @@ Atom winOpacityAtom;
 namespace WinUtil {
 void init(Core *core) {
 
-    activeWinAtom = XInternAtom(core->d, "_NET_ACTIVE_WINDOW", 0);
-    wmNameAtom    = XInternAtom(core->d, "WM_NAME", 0);
+    activeWinAtom  = XInternAtom(core->d, "_NET_ACTIVE_WINDOW", 0);
+    wmNameAtom     = XInternAtom(core->d, "WM_NAME", 0);
     winOpacityAtom = XInternAtom(core->d, "_NET_WM_WINDOW_OPACITY", 0);
 
     wmProtocolsAtom    = XInternAtom (core->d, "WM_PROTOCOLS", 0);
@@ -178,12 +126,18 @@ void init(Core *core) {
     winTypeDialogAtom  = XInternAtom (core->d, "_NET_WM_WINDOW_TYPE_DIALOG", 0);
     winTypeNormalAtom  = XInternAtom (core->d, "_NET_WM_WINDOW_TYPE_NORMAL", 0);
 
-    winTypeDropdownMenuAtom = XInternAtom (core->d, "_NET_WM_WINDOW_TYPE_DROPDOWN_MENU", 0);
-    winTypePopupMenuAtom    = XInternAtom (core->d, "_NET_WM_WINDOW_TYPE_POPUP_MENU", 0);
-    winTypeTooltipAtom      = XInternAtom (core->d, "_NET_WM_WINDOW_TYPE_TOOLTIP", 0);
-    winTypeNotificationAtom = XInternAtom (core->d, "_NET_WM_WINDOW_TYPE_NOTIFICATION", 0);
-    winTypeComboAtom        = XInternAtom (core->d, "_NET_WM_WINDOW_TYPE_COMBO", 0);
-    winTypeDndAtom          = XInternAtom (core->d, "_NET_WM_WINDOW_TYPE_DND", 0);
+    winTypeDropdownMenuAtom =
+        XInternAtom (core->d, "_NET_WM_WINDOW_TYPE_DROPDOWN_MENU", 0);
+    winTypePopupMenuAtom    =
+        XInternAtom (core->d, "_NET_WM_WINDOW_TYPE_POPUP_MENU", 0);
+    winTypeTooltipAtom      =
+        XInternAtom (core->d, "_NET_WM_WINDOW_TYPE_TOOLTIP", 0);
+    winTypeNotificationAtom =
+        XInternAtom (core->d, "_NET_WM_WINDOW_TYPE_NOTIFICATION", 0);
+    winTypeComboAtom        =
+        XInternAtom (core->d, "_NET_WM_WINDOW_TYPE_COMBO", 0);
+    winTypeDndAtom          =
+        XInternAtom (core->d, "_NET_WM_WINDOW_TYPE_DND", 0);
 
 
 }
@@ -197,41 +151,22 @@ int setWindowTexture(FireWindow win) {
         syncWindowAttrib(win);        // in order to get a
         XSync(core->d, 0);            // pixmap
     }
-    if(win->attrib.map_state != IsViewable && !win->fading) {
+
+    if(win->attrib.map_state != IsViewable && !win->keepCount) {
         err << "Invisible window";
         win->norender = true;
         XUngrabServer(core->d);
         return 0;
     }
 
-    Pixmap pix = win->pixmap;
-    if(!win->fading)
-        pix = XCompositeNameWindowPixmap(core->d, win->id);
-
-    if(win->pixmap == pix) {
+    if(!win->damaged) {
         glBindTexture(GL_TEXTURE_2D, win->texture);
-        XUngrabServer(core->d);
         return 1;
     }
 
-    if(win->pixmap != 0) {
-        XFreePixmap(core->d, win->pixmap);
-        glDeleteTextures(1, &win->texture);
-    }
-
-    win->pixmap = pix;
-
-    if(win->xvi == nullptr)
-        win->xvi = getVisualInfoForWindow(win->id);
-    if (win->xvi == nullptr) {
-        err << "No visual info, deny rendering";
-        win->norender = true;
-        XUngrabServer(core->d);
-        return 0;
-    }
-
-    win->texture = GLXUtils::textureFromPixmap(win->pixmap,
-            win->attrib.width, win->attrib.height, win->xvi);
+    glDeleteTextures(1, &win->texture);
+    win->texture = GLXUtils::textureFromWindow(win->id,
+            win->attrib.width, win->attrib.height, &win->shared);
 
     XUngrabServer(core->d);
     return 1;
@@ -240,6 +175,23 @@ int setWindowTexture(FireWindow win) {
 void initWindow(FireWindow win) {
 
     XGetWindowAttributes(core->d, win->id, &win->attrib);
+    XSizeHints hints;
+    long flags;
+    XGetWMNormalHints(core->d, win->id, &hints, &flags);
+
+    if(flags & USPosition)
+        win->attrib.x = hints.x,
+        win->attrib.y = hints.y;
+
+    if(flags & USSize)
+        win->attrib.width = hints.width,
+        win->attrib.height= hints.height;
+
+    else if(flags & PBaseSize)
+        win->attrib.width = hints.base_width,
+        win->attrib.height = hints.base_height;
+
+    win->updateRegion();
 
     if(win->attrib.c_class != InputOnly)
         win->damage =
@@ -255,12 +207,15 @@ void initWindow(FireWindow win) {
     XSelectInput(core->d, win->id,   FocusChangeMask  |
                 PropertyChangeMask | EnterWindowMask);
 
-    XGrabButton ( core->d, AnyButton, AnyModifier, win->id, TRUE,
+    XGrabButton (core->d, AnyButton, AnyModifier, win->id, TRUE,
             ButtonPressMask | ButtonReleaseMask | Button1MotionMask,
-            GrabModeSync, GrabModeSync, None, None );
+            GrabModeSync, GrabModeSync, None, None);
 
-    win->opacity = readProp(win->id, winOpacityAtom, 0xffff);
     win->transform.color = glm::vec4(1., 1., 1., 1.);
+    win->transform.color[3] = readProp(win->id,
+            winOpacityAtom, 0xffff) / 0xffff;
+
+    glGenTextures(1, &win->texture);
 }
 
 #define uchar unsigned char
@@ -270,67 +225,32 @@ int readProp(Window win, Atom prop, int def) {
     ulong n, left;
     uchar *data;
 
-    result = XGetWindowProperty ( core->d, win, prop,
+    result = XGetWindowProperty (core->d, win, prop,
             0L, 1L, FALSE, XA_CARDINAL, &actual, &format,
-            &n, &left, &data );
+            &n, &left, &data);
 
-    if ( result == Success && data ) {
-        if ( n ) {
-            result = *(int *)data;
+    if (result == Success && data) {
+        if (n)
+            result = *(int *)data,
             result >>= 16;
-        }
-
-        XFree ( data );
+        XFree(data);
     }
     else
         result = def;
     return result;
 }
 
-
 void finishWindow(FireWindow win) {
-    if(win->pixmap != 0)
-        XFreePixmap(core->d, win->pixmap);
 
-    GLboolean check;
-    glAreTexturesResidentEXT(1, &win->texture, &check);
-    if(check)
-        glDeleteTextures(1, &win->texture);
-
-    bool res = glIsBufferResidentNV(win->vbo);
-    if(res)
-        glDeleteBuffers(1, &win->vbo);
-
-    res = glIsVertexArray(win->vao);
-    if(res)
-        glDeleteVertexArrays(1, &win->vao);
-
+    glDeleteTextures(1, &win->texture);
+    glDeleteBuffers(1, &win->vbo);
+    glDeleteVertexArrays(1, &win->vao);
     XDamageDestroy(core->d, win->damage);
-
-    err << "window deleted";
 }
-
-namespace {
-    void createFakeEvent() {
-        XEvent xev;
-        xev.type = Expose;
-        xev.xexpose.window = core->root;
-        XSendEvent(core->d, core->root, False, ExposureMask, &xev);
-        XFlush(core->d);
-    }
-}
-
-
 
 void renderWindow(FireWindow win) {
 
-    std::cout << "In render Window" << std::endl;
-    OpenGLWorker::opacity = 1;
     OpenGLWorker::color = win->transform.color;
-    win->remDamage();
-
-    std::cout << "DID IT" << std::endl;
-
     if(win->type == WindowTypeDesktop){
         OpenGLWorker::renderTransformedTexture(win->texture,
                 win->vao, win->vbo,
@@ -343,70 +263,12 @@ void renderWindow(FireWindow win) {
         return;
     }
 
-    std::cout << "SetWinText" << std::endl;
-
     if(win->vbo == -1 || win->vao == -1)
-        OpenGLWorker::generateVAOVBO(win->attrib.x, win->attrib.y,
-                win->attrib.width, win->attrib.height,
-                win->vao, win->vbo);
+        win->updateVBO();
 
-
-    std::cout << "Enter Age" << std::endl;
-    if(win->age) {
-
-        err << "A window is fading" << std::endl;
-        if(win->fading)
-            win->opacity = float(0xffff) * float(win->age) / 100.f;
-        else
-            win->opacity = float(0xffff) * float(100 - win->age) / 100.f;
-
-        --win->age;
-
-        core->resetDMG = false;
-        core->dmg = core->dmg + win->getRect();
-        core->redraw = true;
-
-        //sendFakeSpace(); // force redrawing of screen
-        XserverRegion reg =
-            XFixesCreateRegionFromWindow(core->d, win->id,
-                    WindowRegionBounding);
-
-        if(!win->fading)
-            XDamageAdd(core->d, win->id, reg);
-        else
-            createFakeEvent();
-
-        if(!win->age) {
-            core->resetDMG = true,
-            win->fading = false;
-        }
-
-    } else { 
-        win->opacity = 0;
-        if(!win->destroyed && !win->fading)
-            win->opacity = readProp(win->id, winOpacityAtom, 0xffff);
-        if(win->fading)
-            win->norender = true,
-            win->fading = false;
-    }
-
-    std::cout << "Nun hier" << std::endl;
-
-    OpenGLWorker::opacity = float(win->opacity) / float(0xffff);
-    std::cout << "opacity set" << std::endl;
-    if(!win->xvi)
-        win->xvi = getVisualInfoForWindow(win->id);
-    OpenGLWorker::depth = win->xvi->depth;
-    std::cout << "Std" << std::endl;
+    OpenGLWorker::depth = win->attrib.depth;
     OpenGLWorker::renderTransformedTexture(win->texture,
             win->vao, win->vbo, win->transform.compose());
-
-    std::cout << "FFFFFF" << std::endl;
-
-    if(win->destroyed && win->age == 0)
-        core->destroyWindow(win);
-
-    std::cout << "End Render Widnow" << std::endl;
 }
 
 XVisualInfo *getVisualInfoForWindow(Window win) {
@@ -422,21 +284,9 @@ XVisualInfo *getVisualInfoForWindow(Window win) {
 
     int dumm;
     xvi = XGetVisualInfo(core->d, VisualIDMask, &dummy, &dumm);
-    if(dumm == 0)
+    if(dumm == 0 || !xvi)
         err << "Cannot get default visual!\n";
     return xvi;
-}
-
-
-bool isTopLevelWindow(FireWindow win) {
-    if(win->transientFor) return false;
-    if(win->leader) return false;
-
-    Window client = XmuClientWindow(core->d, win->id);
-    if(!client || client != win->id)
-        return false;
-
-    return true;
 }
 
 FireWindow getClientLeader(FireWindow win) {
@@ -459,7 +309,6 @@ FireWindow getClientLeader(FireWindow win) {
     return core->findWindow(x);
 }
 
-
 FireWindow getTransient(FireWindow win) {
 
     Window dumm;
@@ -470,7 +319,6 @@ FireWindow getTransient(FireWindow win) {
         return core->findWindow(dumm);
 }
 
-
 void getWindowName(FireWindow win, char *name) {
     Atom type;
     int form;
@@ -480,71 +328,6 @@ void getWindowName(FireWindow win, char *name) {
                 0, 1024, False, XA_STRING,
                 &type, &form, &len, &remain, (unsigned char**)&name)) {
         }
-}
-
-FireWindow getAncestor(FireWindow win) {
-
-    if(!win)
-        return nullptr;
-
-    if(win->type == WindowTypeNormal)
-        return win;
-
-    FireWindow w1, w2;
-    w1 = w2 = nullptr;
-
-    if(win->transientFor)
-        w1 = getAncestor(win->transientFor);
-
-    if(win->leader)
-        w2 = getAncestor(win->leader);
-
-    if(w1 == nullptr && w2 == nullptr)
-        return win;
-
-    else if(w1)
-        return w1;
-
-    else if(w2)
-        return w2;
-
-    else
-        return nullptr;
-}
-
-bool recurseIsAncestor(FireWindow parent, FireWindow win) {
-    if(parent->id == win->id)
-        return true;
-
-    bool mask = false;
-
-    if(win->transientFor)
-        mask |= recurseIsAncestor(parent, win->transientFor);
-
-    if(win->leader)
-        mask |= recurseIsAncestor(parent, win->leader);
-
-    return mask;
-}
-
-bool isAncestorTo(FireWindow parent, FireWindow win) {
-    if(win->id == parent->id) // a window is not its own ancestor
-        return false;
-
-    return recurseIsAncestor(parent, win);
-}
-
-StackType getStackType(FireWindow win1, FireWindow win2) {
-    if(win1->id == win2->id)
-        return StackTypeNoStacking;
-
-    if(isAncestorTo(win1, win2))
-        return StackTypeAncestor;
-
-    if(isAncestorTo(win2, win1))
-        return StackTypeChild;
-
-    return StackTypeSibling;
 }
 
 WindowType getWindowType(FireWindow win) {
@@ -583,7 +366,7 @@ WindowType getWindowType(FireWindow win) {
         else if ( a == winTypeDialogAtom )
             return WindowTypeModal;
         else if ( a == winTypeDropdownMenuAtom )
-            return WindowTypeModal;
+            return WindowTypeWidget;
         else if ( a == winTypePopupMenuAtom )
             return WindowTypeModal;
         else if ( a == winTypeTooltipAtom )
@@ -621,18 +404,27 @@ void setInputFocusToWindow(Window win) {
 
 }
 
+
 void moveWindow(FireWindow win, int x, int y) {
-    auto prev = win->getRect();
+
+    bool existPreviousRegion = !(win->region == nullptr);
+
+    Region prevRegion = nullptr;
+    if(existPreviousRegion)
+        prevRegion = copyRegion(win->region);
 
     win->attrib.x = x;
     win->attrib.y = y;
+    win->updateRegion();
 
-    core->dmg = core->dmg + prev + win->getRect();
+    if(existPreviousRegion)
+        XUnionRegion(core->dmg, prevRegion,  core->dmg);
+    XUnionRegion(core->dmg, win->region, core->dmg);
 
     if(win->type == WindowTypeDesktop) {
         glDeleteBuffers(1, &win->vbo);
         glDeleteVertexArrays(1, &win->vao);
-        win->regenVBOFromAttribs();
+        win->updateVBO();
         return;
     }
 
@@ -644,17 +436,23 @@ void moveWindow(FireWindow win, int x, int y) {
     glDeleteVertexArrays(1, &win->vao);
 
     XConfigureWindow(core->d, win->id, CWX | CWY, &xwc);
-    win->regenVBOFromAttribs();
+    win->updateVBO();
 }
 
 void resizeWindow(FireWindow win, int w, int h) {
 
-    auto prev = win->getRect();
+    bool existPreviousRegion = !(win->region == nullptr);
+    Region prevRegion = nullptr;
+    if(existPreviousRegion)
+         prevRegion = copyRegion(win->region);
 
     win->attrib.width  = w;
     win->attrib.height = h;
+    win->updateRegion();
 
-    core->dmg = core->dmg + prev + win->getRect();
+    if(existPreviousRegion)
+        XUnionRegion(core->dmg, prevRegion,  core->dmg);
+    XUnionRegion(core->dmg, win->region, core->dmg);
 
     XWindowChanges xwc;
     xwc.width  = w;
@@ -664,7 +462,16 @@ void resizeWindow(FireWindow win, int w, int h) {
     glDeleteVertexArrays(1, &win->vao);
 
     XConfigureWindow(core->d, win->id, CWWidth | CWHeight, &xwc);
-    win->regenVBOFromAttribs();
+    win->updateVBO();
+
+    if(win->shared.existing) {
+        XShmDetach(core->d, &win->shared.shminfo);
+        XDestroyImage(win->shared.image);
+        shmdt(win->shared.shminfo.shmaddr);
+        shmctl(win->shared.shminfo.shmid, IPC_RMID, NULL);
+        win->shared.existing = false;
+        win->shared.init = true;
+    }
 
 }
 void syncWindowAttrib(FireWindow win) {
@@ -684,14 +491,12 @@ void syncWindowAttrib(FireWindow win) {
     if(!mask)
         return;
 
-
-    err << "setting new attribs";
     win->attrib = xwa;
 
     glDeleteBuffers(1, &win->vbo);
     glDeleteVertexArrays(1, &win->vao);
-    win->regenVBOFromAttribs();
-    win->addDamage();
+    win->updateVBO();
+    win->updateRegion();
+    core->damageWindow(win);
 }
 }
-

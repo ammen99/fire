@@ -60,6 +60,7 @@ void ATSwitcher::handleKey(Context *ctx) {
 }
 
 void ATSwitcher::Initiate() {
+
     windows.clear();
     windows = core->getWindowsOnViewport(core->getWorkspace());
     active = true;
@@ -101,16 +102,12 @@ void ATSwitcher::Initiate() {
             GrabModeAsync, GrabModeAsync, CurrentTime);
 
     index = 0;
-
-    GetTuple(sw, sh, core->getScreenSize());
-    __FireWindow::allDamaged = true;
-    core->dmg = Rect(0, 0, sw, sh);
-    core->resetDMG = false;
-
+    core->setRedrawEverything(true);
     render();
 }
 
 void ATSwitcher::reset() {
+
     auto size = windows.size();
     auto prev = (index + size - 1) % size;
     auto next = (index + size + 1) % size;
@@ -159,14 +156,12 @@ void ATSwitcher::Terminate() {
         background->transform.color = glm::vec4(1, 1, 1, 1),
         background->transform.translation = glm::mat4(),
         background->transform.scalation   = glm::mat4();
-
-    __FireWindow::allDamaged = false;
+    core->setRedrawEverything(false);
+    core->dmg = core->getMaximisedRegion();
 }
 
 float ATSwitcher::getFactor(int x, int y, float percent) {
-    auto t = core->getScreenSize();
-    auto width = std::get<0> (t);
-    auto height = std::get<1>(t);
+    GetTuple(width, height, core->getScreenSize());
 
     float d = std::sqrt(x * x + y * y);
     float d1 = std::sqrt(width * width +

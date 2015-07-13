@@ -1,6 +1,5 @@
 #include "commonincludes.hpp"
 
-
 enum WindowType {
     WindowTypeNormal,
     WindowTypeWidget,
@@ -8,13 +7,6 @@ enum WindowType {
     WindowTypeDock,
     WindowTypeDesktop,
     WindowTypeOther
-};
-
-enum StackType{
-    StackTypeSibling    = 1,
-    StackTypeAncestor   = 2,
-    StackTypeChild      = 4,
-    StackTypeNoStacking = 8
 };
 
 class Transform {
@@ -35,44 +27,30 @@ class Transform {
         glm::mat4 compose();
 };
 
-class Point {
-    public:
-        int x, y;
-        Point();
-        Point(int, int);
-};
-class Rect{
-    public:
-        int tlx, tly;
-        int brx, bry;
-    public:
-        Rect();
-        Rect(int, int, int, int);
-        bool operator &(const Rect  &other) const;
-        bool operator &(const Point &other) const;
-        Rect operator +(const Rect  &other) const;
-};
-std::ostream& operator<<(std::ostream& stream, const Rect& rect);
+extern Region output;
+Region copyRegion(Region r);
 
-extern Rect output;
+struct SharedImage {
+    XShmSegmentInfo shminfo;
+    XImage *image;
+    bool init = true;
+    bool existing = false;
+};
 
 class __FireWindow {
-    private:
-        bool damaged = false;
     public:
 
         static bool allDamaged;
-        XVisualInfo *xvi;
-        Pixmap pixmap;
         Window id;
         GLuint texture; // image on screen
-        int opacity;
-        int age;
 
         bool norender = false; // should we draw window?
-        bool destroyed = false;
-        bool fading = false;
+        bool destroyed = false; // is window dead?
+        bool transparent = false; // is the window transparent
+        bool damaged = true;
+
         int mapTryNum = 5; // how many times have we tried to map this window?
+        int keepCount = 0; // used to determine whether to destory window
         Transform transform;
 
         GLuint vbo = -1;
@@ -86,15 +64,12 @@ class __FireWindow {
         char *name;
         WindowType type;
         XWindowAttributes attrib;
+        Region region = nullptr;
+        SharedImage shared;
 
         bool shouldBeDrawn();
-        void recalcWorkspace();
-        void regenVBOFromAttribs();
-        Rect getRect();
-
-        void addDamage();
-        void remDamage();
-        bool getDamage();
+        void updateVBO();
+        void updateRegion();
 };
 
 typedef std::shared_ptr<__FireWindow> FireWindow;
@@ -115,7 +90,6 @@ extern Atom winOpacityAtom;
 class Core;
 
 namespace WinUtil {
-    bool recurseIsAncestor(FireWindow parent, FireWindow win);
     void init(Core *core);
 
     void renderWindow(FireWindow win);
@@ -130,17 +104,11 @@ namespace WinUtil {
     void syncWindowAttrib(FireWindow win);
 
     XVisualInfo *getVisualInfoForWindow(Window win);
+
     FireWindow getTransient(FireWindow win);
     FireWindow getClientLeader(FireWindow win);
+
     void getWindowName(FireWindow win, char *name);
-    bool isTopLevelWindow(FireWindow win);
-
     WindowType getWindowType(FireWindow win);
-
-    FireWindow getAncestor(FireWindow win);
-
-    bool isAncestorTo(FireWindow parent, FireWindow win);
-    StackType getStackType(FireWindow win1, FireWindow win2);
-
     int readProp(Window win, Atom prop, int def);
 };

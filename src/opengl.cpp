@@ -6,7 +6,6 @@ GLuint OpenGLWorker::program;
 GLuint OpenGLWorker::mvpID;
 GLuint OpenGLWorker::transformID;
 GLuint OpenGLWorker::normalID;
-GLuint OpenGLWorker::opacityID;
 GLuint OpenGLWorker::depthID;
 GLuint OpenGLWorker::colorID;
 
@@ -15,7 +14,6 @@ glm::mat4 OpenGLWorker::View;
 glm::mat4 OpenGLWorker::Proj;
 glm::mat3 OpenGLWorker::NM;
 
-float OpenGLWorker::opacity;
 int   OpenGLWorker::depth;
 glm::vec4 OpenGLWorker::color;
 
@@ -95,34 +93,27 @@ void OpenGLWorker::renderTransformedTexture(GLuint tex,
     else
         MVP = Model;
 
-    std::cout << "Start renderTT" << std::endl;
-
     glUniformMatrix4fv(mvpID, 1, GL_FALSE, &MVP[0][0]);
-    glUniform1f(opacityID, opacity);
     glUniform1i(depthID, depth);
     glUniform4fv(colorID, 1, &color[0]);
 
-    std::cout << "Rendering texture" << std::endl;
     renderTexture(tex, vao, vbo);
-    std::cout << std::endl;
 
     MVP = Proj * View;
     glUniformMatrix4fv(mvpID, 1, GL_FALSE, &MVP[0][0]);
-
-    std::cout << "End of renderTT" << std::endl;
-
 }
-
 
 void OpenGLWorker::preStage() {
     GetTuple(sw, sh, core->getScreenSize());
 
-    int blx = core->dmg.tlx;
-    int bly = sh - core->dmg.bry;
+    XRectangle rect;
+    XClipBox(core->dmg, &rect);
+
+    int blx = rect.x;
+    int bly = sh - (rect.y + rect.height);
 
     if(!__FireWindow::allDamaged) // do not scissor if damaging everything
-        glScissor(blx, bly, core->dmg.brx - core->dmg.tlx,
-              core->dmg.bry - core->dmg.tly);
+        glScissor(blx, bly, rect.width, rect.height);
     else
         glScissor(0, 0, sw, sh);
 
@@ -188,11 +179,11 @@ void OpenGLWorker::initOpenGL(Core *core, const char *shaderSrcPath) {
 
     glClearColor (.0f, .0f, .0f, 1.f);
     glClearDepth (1.f);
-    glEnable     (GL_DEPTH_TEST);
+//    glEnable     (GL_DEPTH_TEST);
     glEnable     (GL_ALPHA_TEST);
     glEnable     (GL_BLEND);
     glBlendFunc  (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glDepthFunc  (GL_LESS);
+//    glDepthFunc  (GL_LESS);
     glViewport   (0, 0, sw, sh);
     glDisable    (GL_CULL_FACE);
     glEnable     (GL_SCISSOR_TEST);
@@ -232,22 +223,12 @@ void OpenGLWorker::initOpenGL(Core *core, const char *shaderSrcPath) {
     glAttachShader (program, tcs);
     glAttachShader (program, tes);
     glAttachShader (program, gss);
-
-
     glBindFragDataLocation (program, 0, "outColor");
     glLinkProgram (program);
     glUseProgram (program);
 
-
-//    GLuint dummyVAO, dummyVBO;
-//    glGenVertexArrays(1, &dummyVAO);
-//    glBindVertexArray(dummyVAO);
-//    generateVAOVBO(0, 0, core->width, core->height, dummyVAO, dummyVBO);
-//
-
     mvpID = glGetUniformLocation(program, "MVP");
     normalID = glGetUniformLocation(program, "NormalMatrix");
-    opacityID = glGetUniformLocation(program, "opacity");
     depthID = glGetUniformLocation(program, "depth");
     colorID = glGetUniformLocation(program, "color");
     color = glm::vec4(1.f, 1.f, 1.f, 1.f);
@@ -262,5 +243,11 @@ void OpenGLWorker::initOpenGL(Core *core, const char *shaderSrcPath) {
 
     glUniformMatrix4fv(mvpID, 1, GL_FALSE, &MVP[0][0]);
     glUniformMatrix3fv(normalID, 1, GL_FALSE, &NM[0][0]);
+
+    auto w2ID = glGetUniformLocation(program, "w2");
+    auto h2ID = glGetUniformLocation(program, "h2");
+
+    glUniform1f(w2ID, sw / 2);
+    glUniform1f(h2ID, sh / 2);
 }
 

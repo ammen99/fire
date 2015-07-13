@@ -57,6 +57,8 @@ Core::Core(int vx, int vy) {
     fd.fd = ConnectionNumber(d);
     fd.events = POLLIN;
 
+    XSelectInput(d, root, SubstructureNotifyMask);
+
     XWindowAttributes xwa;
     XGetWindowAttributes(d, root, &xwa);
     width = xwa.width;
@@ -90,7 +92,7 @@ Core::Core(int vx, int vy) {
     XDamageQueryExtension(d, &damage, &dummy);
 
     cntHooks = 0;
-    output = Rect(0, 0, width, height);
+    output = getMaximisedRegion();
 
     initDefaultPlugins();
 
@@ -122,7 +124,7 @@ Core::Core(int vx, int vy) {
     for(auto p : plugins)
         p->init(this);
 
-    dmg = Rect(0, 0, width, height);
+    dmg = getMaximisedRegion();
 }
 
 void Core::enableInputPass(Window win) {
@@ -132,7 +134,7 @@ void Core::enableInputPass(Window win) {
     XFixesSetWindowShapeRegion(d, win, ShapeInput, 0, 0, region);
     XFixesDestroyRegion(d, region);
 }
-;
+
 void Core::addExistingWindows() {
     Window dummy1, dummy2;
     uint size;
@@ -146,23 +148,17 @@ void Core::addExistingWindows() {
     for(int i = size - 1; i >= 0; i--)
         if(children[i] != overlay   &&
            children[i] != outputwin &&
-           children[i] != s0owner    )
+           children[i] != s0owner   &&
+           children[i] != root       )
 
             addWindow(children[i]);
 
     for(int i = 0; i < size; i++) {
         auto w = findWindow(children[i]);
-        if(w)
-            w->transientFor = WinUtil::getTransient(w);
+        if(w) mapWindow(w);
     }
-
-    for(auto i = 0; i < size; i++) {
-        auto w = findWindow(children[i]);
-        if(w)
-            WinUtil::initWindow(w);
-    }
-
 }
+
 Core::~Core(){
 
     for(auto p : plugins)
@@ -270,6 +266,35 @@ void Core::remBut(uint id) {
     buttons.erase(it);
 }
 
+Region Core::getMaximisedRegion() {
+    REGION r;
+    r.rects = &r.extents;
+    r.numRects = r.size = 1;
+    r.extents.x1 = r.extents.y1 = 0;
+    r.extents.x2 = width;
+    r.extents.y2 = height;
+
+    Region ret;
+    ret = XCreateRegion();
+    XUnionRegion(&r, ret, ret);
+    return ret;
+}
+
+Region Core::getRegionFromRect(int tlx, int tly, int brx, int bry) {
+    REGION r;
+    r.rects = &r.extents;
+    r.numRects = r.size = 1;
+    r.extents.x1 = tlx;
+    r.extents.y1 = tly;
+    r.extents.x2 = brx;
+    r.extents.y2 = bry;
+
+    Region ret;
+    ret = XCreateRegion();
+    XUnionRegion(&r, ret, ret);
+    return ret;
+}
+
 
 void Core::setBackground(const char *path) {
 
@@ -302,8 +327,9 @@ void Core::setBackground(const char *path) {
             backgrounds[i][j]->attrib.height = height;
 
             backgrounds[i][j]->type = WindowTypeDesktop;
-            backgrounds[i][j]->regenVBOFromAttribs();
+            backgrounds[i][j]->updateVBO();
             backgrounds[i][j]->transform.color = glm::vec4(1,1,1,1);
+            backgrounds[i][j]->updateRegion();
             wins->addWindow(backgrounds[i][j]);
         }
     }
@@ -327,7 +353,7 @@ void Core::addWindow(XCreateWindowEvent xev) {
     if(xev.parent != root && xev.parent != 0)
         w->transientFor = findWindow(xev.parent);
 
-    w->xvi = nullptr;
+    w->keepCount = 0;
     wins->addWindow(w);
     WinUtil::initWindow(w);
 
@@ -335,58 +361,59 @@ void Core::addWindow(XCreateWindowEvent xev) {
         wins->focusWindow(w);
 }
 void Core::addWindow(Window id) {
-    //err << "Adding windows" << std::endl;
-    FireWindow w = std::make_shared<__FireWindow>();
-
-    w->id = id;
-    w->transientFor = nullptr;
-    w->xvi = nullptr;
-    wins->addWindow(w);
+    XCreateWindowEvent xev;
+    xev.window = id;
+    xev.parent = 0;
+    addWindow(xev);
 }
-void Core::destroyWindow(FireWindow win) {
+void Core::closeWindow(FireWindow win) {
     if(!win)
         return;
 
-    std::cout << "In destroyWindow" << std::endl;
-
     int cnt;
     Atom *atoms;
-    XGetWMProtocols(d, win->id, &atoms, &cnt);
+    auto status = XGetWMProtocols(d, win->id, &atoms, &cnt);
     Atom wmdelete = XInternAtom(d, "WM_DELETE_WINDOW", 0);
     Atom wmproto  = XInternAtom(d, "WM_PROTOCOLS", 0);
 
-    bool send = false; // should we send a wm_delete_window?
-    for(int i = 0; i < cnt; i++)
-        if(atoms[i] == wmdelete)
-            send = true;
+    if(status != 0) {
+        bool send = false; // should we send a wm_delete_window?
+        for(int i = 0; i < cnt; i++)
+            if(atoms[i] == wmdelete)
+                send = true;
 
-    if ( send ) {
-        XEvent xev;
+        if ( send ) {
+            XEvent xev;
 
-        xev.type         = ClientMessage;
-        xev.xclient.window       = win->id;
-        xev.xclient.message_type = wmproto;
-        xev.xclient.format       = 32;
-        xev.xclient.data.l[0]    = wmdelete;
-        xev.xclient.data.l[1]    = CurrentTime;
-        xev.xclient.data.l[2]    = 0;
-        xev.xclient.data.l[3]    = 0;
-        xev.xclient.data.l[4]    = 0;
+            xev.type         = ClientMessage;
+            xev.xclient.window       = win->id;
+            xev.xclient.message_type = wmproto;
+            xev.xclient.format       = 32;
+            xev.xclient.data.l[0]    = wmdelete;
+            xev.xclient.data.l[1]    = CurrentTime;
+            xev.xclient.data.l[2]    = 0;
+            xev.xclient.data.l[3]    = 0;
+            xev.xclient.data.l[4]    = 0;
 
-        XSendEvent ( d, win->id, FALSE, NoEventMask, &xev );
+            XSendEvent ( d, win->id, FALSE, NoEventMask, &xev );
+        } else
+            XKillClient ( d, win->id );
     } else
-        XKillClient ( d, win->id );
+        XKillClient(d, win->id);
 
     wins->focusWindow(wins->getTopmostToplevel());
 }
 
 void Core::renderAllWindows() {
+    XIntersectRegion(dmg, output, dmg);
+
     OpenGLWorker::preStage();
     wins->renderWindows();
     GLXUtils::endFrame(outputwin);
-    if(!__FireWindow::allDamaged) // do not clear damage
-        if(resetDMG)
-            dmg = Rect(0, 0, 0, 0);
+
+    if(resetDMG)
+        XDestroyRegion(dmg),
+        dmg = getRegionFromRect(0, 0, 0, 0);
 }
 
 void Core::wait(int timeout) {
@@ -394,31 +421,20 @@ void Core::wait(int timeout) {
 }
 
 void Core::mapWindow(FireWindow win) {
-    //if(win->attrib.map_state == IsViewable)
-    //    return;
-
     win->norender = false;
-    win->age = InitialAge;
-    win->fading = win->destroyed = false;
+    win->damaged = true;
+    new AnimationHook(new Fade(win), this);
     win->attrib.map_state = IsViewable;
-    win->addDamage();
+    damageWindow(win);
 
     WinUtil::syncWindowAttrib(win);
-    auto parent = WinUtil::getAncestor(win);
-    wins->restackTransients(parent);
-
-    redraw = true;
+    if(win->transientFor)
+        wins->restackTransients(win->transientFor);
 }
 
 void Core::unmapWindow(FireWindow win) {
-
     win->attrib.map_state = IsUnmapped;
-    win->addDamage();
-
-    win->age = InitialAge;
-    win->fading = true;
-
-    redraw = true;
+    new AnimationHook(new Fade(win, Fade::FadeOut), this);
 }
 
 bool Core::activateOwner(Ownership owner) {
@@ -492,7 +508,7 @@ bool Core::checkButRelease(ButtonBinding *bb, XButtonEvent kb) {
 void Core::handleEvent(XEvent xev){
     switch(xev.type) {
         case Expose:
-            dmg = Rect(0, 0, width, height);
+            dmg = getMaximisedRegion();
             redraw = true;
         case KeyPress: {
             // check keybindings
@@ -511,35 +527,33 @@ void Core::handleEvent(XEvent xev){
             if(xev.xcreatewindow.window == outputwin)
                 break;
 
-            err << "CreateNotify " << xev.xcreatewindow.window << std::endl;
+            auto it = findWindow(xev.xcreatewindow.window);
+            if(it != nullptr) {
+                WinUtil::finishWindow(it);
+                wins->removeWindow(it);
+            }
+
             addWindow(xev.xcreatewindow);
             mapWindow(findWindow(xev.xcreatewindow.window));
+            focusWindow(findWindow(xev.xcreatewindow.window));
             break;
         }
         case DestroyNotify: {
             auto w = wins->findWindow(xev.xdestroywindow.window);
-            if ( w == nullptr )
+            if(w == nullptr)
                 break;
 
-            wins->removeWindow(w);
-            WinUtil::finishWindow(w);
-            redraw = true;
+            w->destroyed = true;
             break;
         }
         case MapRequest: {
             auto w = wins->findWindow(xev.xmaprequest.window);
             if(w == nullptr)
                 break;
-
-            err << "MapRequest " << w->id << std::endl;
             mapWindow(w);
-
             break;
         }
         case MapNotify: {
-
-            err << "MapNotify" << std::endl;
-
             auto w = wins->findWindow(xev.xmap.window);
             if(w == nullptr)
                 break;
@@ -548,8 +562,6 @@ void Core::handleEvent(XEvent xev){
             break;
         }
         case UnmapNotify: {
-            std::cout << "UnmapNotify" << std::endl;
-
             auto w = wins->findWindow(xev.xunmap.window);
             if(w == nullptr)
                 break;
@@ -585,8 +597,91 @@ void Core::handleEvent(XEvent xev){
             mousex = xev.xmotion.x_root;
             mousey = xev.xmotion.y_root;
             break;
-        case EnterNotify:
+
+        case ConfigureRequest: {
+            auto w = findWindow(xev.xconfigurerequest.window);
+            if(!w) { // from compiz window manager
+                XWindowChanges xwc;
+                std::memset(&xwc, 0, sizeof(xwc));
+
+                auto xwcm = xev.xconfigurerequest.value_mask &
+                    (CWX | CWY | CWWidth | CWHeight | CWBorderWidth);
+
+                xwc.x        = xev.xconfigurerequest.x;
+                xwc.y        = xev.xconfigurerequest.y;
+                xwc.width        = xev.xconfigurerequest.width;
+                xwc.height       = xev.xconfigurerequest.height;
+                xwc.border_width = xev.xconfigurerequest.border_width;
+
+                XConfigureWindow (d, xev.xconfigurerequest.window,
+                        xwcm, &xwc);
+                break;
+            }
+
+            int width = w->attrib.width;
+            int height = w->attrib.height;
+            int x = w->attrib.x;
+            int y = w->attrib.y;
+
+            if(xev.xconfigurerequest.value_mask & CWWidth)
+                width = xev.xconfigurerequest.width;
+            if(xev.xconfigurerequest.value_mask & CWHeight)
+                height = xev.xconfigurerequest.height;
+            if(xev.xconfigurerequest.value_mask & CWX)
+                x = xev.xconfigurerequest.x;
+            if(xev.xconfigurerequest.value_mask & CWY)
+                y = xev.xconfigurerequest.y;
+
+            WinUtil::moveWindow(w, x, y);
+            WinUtil::resizeWindow(w, width, height);
+
+            if(xev.xconfigurerequest.value_mask & CWStackMode) {
+                if(xev.xconfigurerequest.above) {
+                    auto below = findWindow(xev.xconfigurerequest.above);
+                    if(below) {
+                        if(xev.xconfigurerequest.detail == Above)
+                            wins->restackAbove(w, below);
+                        else
+                            wins->restackAbove(below, w);
+                    }
+                }
+                else
+                    if(xev.xconfigurerequest.detail == Above)
+                        focusWindow(w);
+            }
+
+        }
+
+        case PropertyNotify: {
+            auto w = findWindow(xev.xproperty.window);
+            if(!w)
+                break;
+
+            if(xev.xproperty.atom == winTypeAtom)
+                w->type = WinUtil::getWindowType(w),
+                wins->restackTransients(w);
+
+            if(xev.xproperty.atom == XA_WM_TRANSIENT_FOR)
+                w->transientFor = WinUtil::getTransient(w),
+                wins->restackTransients(w);
+
+            if(xev.xproperty.atom == wmClientLeaderAtom)
+                w->leader = WinUtil::getClientLeader(w),
+                wins->restackTransients(w);
+
             break;
+        }
+
+        case ConfigureNotify:
+            if(xev.xconfigure.window == root)
+                terminate = true, mainrestart = true;
+        case EnterNotify:       // we don't handle
+        case FocusIn:           // any of these
+        case CirculateRequest:
+        case CirculateNotify:
+        case MappingNotify:
+            break;
+
         default:
             if(xev.type == damage + XDamageNotify) {
                 redraw = true;
@@ -597,21 +692,26 @@ void Core::handleEvent(XEvent xev){
                 if(!w)
                     return;
 
-                auto damagedArea =
-                    Rect(x->area.x + w->attrib.x,
-                         x->area.y + w->attrib.y,
-                         x->area.x + w->attrib.x + x->area.width,
-                         x->area.y + w->attrib.y + x->area.height);
+                w->damaged = true;
 
-                if(!__FireWindow::allDamaged)
-                    if(damagedArea & output)
-                    dmg = dmg + damagedArea;
-            }
+                Region damagedArea = getRegionFromRect(
+                        x->area.x + w->attrib.x,
+                        x->area.y + w->attrib.y,
+                        x->area.x + w->attrib.x + x->area.width,
+                        x->area.y + w->attrib.y + x->area.height);
+
+
+                if(!dmg)
+                    err << "dmg is null!!!!" << std::endl;
+
+                XUnionRegion(damagedArea, dmg, dmg);
+                XDestroyRegion(damagedArea);
             break;
+            }
     }
 }
 
-#define RefreshRate 200
+#define RefreshRate 61
 #define Second 1000000
 #define MaxDelay 1000
 #define MinRR 61
@@ -622,7 +722,6 @@ void Core::loop(){
     redraw = true;
 
     int currentCycle = Second / RefreshRate;
-    currentCycle -= 50;
     int baseCycle = currentCycle;
 
     timeval before, after;
@@ -659,17 +758,15 @@ void Core::loop(){
                         hook.second->action();
             }
 
-            if(redraw ||
-                    ((dmg.brx - dmg.tlx != 0 &&  // if we have damage
-                      dmg.bry - dmg.tly != 0) ||
-                        __FireWindow::allDamaged)) // or we just redraw
-                renderAllWindows(),                // everything
-                redraw = false;
+            if(redraw || __FireWindow::allDamaged || !XEmptyRegion(dmg))
+                renderAllWindows(),   // we just redraw
+                redraw = false;       // everything
 
             /* optimisation when too slow,
              * so we can update more rarely,
              * i.e reduce lagging */
-            if(diff - currentCycle > MaxDelay && Second / MinRR <= currentCycle)
+            if(diff - currentCycle > MaxDelay &&
+                    Second / MinRR <= currentCycle)
                 currentCycle += 2000; // 1ms slower redraws
 
             /* optimisation when idle */
@@ -692,6 +789,7 @@ int Core::onXError(Display *d, XErrorEvent *xev) {
     if(xev->resourceid == 0) // invalid window
         return 0;
 
+    return 0;
     /* some of the calls to obtain a texture from this window
      * have failed, so don't draw it the next time */
 
@@ -699,7 +797,7 @@ int Core::onXError(Display *d, XErrorEvent *xev) {
        xev->error_code == BadDrawable ||
        xev->error_code == BadWindow   ){
 
-        err << "caught BadMatch/Drawable/Window. Disabling window drawing "
+       std::cout << "caught BadMatch/Drawable/Window. Disabling window drawing "
             << xev->resourceid;
 
         auto x = core->wins->findWindow(xev->resourceid);
@@ -709,13 +807,13 @@ int Core::onXError(Display *d, XErrorEvent *xev) {
         return 0;
     }
 
-    err << std::endl << "____________________________" << std::endl;
-    err << "XError code   " << int(xev->error_code) << std::endl;
+    std::cout << std::endl << "____________________________" << std::endl;
+    std::cout << "XError code   " << int(xev->error_code) << std::endl;
     char buf[512];
     XGetErrorText(d, xev->error_code, buf, 512);
-    err << "XError string " << buf << std::endl;
-    err << "ResourceID = " << xev->resourceid << std::endl;
-    err << "____________________________" << std::endl << std::endl;
+    std::cout << "XError string " << buf << std::endl;
+    std::cout << "ResourceID = " << xev->resourceid << std::endl;
+    std::cout << "____________________________" << std::endl << std::endl;
     return 0;
 }
 
@@ -757,28 +855,90 @@ std::vector<FireWindow> Core::getWindowsOnViewport(std::tuple<int, int> vp) {
     auto x = std::get<0>(vp);
     auto y = std::get<1>(vp);
 
-    Rect view((x - vx    ) * width, (y - vy    ) * height,
-            (x - vx + 1) * width, (y - vy + 1) * height);
+    auto view = getRegionFromRect((x - vx) * width, (y - vy) * height,
+                       (x - vx + 1) * width, (y - vy + 1) * height);
 
     std::vector<FireWindow> ret;
-    for(auto w : wins->wins)
-        if(w->getRect() & view && !w->norender)
+    Region tmp = XCreateRegion();
+    for(auto w : wins->wins) {
+        if(!w->region)
+            continue;
+        if(!view)
+            continue;
+
+        XIntersectRegion(view, w->region, tmp);
+        if(tmp && !XEmptyRegion(tmp) && !w->norender)
             ret.push_back(w);
+    }
+    XDestroyRegion(view);
+    XDestroyRegion(tmp);
 
     return ret;
 }
 
+void Core::damageWindow(FireWindow win) {
+    if(!win)
+        return;
+
+    if(win->norender)
+        return;
+
+    if(!win->region) {
+
+        XserverRegion reg =
+            XFixesCreateRegionFromWindow(core->d, win->id,
+                    WindowRegionBounding);
+
+        XDamageAdd(core->d, win->id, reg);
+        XFixesDestroyRegion(core->d, reg);
+        return;
+    }
+    redraw = true;
+    if(!dmg)
+        dmg = getRegionFromRect(0, 0, 0, 0);
+
+    XUnionRegion(dmg, win->region, dmg);
+}
+
+namespace {
+    int fullRedraw = 0;
+}
+
+void Core::setRedrawEverything(bool val) {
+    if(val) {
+        fullRedraw++;
+        __FireWindow::allDamaged = true;
+        core->resetDMG = false;
+    }
+    else if(--fullRedraw == 0)
+        __FireWindow::allDamaged = false,
+        core->resetDMG = true;
+}
+
 void Core::focusWindow(FireWindow win) {
+    if(!win)
+        return;
+
+    damageWindow(win);
     wins->focusWindow(win);
 }
 
-FireWindow Core::getWindowAtPoint(Point p) {
-    return wins->findWindowAtCursorPosition(p);
+void Core::removeWindow(FireWindow win) {
+    WinUtil::finishWindow(win);
+    wins->removeWindow(win);
+}
+
+FireWindow Core::getWindowAtPoint(int x, int y) {
+    return wins->findWindowAtCursorPosition(x, y);
 }
 
 template<class T>
 PluginPtr Core::createPlugin() {
     return std::static_pointer_cast<Plugin>(std::make_shared<T>());
+}
+
+int Core::getRefreshRate() {
+    return Second / RefreshRate;
 }
 
 void Core::initDefaultPlugins() {

@@ -58,6 +58,41 @@ struct Hook {
         Hook();
 };
 
+struct Animation {
+    virtual bool Step() = 0; // return true if continue, false otherwise
+    virtual ~Animation();
+};
+
+struct AnimationHook {
+    private:
+        Animation *anim;
+        Hook hook;
+        void step();
+
+    public:
+        AnimationHook(Animation*, Core*); // anim is destroyed at the end
+                                          // so should not be used anymore
+                                          // in caller
+        ~AnimationHook();
+};
+
+struct Fade : public Animation {
+
+    enum Mode { FadeIn = 1, FadeOut = -1 };
+    FireWindow win;
+    Mode mode;
+    int progress = 0;
+    int maxstep = 0;
+    int target = 0;
+    bool destroy;
+    bool savetr; // used to restore transparency
+
+    Fade(FireWindow _win, Mode _mode = FadeIn,
+            int durationms = 1000);
+    bool Step();
+};
+
+
 class Expo;
 
 #define GetTuple(x,y,t) auto x = std::get<0>(t); \
@@ -91,7 +126,7 @@ class Core {
         PluginPtr createPlugin();
     public:
 
-        /* warning!
+        /* warning!!!
          * no plugin should change these! */
         Display *d;
         Window root;
@@ -103,9 +138,9 @@ class Core {
 
         bool redraw = true; // should we redraw?
         bool terminate = false; // should main loop exit?
+        bool mainrestart = false; // should main() restart us?
         bool resetDMG;
-        int screenDmg = 1;
-        Rect dmg;
+        Region dmg;
 
         float scaleX = 1, scaleY = 1; // used for operations which
                               // depend on mouse moving
@@ -152,13 +187,24 @@ class Core {
         void addWindow(XCreateWindowEvent);
         void addWindow(Window);
         void focusWindow(FireWindow win);
-        void destroyWindow(FireWindow win);
+        void closeWindow(FireWindow win);
+        void removeWindow(FireWindow win);
         void mapWindow(FireWindow win);
         void unmapWindow(FireWindow win);
+        void damageWindow(FireWindow win);
+        int getRefreshRate();
+
 
         FireWindow findWindow(Window win);
         FireWindow getActiveWindow();
-        FireWindow getWindowAtPoint(Point p);
+        FireWindow getWindowAtPoint(int x, int y);
+
+        Region getMaximisedRegion();
+        Region getRegionFromRect(int tlx, int tly, int brx, int bry);
+        /* use this function to draw all windows
+         * but do not forget to turn it off
+         * as it is extremely bad for performance */
+        void setRedrawEverything(bool value);
 
         std::vector<FireWindow> getWindowsOnViewport(std::tuple<int, int>);
         void switchWorkspace(std::tuple<int, int>);

@@ -22,7 +22,7 @@ void Exit::init(Core *core) {
     };
 
     exit->active = true;
-    exit->mod = ControlMask;
+    exit->mod = ControlMask | Mod1Mask;
     exit->type = BindingTypePress;
     exit->key = XKeysymToKeycode(core->d, XK_q);
 
@@ -37,9 +37,8 @@ void Close::init(Core *core) {
     close->key = XKeysymToKeycode(core->d, XK_F4);
     close->action = [core](Context *ctx) {
         auto w = core->getActiveWindow();
-        w->fading = true;
-        w->destroyed = true;
-        w->age = InitialAge;
+        core->closeWindow(w);
+        new AnimationHook(new Fade(w, Fade::FadeOut), core);
         //core->destroyWindow(core->getActiveWindow());
     };
     core->addKey(close, true);
@@ -54,7 +53,7 @@ void Focus::init(Core *core) {
     focus.action = [core] (Context *ctx){
         auto xev = ctx->xev.xbutton;
         auto w =
-            core->getWindowAtPoint(Point(xev.x_root, xev.y_root));
+            core->getWindowAtPoint(xev.x_root, xev.y_root);
 
         if(w)
             core->focusWindow(w);
