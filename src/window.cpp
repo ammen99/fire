@@ -151,6 +151,7 @@ int setWindowTexture(FireWindow win) {
         syncWindowAttrib(win);        // in order to get a
         XSync(core->d, 0);            // pixmap
     }
+
     if(win->attrib.map_state != IsViewable && !win->keepCount) {
         err << "Invisible window";
         win->norender = true;
@@ -158,40 +159,25 @@ int setWindowTexture(FireWindow win) {
         return 0;
     }
 
-
-    if(win->pixmap != 0) {
-        glDeleteTextures(1, &win->texture);
+    if(!win->damaged) {
+        glBindTexture(GL_TEXTURE_2D, win->texture);
+        return 1;
     }
 
+    glDeleteTextures(1, &win->texture);
     win->texture = GLXUtils::textureFromPixmap(win->id,
             win->attrib.width, win->attrib.height, &win->shared);
+
     win->pixmap = 1;
     XUngrabServer(core->d);
     return 1;
 
-    Pixmap pix = win->pixmap;
-    if(!win->destroyed)
-        pix = XCompositeNameWindowPixmap(core->d, win->id);
-
-    if(win->pixmap == pix ||
-            (win->keepCount && win->attrib.map_state != IsViewable)) {
-        glBindTexture(GL_TEXTURE_2D, win->texture);
-        XUngrabServer(core->d);
-        return 1;
-    }
-
-
-    win->pixmap = pix;
-
-    if(win->xvi == nullptr)
-        win->xvi = getVisualInfoForWindow(win->id);
-    if (win->xvi == nullptr) {
-        err << "No visual info, deny rendering";
-        win->norender = true;
-        XUngrabServer(core->d);
-        return 0;
-    }
-
+//    if(win->pixmap == pix ||
+//            (win->keepCount && win->attrib.map_state != IsViewable)) {
+//        glBindTexture(GL_TEXTURE_2D, win->texture);
+//        XUngrabServer(core->d);
+//        return 1;
+//    }
 }
 
 void initWindow(FireWindow win) {
@@ -236,6 +222,8 @@ void initWindow(FireWindow win) {
     win->transform.color = glm::vec4(1., 1., 1., 1.);
     win->transform.color[3] = readProp(win->id,
             winOpacityAtom, 0xffff) / 0xffff;
+
+    glGenTextures(1, &win->texture);
 }
 
 #define uchar unsigned char
