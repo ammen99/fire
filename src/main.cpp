@@ -170,6 +170,9 @@ void runOnce() { // simulates launching a new program
     core->loop();
     std::cout << "after loop" << std::endl;
 
+    if(core->mainrestart)
+        shdata[0] = 1;
+
     GetTuple(vx, vy, core->getWorkspace());
 
     shdata[1] = int(vx);

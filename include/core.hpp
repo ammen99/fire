@@ -82,6 +82,7 @@ struct Fade : public Animation {
     int maxstep = 0;
     int target = 0;
     bool destroy;
+    bool savetr; // used to restore transparency
 
     Fade(FireWindow _win, Mode _mode = FadeIn,
             int durationms = 1000);
@@ -134,6 +135,7 @@ class Core {
 
         bool redraw = true; // should we redraw?
         bool terminate = false; // should main loop exit?
+        bool mainrestart = false; // should main() restart us?
         bool resetDMG;
         Region dmg;
         float scaleX = 1, scaleY = 1; // used for operations which

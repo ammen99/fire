@@ -1,2 +1,2 @@
 # fire
-Fire is a compositing window manager written from scratch. It supports multiple viewports and basic window managements, but it's in a very early stage(It's even far from being a preview) and doesn't have a configuration system. So up to now it's suitable for people who just want to learn some of the basics of window managers.
+Fire is a compositing window manager written from scratch. For now it's not portable(there are some hard-coded paths), but it can be easily modified to work on any system with opengl 4 compliance. In the future there will also be a OpenGL 3 version, but it is still not ready(the opengl33 branch).

@@ -32,7 +32,7 @@ GLuint loadImage (char* path) {
     if ( infoi.Origin == IL_ORIGIN_UPPER_LEFT )
         iluFlipImage();
 
-    if ( !ilConvertImage ( IL_RGB, IL_UNSIGNED_BYTE ) )
+    if ( !ilConvertImage (IL_BGR, IL_UNSIGNED_BYTE))
         err << "Can't convert image!", std::exit ( 1 );
 
     glGenTextures ( 1, &textureID );
@@ -46,11 +46,12 @@ GLuint loadImage (char* path) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
     glTexImage2D ( GL_TEXTURE_2D, 0,
-            ilGetInteger ( IL_IMAGE_FORMAT ),
-            ilGetInteger ( IL_IMAGE_WIDTH ),
-            ilGetInteger ( IL_IMAGE_HEIGHT ),
+            GL_RGBA,
+            ilGetInteger (IL_IMAGE_WIDTH),
+            ilGetInteger (IL_IMAGE_HEIGHT),
             0,
-            ilGetInteger ( IL_IMAGE_FORMAT ),
+//            ilGetInteger(IL_IMAGE_FORMAT)
+            GL_RGB,
             GL_UNSIGNED_BYTE,
             ilGetData() );
     return textureID;
@@ -276,19 +277,16 @@ GLuint textureFromPixmap(Pixmap pixmap,
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
-    std::cout << "glxpixmap" << std::endl;
-
-    auto gpix = glxPixmap(pixmap, fbconf, w, h);
-    std::cout << "magic" << std::endl;
-
-    if(gpix == 0)
+    auto xim = XGetImage(core->d, pixmap, 0, 0, w, h, AllPlanes, ZPixmap);
+    if(xim == nullptr){
+        std::cout << "xgetimage returned null!!" << std::endl;
         return -1;
+    }
 
-    glXBindTexImageEXT_func (core->d, gpix, GLX_FRONT_LEFT_EXT, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0,
+            GL_RGBA, GL_UNSIGNED_BYTE, (void*)(&xim->data[0]));
 
-    std::cout << "end" << std::endl;
-    glXDestroyPixmap(core->d, gpix);
-    std::cout << "nun hier" << std::endl;
+    XDestroyImage(xim);
 
     return tex;
 }

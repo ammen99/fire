@@ -43,6 +43,7 @@ class __FireWindow {
 
         bool norender = false; // should we draw window?
         bool destroyed = false; // is window dead?
+        bool transparent = false; // is the window transparent
 
         int mapTryNum = 5; // how many times have we tried to map this window?
         int keepCount = 0; // used to determine whether to destory window

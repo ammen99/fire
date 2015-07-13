@@ -59,19 +59,36 @@ FireWindow WinStack::findWindow(Window win) {
 
 void WinStack::renderWindows() {
     int num = 0;
-    auto it = wins.rbegin();
 
     if(__FireWindow::allDamaged)
         XDestroyRegion(core->dmg),
         core->dmg = copyRegion(output);
 
-    while(it != wins.rend()) {
-        auto w = *it;
-        if(w && w->shouldBeDrawn())
-            w->transform.stackID = num++,
-            WinUtil::renderWindow(w);
-        ++it;
+    if(!core->dmg)
+        core->dmg = copyRegion(output);
+
+    std::vector<FireWindow> winsToDraw;
+
+    auto tmp = XCreateRegion();
+    for(auto w : wins) {
+        if(w && w->shouldBeDrawn()) {
+            w->transform.stackID = num--;
+            if(w->transparent || (w->xvi && w->xvi->depth == 32))
+                w->transparent = true;
+            else
+                XIntersectRegion(core->dmg, w->region, tmp),
+                XXorRegion(core->dmg, tmp, core->dmg);
+
+            winsToDraw.push_back(w);
+        }
     }
+
+    auto it = winsToDraw.rbegin();
+    while(it != winsToDraw.rend())
+        std::cout << "Rendering " << (*it)->id << std::endl,
+        WinUtil::renderWindow(*it), ++it;
+
+    XDestroyRegion(tmp);
 }
 
 void WinStack::removeWindow(FireWindow win) {
