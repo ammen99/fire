@@ -1,1 +1,5 @@
-/static/config
+[core]
+rrate = 70
+vwidth = 3
+background = /tarball/backgrounds/last.jpg
+shadersrc = /home/ilex/work/cwork/fire/shaders
