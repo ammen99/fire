@@ -84,7 +84,6 @@ void WSSwitch::moveStep() {
     if(stepNum == MAXSTEP){
         Transform::gtrs = glm::mat4();
         core->switchWorkspace(std::make_tuple(nx, ny));
-        core->redraw = true;
         output = core->getMaximisedRegion();
 
         if(dirs.size() == 0) {
@@ -107,7 +106,6 @@ void WSSwitch::moveStep() {
         offy = 0;
 
     Transform::gtrs = glm::translate(glm::mat4(), glm::vec3(offx, offy, 0.0));
-    core->redraw = true;
 }
 
 
@@ -267,8 +265,6 @@ void Expo::Toggle(Context *ctx) {
         offYcurrent = 0;
         sclXcurrent = 1;
         sclYcurrent = 1;
-
-        core->redraw = true;
     }else {
         active = !active;
 
@@ -279,8 +275,6 @@ void Expo::Toggle(Context *ctx) {
 
         core->scaleX = 1;
         core->scaleY = 1;
-
-        core->redraw = true;
 
         hook.enable();
         stepNum = MAXSTEP;
@@ -327,7 +321,6 @@ void Expo::zoom() {
         }
 
     }
-    core->redraw = true;
 }
 
 FireWindow Expo::findWindow(int px, int py) {

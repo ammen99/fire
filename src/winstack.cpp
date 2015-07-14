@@ -315,8 +315,8 @@ void WinStack::focusWindow(FireWindow win) {
     XConfigureWindow(core->d, activeWin->id, CWSibling|CWStackMode, &xwc);
 
     WinUtil::setInputFocusToWindow(activeWin->id);
-    core->redraw = true;
-
+    core->damageWindow(w1);
+    core->damageWindow(w2);
 }
 
 FireWindow WinStack::__findWindowAtCursorPosition(int x, int y) {

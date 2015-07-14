@@ -193,7 +193,6 @@ void ATSwitcher::render() {
     if(prev == index) { // we have one window
         return; // so nothing more to render
     }
-    core->redraw = true;
 
     windows[prev]->transform.translation =
         glm::translate(glm::mat4(), glm::vec3(-.6f, 0.f, -0.3f));
@@ -235,7 +234,6 @@ void ATSwitcher::moveLeft() {
     reset();
     index = (index - 1 + windows.size()) % windows.size();
     render();
-    core->redraw = true;
 }
 
 void ATSwitcher::moveRight() {
@@ -244,5 +242,4 @@ void ATSwitcher::moveRight() {
     reset();
     index = (index + 1) % windows.size();
     render();
-    core->redraw = true;
 }

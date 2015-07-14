@@ -75,7 +75,6 @@ void Move::Terminate(Context *ctx) {
 
     core->focusWindow(win);
     core->damageWindow(win);
-    core->redraw = true;
 }
 
 void Move::Intermediate() {
@@ -88,8 +87,6 @@ void Move::Intermediate() {
                     float(cmx - sx) / float(w / 2.0),
                     float(sy - cmy) / float(h / 2.0),
                     0.f));
-
-    core->redraw = true;
 }
 
 
@@ -211,5 +208,4 @@ void Resize::Intermediate() {
 
     win->transform.scalation =
         glm::scale(glm::mat4(), glm::vec3(kW, kH, 1.f));
-    core->redraw = true;
 }

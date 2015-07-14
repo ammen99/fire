@@ -516,14 +516,11 @@ void Core::handleEvent(XEvent xev){
     switch(xev.type) {
         case Expose:
             dmg = getMaximisedRegion();
-            redraw = true;
         case KeyPress: {
             // check keybindings
             for(auto kb : keys)
                 if(checkKey(kb.second, xev.xkey))
                    kb.second->action(new Context(xev));
-
-            redraw = true;
             break;
         }
 
@@ -691,7 +688,6 @@ void Core::handleEvent(XEvent xev){
 
         default:
             if(xev.type == damage + XDamageNotify) {
-                redraw = true;
                 XDamageNotifyEvent *x =
                     reinterpret_cast<XDamageNotifyEvent*> (&xev);
 
@@ -726,7 +722,6 @@ void Core::handleEvent(XEvent xev){
 void Core::loop(){
 
     std::lock_guard<std::mutex> lock(wmMutex);
-    redraw = true;
 
     int currentCycle = Second / RefreshRate;
     int baseCycle = currentCycle;
@@ -765,9 +760,8 @@ void Core::loop(){
                         hook.second->action();
             }
 
-            if(redraw || __FireWindow::allDamaged || !XEmptyRegion(dmg))
-                renderAllWindows(),   // we just redraw
-                redraw = false;       // everything
+            if(__FireWindow::allDamaged || !XEmptyRegion(dmg))
+                renderAllWindows();   // we just redraw
 
             /* optimisation when too slow,
              * so we can update more rarely,
@@ -900,7 +894,6 @@ void Core::damageWindow(FireWindow win) {
         XFixesDestroyRegion(core->d, reg);
         return;
     }
-    redraw = true;
     if(!dmg)
         dmg = getRegionFromRect(0, 0, 0, 0);
 

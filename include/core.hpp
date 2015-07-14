@@ -133,7 +133,6 @@ class Core {
         int damage;
 
 
-        bool redraw = true; // should we redraw?
         bool terminate = false; // should main loop exit?
         bool mainrestart = false; // should main() restart us?
         bool resetDMG;
