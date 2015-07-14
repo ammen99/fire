@@ -267,7 +267,7 @@ void endFrame(Window win) {
     glXSwapBuffers(core->d, win);
 }
 
-GLuint textureFromWindow(Window pixmap, int w, int h, SharedImage *sim) {
+GLuint textureFromWindow(Window id, int w, int h, SharedImage *sim) {
     GLuint tex;
     glGenTextures(1, &tex);
     glBindTexture(GL_TEXTURE_2D, tex);
@@ -278,6 +278,7 @@ GLuint textureFromWindow(Window pixmap, int w, int h, SharedImage *sim) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
+    auto pix = XCompositeNameWindowPixmap(core->d, id);
     if(useXShm) {
 
         if(sim->init) {
@@ -305,14 +306,14 @@ GLuint textureFromWindow(Window pixmap, int w, int h, SharedImage *sim) {
             XShmAttach(core->d, &sim->shminfo);
         }
 
-        XShmGetImage(core->d, pixmap, sim->image, 0, 0, AllPlanes);
+        XShmGetImage(core->d, pix, sim->image, 0, 0, AllPlanes);
 
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0,
                 GL_RGBA, GL_UNSIGNED_BYTE, (void*)(&sim->image->data[0]));
     }
     else { /* we cannot use XShm extension, so fallback to
               the *slower* XGetImage */
-        auto xim = XGetImage(core->d, pixmap, 0, 0, w, h, AllPlanes, ZPixmap);
+        auto xim = XGetImage(core->d, pix, 0, 0, w, h, AllPlanes, ZPixmap);
         if(xim == nullptr){
             std::cout << "xgetimage returned null!!" << std::endl;
             return -1;
