@@ -174,6 +174,10 @@ int setWindowTexture(FireWindow win) {
 
 void initWindow(FireWindow win) {
 
+    XSetWindowAttributes swa;
+    swa.backing_store = Always;
+    XChangeWindowAttributes(core->d, win->id, CWBackingStore, &swa);
+
     XGetWindowAttributes(core->d, win->id, &win->attrib);
     XSizeHints hints;
     long flags;
