@@ -2,6 +2,11 @@
 #define PLUGIN_H
 #include "commonincludes.hpp"
 
+/* a useful macro for making animation/hook duration
+ * independent of refresh rate
+ * x is in milliseconds(for example see Expo) */
+#define getSteps(x) ((x)/(1000/core->getRefreshRate()))
+
 /*
  * Documentation for writing a plugin
  *

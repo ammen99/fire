@@ -9,6 +9,7 @@
 bool wmDetected;
 
 Core *core;
+int refreshrate;
 
 class CorePlugin : public Plugin {
     public:
@@ -16,12 +17,17 @@ class CorePlugin : public Plugin {
             options.insert(newIntOption("rrate", 100));
             options.insert(newIntOption("vwidth", 3));
             options.insert(newIntOption("vheight", 3));
+            options.insert(newIntOption("fadeduration", 150));
             options.insert(newStringOption("background", ""));
             options.insert(newStringOption("shadersrc", ""));
         }
         void initOwnership() {
             owner->name = "core";
             owner->compatAll = true;
+        }
+        void updateConfiguration() {
+            refreshrate = options["rrate"]->data.ival;
+            Fade::duration = options["fadeduration"]->data.ival;
         }
 };
 
@@ -127,8 +133,6 @@ void Core::init() {
 
     vwidth = plug->options["vwidth"]->data.ival;
     vheight= plug->options["vheight"]->data.ival;
-
-    std::cout << vwidth << " " << vheight << std::endl;
 
     WinUtil::init();
     GLXUtils::initGLX();
@@ -740,7 +744,7 @@ void Core::loop(){
         plug->options["rrate"]->data.ival << std::endl;;
     redraw = true;
 
-    int currentCycle = Second / RefreshRate;
+    int currentCycle = Second / plug->options["rrate"]->data.ival;
     int baseCycle = currentCycle;
 
     timeval before, after;
@@ -957,7 +961,7 @@ PluginPtr Core::createPlugin() {
 }
 
 int Core::getRefreshRate() {
-    return Second / RefreshRate;
+    return refreshrate;
 }
 
 void Core::initDefaultPlugins() {
@@ -973,4 +977,5 @@ void Core::initDefaultPlugins() {
     plugins.push_back(createPlugin<Close>());
     plugins.push_back(createPlugin<ATSwitcher>());
     plugins.push_back(createPlugin<Grid>());
+    plugins.push_back(createPlugin<Refresh>());
 }

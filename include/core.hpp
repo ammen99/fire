@@ -9,9 +9,6 @@
 #include <queue>
 #include <unordered_set>
 
-#define InitialAge 50
-
-
 class WinStack;
 
 struct Context{
@@ -85,8 +82,9 @@ struct Fade : public Animation {
     bool destroy;
     bool savetr; // used to restore transparency
 
-    Fade(FireWindow _win, Mode _mode = FadeIn,
-            int durationms = 1000);
+    static int duration;
+
+    Fade(FireWindow _win, Mode _mode = FadeIn);
     bool Step();
 };
 

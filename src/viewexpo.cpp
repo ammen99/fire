@@ -1,11 +1,19 @@
 #include "../include/wm.hpp"
 #include "../include/winstack.hpp"
 
+namespace {
+    int wsstep;
+    int expostep;
+}
+
 void WSSwitch::initOwnership() {
     this->owner->name = "wsswitch";
     this->owner->compatAll = false;
 }
 
+void WSSwitch::updateConfiguration() {
+    wsstep = options["duration"]->data.ival / (1000 / core->getRefreshRate());
+}
 void WSSwitch::beginSwitch() {
     auto tup = dirs.front();
     dirs.pop();
@@ -77,11 +85,10 @@ void WSSwitch::handleSwitchWorkspace(Context *ctx) {
         moveWorkspace(0,  1);
 }
 
-#define MAXSTEP 20
 void WSSwitch::moveStep() {
     GetTuple(w, h, core->getScreenSize());
 
-    if(stepNum == MAXSTEP){
+    if(stepNum == wsstep){
         Transform::gtrs = glm::mat4();
         core->switchWorkspace(std::make_tuple(nx, ny));
         core->redraw = true;
@@ -96,7 +103,7 @@ void WSSwitch::moveStep() {
             beginSwitch();
         return;
     }
-    float progress = float(stepNum++) / float(MAXSTEP);
+    float progress = float(stepNum++) / float(wsstep);
 
     float offx =  2.f * progress * float(dx) / float(w);
     float offy = -2.f * progress * float(dy) / float(h);
@@ -113,6 +120,8 @@ void WSSwitch::moveStep() {
 
 void WSSwitch::init() {
     using namespace std::placeholders;
+
+    options.insert(newIntOption("duration", 500));
 
     switchWorkspaceBindings[0] = XKeysymToKeycode(core->d, XK_h);
     switchWorkspaceBindings[1] = XKeysymToKeycode(core->d, XK_l);
@@ -136,7 +145,14 @@ void WSSwitch::init() {
     core->addHook(&hook);
 }
 
+void Expo::updateConfiguration() {
+    expostep = options["duration"]->data.ival /
+        (1000 / core->getRefreshRate());
+}
+
 void Expo::init() {
+    options.insert(newIntOption("duration", 1000));
+
     using namespace std::placeholders;
     for(int i = 0; i < 4; i++) {
         keys[i].key = switchWorkspaceBindings[i];
@@ -261,7 +277,7 @@ void Expo::Toggle(Context *ctx) {
         hook.enable();
 
         core->setRedrawEverything(true);
-        stepNum = MAXSTEP;
+        stepNum = expostep;
         recalc();
 
         offXcurrent = 0;
@@ -284,7 +300,7 @@ void Expo::Toggle(Context *ctx) {
         core->redraw = true;
 
         hook.enable();
-        stepNum = MAXSTEP;
+        stepNum = expostep;
 
         sclXcurrent = sclXtarget;
         sclYcurrent = sclYtarget;
@@ -300,11 +316,11 @@ void Expo::Toggle(Context *ctx) {
 
 void Expo::zoom() {
 
-    if(stepNum == MAXSTEP) {
-        stepoffX = (offXtarget - offXcurrent) / float(MAXSTEP);
-        stepoffY = (offYtarget - offYcurrent) / float(MAXSTEP);
-        stepsclX = (sclXtarget - sclXcurrent) / float(MAXSTEP);
-        stepsclY = (sclYtarget - sclYcurrent) / float(MAXSTEP);
+    if(stepNum == expostep) {
+        stepoffX = (offXtarget - offXcurrent) / float(expostep);
+        stepoffY = (offYtarget - offYcurrent) / float(expostep);
+        stepsclX = (sclXtarget - sclXcurrent) / float(expostep);
+        stepsclY = (sclYtarget - sclYcurrent) / float(expostep);
     }
 
     if(stepNum--) {

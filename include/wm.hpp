@@ -92,6 +92,7 @@ class WSSwitch : public Plugin {
     public:
         void init();
         void initOwnership();
+        void updateConfiguration();
 };
 
 class Expo : public Plugin {
@@ -126,6 +127,7 @@ class Expo : public Plugin {
     public:
         void init();
         void initOwnership();
+        void updateConfiguration();
 };
 
 class ATSwitcher : public Plugin {
