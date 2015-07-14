@@ -166,4 +166,17 @@ class Grid : public Plugin {
     public:
         void init(Core*);
 };
+
+class Group : public Plugin {
+    std::vector<FireWindow> currentGroup;
+    std::vector<std::vector<FireWindow> > groups;
+
+    KeyBinding select, group, ungroup;
+
+    private:
+        void addCurrentGroup();
+        void remCurrentGroup();
+    public:
+        void init(Core *core);
+};
 #endif

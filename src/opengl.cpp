@@ -116,8 +116,6 @@ void OpenGLWorker::preStage() {
         glScissor(blx, bly, rect.width, rect.height);
     else
         glScissor(0, 0, sw, sh);
-
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
 #define cout std::cout
