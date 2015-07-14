@@ -180,7 +180,6 @@ void Expo::initOwnership() {
     owner->name = "expo";
     owner->compatAll = false;
     owner->compat.insert("move");
-    owner->compat.insert("resize");
 }
 
 void Expo::buttonRelease(Context *ctx) {

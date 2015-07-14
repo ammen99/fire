@@ -108,7 +108,7 @@ void Resize::init(Core *c) {
 
     press.active = true;
     press.type   = BindingTypePress;
-    press.mod    = ControlMask;
+    press.mod    = Mod4Mask;
     press.button = Button1;
     press.action = std::bind(std::mem_fn(&Resize::Initiate), this, _1);
     c->addBut(&press);
