@@ -46,11 +46,37 @@ struct _Ownership {
 using Ownership = std::shared_ptr<_Ownership>;
 
 
+enum DataType { DataTypeBool, DataTypeInt,
+                DataTypeFloat, DataTypeString };
+
+union _SubData {
+    bool  bval;
+    int   ival;
+    float fval;
+    std::string sval;
+};
+
+struct Data {
+    DataType type;
+    _SubData data, def;
+
+    /* plugins should not touch this,
+     * except for the case when they want the
+     * option to not be read from config file */
+    bool alreadySet = false;
+};
+
 class Plugin {
     public:
+        /* each plugin should allocate all options and set their
+         * type and def value in init().
+         * After that they are automatically read
+         * and if not available, the data becomes def */
 
+        std::unordered_map<std::string, Data*> options;
         /* initOwnership() should set all values in own */
         virtual void initOwnership();
+        virtual void updateConfiguration();
         virtual void init(Core*) = 0;
         Ownership owner;
 };

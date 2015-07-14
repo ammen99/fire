@@ -410,6 +410,8 @@ void Core::closeWindow(FireWindow win) {
 void Core::renderAllWindows() {
     XIntersectRegion(dmg, output, dmg);
 
+    std::cout << "Ende ist jetzt hier" << std::endl;
+
     OpenGLWorker::preStage();
     wins->renderWindows();
     GLXUtils::endFrame(outputwin);
