@@ -97,7 +97,7 @@ void ATSwitcher::Initiate() {
         background->transform.translation = glm::translate(glm::mat4(),
                 glm::vec3(0.f, 0.f, -1.0f));
         background->transform.scalation   = glm::scale(glm::mat4(),
-                glm::vec3(1.49f, 1.49f, 1.f));
+                glm::vec3(1.50f, 1.50f, 1.f));
     }
 
     backward.active  = true;
@@ -229,6 +229,9 @@ void ATSwitcher::render() {
 }
 
 void ATSwitcher::moveLeft() {
+    if(windows.size() == 1)
+        return;
+
     reset();
     index = (index - 1 + windows.size()) % windows.size();
     render();
@@ -236,6 +239,8 @@ void ATSwitcher::moveLeft() {
 }
 
 void ATSwitcher::moveRight() {
+    if(windows.size() == 1)
+        return;
     reset();
     index = (index + 1) % windows.size();
     render();
