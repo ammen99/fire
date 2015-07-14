@@ -10,24 +10,30 @@
 
 class Run : public Plugin {
     public:
-        void init(Core*);
+        void init();
 };
 
 class Exit : public Plugin {
     public:
-        void init(Core*);
+        void init();
 };
 
 class Close : public Plugin {
     public:
-        void init(Core*);
+        void init();
+};
+
+class Refresh : public Plugin { // keybinding to restart window manager
+    KeyBinding ref;
+    public:
+        void init();
 };
 
 class Focus : public Plugin {
     private:
         ButtonBinding focus;
     public:
-        void init(Core*);
+        void init();
 };
 
 
@@ -53,7 +59,7 @@ class Move : public WindowOperation {
     void Terminate(Context*);
 
     public:
-    void init(Core*);
+    void init();
     void initOwnership();
 };
 
@@ -63,7 +69,7 @@ class Resize : public WindowOperation {
     void Terminate(Context*);
 
     public:
-    void init(Core*);
+    void init();
     void initOwnership();
 };
 
@@ -84,7 +90,7 @@ class WSSwitch : public Plugin {
         void moveStep();
 
     public:
-        void init(Core*);
+        void init();
         void initOwnership();
 };
 
@@ -118,7 +124,7 @@ class Expo : public Plugin {
         void finalizeZoom();
 
     public:
-        void init(Core*);
+        void init();
         void initOwnership();
 };
 
@@ -143,7 +149,7 @@ class ATSwitcher : public Plugin {
     float getFactor(int x, int y, float percent);
 
     public:
-        void init(Core*);
+        void init();
         void initOwnership();
 };
 
@@ -164,6 +170,6 @@ class Grid : public Plugin {
     void getSlot(int n, int &x, int &y, int &w, int &h);
 
     public:
-        void init(Core*);
+        void init();
 };
 #endif

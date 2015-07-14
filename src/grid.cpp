@@ -8,7 +8,7 @@ Grid::GridWindow::GridWindow(Window win, int x, int y, int w, int h):id(win) {
     size.height = h;
 }
 
-void Grid::init(Core *core) {
+void Grid::init() {
     codes[1] = XKeysymToKeycode(core->d, XK_KP_End);
     codes[2] = XKeysymToKeycode(core->d, XK_KP_Down);
     codes[3] = XKeysymToKeycode(core->d, XK_KP_Page_Down);
@@ -20,8 +20,6 @@ void Grid::init(Core *core) {
     codes[9] = XKeysymToKeycode(core->d, XK_KP_Page_Up);
 
     using namespace std::placeholders;
-
-    err << "Initiating grid";
 
     for(int i = 1; i < 10; i++) {
         keys[i].key    = codes[i];
@@ -41,7 +39,7 @@ void Grid::toggleMaxim(FireWindow win) {
 
     if(it == wins.end()) { // we haven't maximized this window, so
                            // maximize it and add it to window list
-        err << "maximizing window";
+        std::cout << "maximizing window";
         wins.push_back(GridWindow(win->id, win->attrib.x, win->attrib.y,
                     win->attrib.width, win->attrib.height));
 

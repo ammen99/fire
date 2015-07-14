@@ -49,22 +49,35 @@ using Ownership = std::shared_ptr<_Ownership>;
 enum DataType { DataTypeBool, DataTypeInt,
                 DataTypeFloat, DataTypeString };
 
-union _SubData {
+union SubData {
     bool  bval;
     int   ival;
     float fval;
-    std::string sval;
+    std::string *sval;
+    SubData();
+    ~SubData();
 };
 
 struct Data {
     DataType type;
-    _SubData data, def;
+    SubData data, def;
 
     /* plugins should not touch this,
      * except for the case when they want the
      * option to not be read from config file */
     bool alreadySet = false;
+    Data();
 };
+
+/* helper functions to easily add options */
+std::pair<std::string, Data*> newIntOption(std::string name,
+                                           int defaultVal);
+std::pair<std::string, Data*> newFloatOption(std::string name,
+                                             float defaultVal);
+std::pair<std::string, Data*> newBoolOption(std::string name,
+                                            bool defaultVal);
+std::pair<std::string, Data*> newStringOption(std::string name,
+                                              std::string defaultVal);
 
 class Plugin {
     public:
@@ -77,7 +90,7 @@ class Plugin {
         /* initOwnership() should set all values in own */
         virtual void initOwnership();
         virtual void updateConfiguration();
-        virtual void init(Core*) = 0;
+        virtual void init() = 0;
         Ownership owner;
 };
 

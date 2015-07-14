@@ -15,6 +15,8 @@ namespace GLXUtils {
         XVisualInfo *defaultVisual;
     }
 
+#define err std::cout
+
 
 GLXFBConfig fbconfigs[33];
 
@@ -126,7 +128,7 @@ static int attrListVisual[] = {
      None
  };
 
-Window createNewWindowWithContext(Window parent, Core *core) {
+Window createNewWindowWithContext(Window parent) {
     Colormap cmap;
     XSetWindowAttributes winAttr;
 
@@ -183,7 +185,7 @@ Window createNewWindowWithContext(Window parent, Core *core) {
 #define uchar unsigned char
 
 
-void initGLX(Core *core) {
+void initGLX() {
 
     auto x = glXGetCurrentContext();
     if ( x == NULL )

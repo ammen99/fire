@@ -111,7 +111,7 @@ void WSSwitch::moveStep() {
 }
 
 
-void WSSwitch::init(Core *core) {
+void WSSwitch::init() {
     using namespace std::placeholders;
 
     switchWorkspaceBindings[0] = XKeysymToKeycode(core->d, XK_h);
@@ -136,7 +136,7 @@ void WSSwitch::init(Core *core) {
     core->addHook(&hook);
 }
 
-void Expo::init(Core *core) {
+void Expo::init() {
     using namespace std::placeholders;
     for(int i = 0; i < 4; i++) {
         keys[i].key = switchWorkspaceBindings[i];
@@ -213,8 +213,8 @@ void Expo::recalc() {
     GetTuple(vwidth, vheight, core->getWorksize());
     GetTuple(width, height, core->getScreenSize());
 
-    int midx = core->vwidth / 2;
-    int midy = core->vheight / 2;
+    int midx = vwidth / 2;
+    int midy = vheight / 2;
 
     float offX = float(vx - midx) * 2.f / float(vwidth );
     float offY = float(midy - vy) * 2.f / float(vheight);

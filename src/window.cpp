@@ -106,7 +106,7 @@ Atom wmNameAtom;
 Atom winOpacityAtom;
 
 namespace WinUtil {
-void init(Core *core) {
+void init() {
 
     activeWinAtom  = XInternAtom(core->d, "_NET_ACTIVE_WINDOW", 0);
     wmNameAtom     = XInternAtom(core->d, "WM_NAME", 0);

@@ -169,7 +169,7 @@ void errorHandler(GLenum src, GLenum type,
 
 
 
-void OpenGLWorker::initOpenGL(Core *core, const char *shaderSrcPath) {
+void OpenGLWorker::initOpenGL(const char *shaderSrcPath) {
 
     //glEnable(GL_DEBUG_OUTPUT);
     //glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);

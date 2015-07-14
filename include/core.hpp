@@ -4,7 +4,8 @@
 #include "commonincludes.hpp"
 #include "window.hpp"
 #include "glx.hpp"
-#include "plugin.hpp"
+#include "config.hpp"
+
 #include <queue>
 #include <unordered_set>
 
@@ -177,6 +178,7 @@ class Core {
         ~Core();
         void loop();
         Core(int vx, int vy); // initial viewport position
+        void init();
 
         void run(char *command);
         void renderAllWindows();

@@ -8,7 +8,7 @@ namespace {
         int i = 0, j = line.length() - 1;
         for(; line[i] == ' ' && i < line.length(); i++);
         for(; line[j] == ' ' && j > i; j--);
-        if(i >= j)
+        if(i > j)
             return "";
 
         return line.substr(i, j - i + 1);
@@ -26,21 +26,27 @@ namespace {
     template<class T> T readValue(std::string val) {
         theMachine.str("");
         theMachine.clear();
-        theMachine.str("val");
+        theMachine.str(val);
 
         T tmp;
         theMachine >> tmp;
         return tmp;
     }
-
 }
 
 Config::Config(std::string path) {
+    this->path = path;
     stream.open(path, std::ios::in | std::ios::out);
     readConfig();
 }
+Config::Config() {
+    blocked = true;
+}
 
 void Config::readConfig() {
+    if(blocked)
+        return;
+
     std::string line;
     std::string currentPluginName = "";
     std::string option, value;
@@ -70,6 +76,7 @@ void Config::readConfig() {
 void Config::reset() {
     stream.close();
     tree.clear();
+    stream.open(path, std::ios::in | std::ios::out);
 }
 
 void Config::setOptionsForPlugin(PluginPtr p) {
@@ -81,10 +88,27 @@ void Config::setOptionsForPlugin(PluginPtr p) {
     }
 
     for(auto option : p->options) {
-        auto it = tree[name].find(option.first);
+        auto oname = option.first;
+        auto it = tree[name].find(oname);
+
         if(it == tree[name].end()) {
-            p->options[option.first]->data = p->options[option.first]->def;
+            copyInto(p->options[oname]->def,
+                    p->options[oname]->data);
+            continue;
+        }
+        switch(p->options[oname]->type) {
+            case DataTypeInt:
+                p->options[oname]->data.ival = readValue<int>(it->second);
+                break;
+            case DataTypeFloat:
+                p->options[oname]->data.fval = readValue<float>(it->second);
+                break;
+            case DataTypeBool:
+                p->options[oname]->data.bval = readValue<bool>(it->second);
+                break;
+            case DataTypeString:
+                p->options[oname]->data.sval = new std::string(it->second);
+                break;
         }
     }
 }
-

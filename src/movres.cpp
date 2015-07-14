@@ -5,10 +5,10 @@ void Move::initOwnership() {
     owner->compatAll = true;
 }
 
-void Move::init(Core *c) {
+void Move::init() {
     win = nullptr;
     hook.action = std::bind(std::mem_fn(&Move::Intermediate), this);
-    c->addHook(&hook);
+    core->addHook(&hook);
 
     using namespace std::placeholders;
 
@@ -17,14 +17,14 @@ void Move::init(Core *c) {
     press.mod    = Mod1Mask;
     press.button = Button1;
     press.action = std::bind(std::mem_fn(&Move::Initiate), this, _1);
-    c->addBut(&press);
+    core->addBut(&press);
 
     release.active = false;
     release.type   = BindingTypeRelease;
     release.mod    = AnyModifier;
     release.button = Button1;
     release.action = std::bind(std::mem_fn(&Move::Terminate), this, _1);
-    c->addBut(&release);
+    core->addBut(&release);
 }
 
 void Move::Initiate(Context *ctx) {
@@ -98,11 +98,11 @@ void Resize::initOwnership() {
     owner->compatAll = true;
 }
 
-void Resize::init(Core *c) {
+void Resize::init() {
     win = nullptr;
 
     hook.action = std::bind(std::mem_fn(&Resize::Intermediate), this);
-    c->addHook(&hook);
+    core->addHook(&hook);
 
     using namespace std::placeholders;
 
@@ -111,7 +111,7 @@ void Resize::init(Core *c) {
     press.mod    = ControlMask;
     press.button = Button1;
     press.action = std::bind(std::mem_fn(&Resize::Initiate), this, _1);
-    c->addBut(&press);
+    core->addBut(&press);
 
 
     release.active = false;
@@ -119,7 +119,7 @@ void Resize::init(Core *c) {
     release.mod    = AnyModifier;
     release.button = Button1;
     release.action = std::bind(std::mem_fn(&Resize::Terminate), this,_1);
-    c->addBut(&release);
+    core->addBut(&release);
 }
 
 void Resize::Initiate(Context *ctx) {

@@ -7,11 +7,25 @@
 #include <memory>
 
 bool wmDetected;
-std::mutex wmMutex;
-
 
 Core *core;
-std::fstream err;
+
+class CorePlugin : public Plugin {
+    public:
+        void init() {
+            options.insert(newIntOption("rrate", 100));
+            options.insert(newIntOption("vwidth", 3));
+            options.insert(newIntOption("vheight", 3));
+            options.insert(newStringOption("background", ""));
+            options.insert(newStringOption("shadersrc", ""));
+        }
+        void initOwnership() {
+            owner->name = "core";
+            owner->compatAll = true;
+        }
+};
+
+PluginPtr plug;
 
 
 Context::Context(XEvent ev) : xev(ev){}
@@ -37,23 +51,17 @@ bool Hook::getState() {
 }
 
 Core::Core(int vx, int vy) {
+    this->vx = vx;
+    this->vy = vy;
+}
 
-    err.open("/home/ilex/work/cwork/fire/log2",
-            std::ios::out | std::ios::trunc);
-
-    if(!err.is_open())
-        std::cout << "Failed to open debug output, exiting" << std::endl,
-        std::exit(0);
-
-    err << "Creating new Core" << std::endl;
+void Core::init() {
 
     d = XOpenDisplay(NULL);
 
     if ( d == nullptr )
-        err << "Failed to open display!" << std::endl;
+        std::cout << "Failed to open display!" << std::endl;
 
-
-    //XSynchronize(d, 1);
     root = DefaultRootWindow(d);
     fd.fd = ConnectionNumber(d);
     fd.events = POLLIN;
@@ -78,13 +86,13 @@ Core::Core(int vx, int vy) {
              Button1MotionMask);
 
     if(wmDetected)
-       err << "Another WM already running!\n", std::exit(-1);
+       std::cout << "Another WM already running!\n", std::exit(-1);
 
     wins = new WinStack();
 
     XSetErrorHandler(&Core::onXError);
     overlay = XCompositeGetOverlayWindow(d, root);
-    outputwin = GLXUtils::createNewWindowWithContext(overlay, this);
+    outputwin = GLXUtils::createNewWindowWithContext(overlay);
 
     enableInputPass(overlay);
     enableInputPass(outputwin);
@@ -106,28 +114,31 @@ Core::Core(int vx, int vy) {
 
     run(const_cast<char*>("setxkbmap -model pc104 -layout us,bg -variant ,phonetic -option grp:alt_shift_toggle"));
 
-    WinUtil::init(this);
-    GLXUtils::initGLX(this);
-    OpenGLWorker::initOpenGL(this, "/home/ilex/work/cwork/fire/shaders");
-    resetDMG = true;
-
-    core = this;
-    addExistingWindows();
-
-
-    vwidth = vheight = 3;
-    this->vx = vx;
-    this->vy = vy;
 
     initDefaultPlugins();
     for(auto p : plugins) {
         p->owner = std::make_shared<_Ownership>();
         p->initOwnership();
         regOwner(p->owner);
-        p->init(this);
+        p->init();
+        config->setOptionsForPlugin(p);
+        p->updateConfiguration();
     }
 
+    vwidth = plug->options["vwidth"]->data.ival;
+    vheight= plug->options["vheight"]->data.ival;
+
+    std::cout << vwidth << " " << vheight << std::endl;
+
+    WinUtil::init();
+    GLXUtils::initGLX();
+    OpenGLWorker::initOpenGL((*plug->options["shadersrc"]->data.sval).c_str());
+
     dmg = getMaximisedRegion();
+    resetDMG = true;
+    addExistingWindows();
+
+    core->setBackground((*plug->options["background"]->data.sval).c_str());
 }
 
 void Core::enableInputPass(Window win) {
@@ -193,7 +204,6 @@ void Core::run(char *command) {
         std::string str("DISPLAY=");
         str = str.append(XDisplayString(d));
         putenv(const_cast<char*>(str.c_str()));
-
         std::exit(execl("/bin/sh", "/bin/sh", "-c", command, NULL));
     }
 }
@@ -300,6 +310,7 @@ Region Core::getRegionFromRect(int tlx, int tly, int brx, int bry) {
 
 
 void Core::setBackground(const char *path) {
+    std::cout << "hier" << std::endl;
 
     this->run(const_cast<char*>(std::string("feh --bg-scale ")
                 .append(path).c_str()));
@@ -336,6 +347,7 @@ void Core::setBackground(const char *path) {
             wins->addWindow(backgrounds[i][j]);
         }
     }
+    std::cout << "dort" << std::endl;
 
 }
 
@@ -409,8 +421,6 @@ void Core::closeWindow(FireWindow win) {
 
 void Core::renderAllWindows() {
     XIntersectRegion(dmg, output, dmg);
-
-    std::cout << "Ende ist jetzt hier" << std::endl;
 
     OpenGLWorker::preStage();
     wins->renderWindows();
@@ -726,7 +736,8 @@ void Core::handleEvent(XEvent xev){
 
 void Core::loop(){
 
-    std::lock_guard<std::mutex> lock(wmMutex);
+    std::cout << "Got refresh rate" <<
+        plug->options["rrate"]->data.ival << std::endl;;
     redraw = true;
 
     int currentCycle = Second / RefreshRate;
@@ -950,6 +961,8 @@ int Core::getRefreshRate() {
 }
 
 void Core::initDefaultPlugins() {
+    plug = createPlugin<CorePlugin>();
+    plugins.push_back(plug);
     plugins.push_back(createPlugin<Move>());
     plugins.push_back(createPlugin<Resize>());
     plugins.push_back(createPlugin<WSSwitch>());
