@@ -5,14 +5,14 @@
 class Core;
 struct SharedImage;
 namespace GLXUtils {
-    void initGLX(Core *core);
+    void initGLX();
 
     void destroyContext(Window win);
     void endFrame(Window win);
 
     void createNewContext(Window win);
     void createDefaultContext(Window win);
-    Window createNewWindowWithContext(Window parent, Core *core);
+    Window createNewWindowWithContext(Window parent);
 
     GLuint loadImage(char *path);
     GLuint loadShader(const char *path, GLuint type);
