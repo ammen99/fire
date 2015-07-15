@@ -95,8 +95,6 @@ class Expo;
                         auto y = std::get<1>(t)
 class Core {
 
-    // used to enable proper work of move and resize when expo
-    friend class Expo;
     // used to optimize idle time by counting hooks(cntHooks)
     friend struct Hook;
 
@@ -196,7 +194,7 @@ class Core {
 
         FireWindow findWindow(Window win);
         FireWindow getActiveWindow();
-        FireWindow getWindowAtPoint(int x, int y);
+        std::function<FireWindow(int,int)> getWindowAtPoint;
 
         Region getMaximisedRegion();
         Region getRegionFromRect(int tlx, int tly, int brx, int bry);
@@ -212,7 +210,6 @@ class Core {
         std::tuple<int, int> getScreenSize();
 
         std::tuple<int, int> getMouseCoord();
-
 
         static int onXError (Display* d, XErrorEvent* xev);
         static int onOtherWmDetected(Display *d, XErrorEvent *xev);

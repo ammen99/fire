@@ -76,6 +76,11 @@ void Core::init() {
 
     wins = new WinStack();
 
+    using namespace std::placeholders;
+    this->getWindowAtPoint =
+        std::bind(std::mem_fn(&WinStack::findWindowAtCursorPosition),
+                wins, _1, _2);
+
     XSetErrorHandler(&Core::onXError);
     overlay = XCompositeGetOverlayWindow(d, root);
     outputwin = GLXUtils::createNewWindowWithContext(overlay);
@@ -324,8 +329,6 @@ Region Core::getRegionFromRect(int tlx, int tly, int brx, int bry) {
 
 
 void Core::setBackground(const char *path) {
-    std::cout << "hier" << std::endl;
-
     this->run(const_cast<char*>(std::string("feh --bg-scale ")
                 .append(path).c_str()));
 
@@ -436,7 +439,6 @@ void Core::closeWindow(FireWindow win) {
 void Core::renderAllWindows() {
     XIntersectRegion(dmg, output, dmg);
 
-    std::cout << "hier " << std::endl;
     OpenGLWorker::preStage();
     wins->renderWindows();
     GLXUtils::endFrame(outputwin);
@@ -952,10 +954,6 @@ void Core::removeWindow(FireWindow win) {
     wins->removeWindow(win);
 }
 
-FireWindow Core::getWindowAtPoint(int x, int y) {
-    return wins->findWindowAtCursorPosition(x, y);
-}
-
 template<class T>
 PluginPtr Core::createPlugin() {
     return std::static_pointer_cast<Plugin>(std::make_shared<T>());
@@ -1008,17 +1006,11 @@ void Core::loadDynamicPlugins() {
     }
 }
 
-
 void Core::initDefaultPlugins() {
     plug = createPlugin<CorePlugin>();
-    plugins.push_back(createPlugin<Resize>());
-    plugins.push_back(createPlugin<WSSwitch>());
-    plugins.push_back(createPlugin<Expo>());
     plugins.push_back(createPlugin<Focus>());
     plugins.push_back(createPlugin<Exit>());
     plugins.push_back(createPlugin<Run>());
     plugins.push_back(createPlugin<Close>());
-    plugins.push_back(createPlugin<ATSwitcher>());
-    plugins.push_back(createPlugin<Grid>());
     plugins.push_back(createPlugin<Refresh>());
 }

@@ -10,7 +10,7 @@ LDFLAGS= -Wl,--export-dynamic -pthread -g -lX11 -lXmu -lXtst -lXext -lXcomposite
 SOURCES=$(wildcard *.cpp)
 OBJECTS=$(SOURCES:.cpp=.o)
 DEPS=$(OBJECTS:.o=.d)
-EXECUTABLE=manager
+EXECUTABLE=../manager
 
 all: $(EXECUTABLE)
 	$(call colorecho, "Output executable $(EXECUTABLE) ready")

@@ -4,14 +4,14 @@ define colorecho
 	@tput sgr0
 endef
 
-SRC=./src
+SRC=./src/
 PLUGINS=./plugins
 
 all:
 	$(call colorecho, "Compiling core source...")
-	@make -C $(SRC)
+	@make -j4 -C $(SRC)
 	$(call colorecho, "Compiling plugins...")
-	@make -C $(PLUGINS)
+	@make -j4 -C $(PLUGINS)
 	$(call colorecho, "Build finished")
 
 rebuild: clean all
