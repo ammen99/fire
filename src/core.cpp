@@ -977,7 +977,7 @@ namespace {
 }
 
 PluginPtr Core::loadPluginFromFile(std::string path) {
-    void *handle = dlopen(path.c_str(), RTLD_NOW);
+    void *handle = dlopen(path.c_str(), RTLD_LAZY);
     if(handle == NULL){
         std::cout << "Error loading plugin " << path << std::endl;
         std::cout << dlerror() << std::endl;
@@ -992,7 +992,7 @@ PluginPtr Core::loadPluginFromFile(std::string path) {
         return nullptr;
     }
     LoadFunction init = unionCast<void*, LoadFunction>(initptr);
-    return init();
+    return std::shared_ptr<Plugin>(init());
 }
 
 void Core::loadDynamicPlugins() {
@@ -1011,7 +1011,6 @@ void Core::loadDynamicPlugins() {
 
 void Core::initDefaultPlugins() {
     plug = createPlugin<CorePlugin>();
-    plugins.push_back(createPlugin<Move>());
     plugins.push_back(createPlugin<Resize>());
     plugins.push_back(createPlugin<WSSwitch>());
     plugins.push_back(createPlugin<Expo>());

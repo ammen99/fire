@@ -102,6 +102,6 @@ class Plugin {
 using PluginPtr = std::shared_ptr<Plugin>;
 /* each dynamic plugin should have the symbol loadFunction() which returns
  * an instance of the plugin */
-typedef PluginPtr (*LoadFunction)();
+typedef Plugin *(*LoadFunction)();
 
 #endif

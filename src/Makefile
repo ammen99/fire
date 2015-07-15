@@ -1,12 +1,12 @@
 define colorecho
-	@tput setaf 6
+	@tput setaf 123
 	@echo $1
 	@tput sgr0
 endef
 
 CC=g++
-CFLAGS= -std=c++11 -c -fno-omit-frame-pointer -rdynamic -g -Wno-narrowing -MMD -MP
-LDFLAGS= -pthread -g -lX11 -lXmu -lXtst -lXext -lXcomposite -lXfixes -lXdamage -ldl -lGL -lGLEW -lIL -lILU -lILUT -lutil
+CFLAGS= -std=c++11 -c -g -MMD -MP
+LDFLAGS= -Wl,--export-dynamic -pthread -g -lX11 -lXmu -lXtst -lXext -lXcomposite -lXfixes -lXdamage -ldl -lGL -lGLEW -lIL -lILU -lILUT -lutil
 SOURCES=$(wildcard *.cpp)
 OBJECTS=$(SOURCES:.cpp=.o)
 DEPS=$(OBJECTS:.o=.d)

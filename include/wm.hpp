@@ -53,16 +53,6 @@ class WindowOperation : public Plugin {
 /* typically plugins don't have any other public methods
  * except for init(), because they are to be "generic" */
 
-class Move : public WindowOperation {
-    void Initiate(Context*);
-    void Intermediate();
-    void Terminate(Context*);
-
-    public:
-    void init();
-    void initOwnership();
-};
-
 class Resize : public WindowOperation {
     void Initiate(Context*);
     void Intermediate();
@@ -185,6 +175,6 @@ class Group : public Plugin {
         void addCurrentGroup();
         void remCurrentGroup();
     public:
-        void init(Core *core);
+        void init();
 };
 #endif
