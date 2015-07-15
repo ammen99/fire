@@ -1,10 +1,10 @@
 #include "../include/wm.hpp"
 
 
-void Run::init(Core *core) {
+void Run::init() {
     this->owner->special = true;
     KeyBinding *run = new KeyBinding();
-    run->action = [core](Context *ctx){
+    run->action = [](Context *ctx){
         core->run(const_cast<char*>("dmenu_run"));
     };
 
@@ -16,10 +16,10 @@ void Run::init(Core *core) {
     core->addKey(run, true);
 }
 
-void Exit::init(Core *core) {
+void Exit::init() {
     this->owner->special = true;
     KeyBinding *exit = new KeyBinding();
-    exit->action = [core](Context *ctx){
+    exit->action = [](Context *ctx){
         core->terminate = true;
     };
 
@@ -31,35 +31,43 @@ void Exit::init(Core *core) {
     core->addKey(exit, true);
 }
 
-void Close::init(Core *core) {
+void Refresh::init() {
+    ref.key = XKeysymToKeycode(core->d, XK_r);
+    ref.type = BindingTypePress;
+    ref.active = true;
+    ref.mod = ControlMask | Mod1Mask;
+    ref.action = [] (Context *ctx) {
+        core->terminate = true;
+        core->mainrestart = true;
+    };
+    core->addKey(&ref, true);
+}
+
+void Close::init() {
     KeyBinding *close = new KeyBinding();
     close->active = true;
     close->mod = Mod1Mask;
     close->type = BindingTypePress;
     close->key = XKeysymToKeycode(core->d, XK_F4);
-    close->action = [core](Context *ctx) {
+    close->action = [](Context *ctx) {
         auto w = core->getActiveWindow();
         core->closeWindow(w);
         new AnimationHook(new Fade(w, Fade::FadeOut), core);
-        //core->destroyWindow(core->getActiveWindow());
     };
     core->addKey(close, true);
 }
 
-void Focus::init(Core *core) {
+void Focus::init() {
     this->owner->special = true;
     focus.type = BindingTypePress;
     focus.button = Button1;
     focus.mod = NoMods;
     focus.active = true;
 
-    focus.action = [core] (Context *ctx){
+    focus.action = [] (Context *ctx){
         auto xev = ctx->xev.xbutton;
-        auto w =
-            core->getWindowAtPoint(xev.x_root, xev.y_root);
-
-        if(w)
-            core->focusWindow(w);
+        auto w = core->getWindowAtPoint(xev.x_root, xev.y_root);
+        if(w) core->focusWindow(w);
     };
     core->addBut(&focus);
 }

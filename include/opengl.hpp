@@ -16,7 +16,7 @@ class OpenGLWorker {
         static int       depth;
         static glm::vec4 color;
 
-        static void initOpenGL(Core *core, const char *shaderSrcPath);
+        static void initOpenGL(const char *shaderSrcPath);
         static void renderTransformedTexture(GLuint text, GLuint vao, GLuint vbo, glm::mat4 t);
         static void renderTexture(GLuint text, GLuint vao, GLuint vbo);
         static void rotate(float x, float y, float z, float direction);

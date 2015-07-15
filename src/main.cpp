@@ -17,21 +17,8 @@ constexpr int shmkey = 1010101234;
 constexpr int shmsize = 8;
 int shmid;
 
-class Refresh { // keybinding to restart window manager
-    KeyBinding ref;
-    public:
-        Refresh() {
-            ref.key = XKeysymToKeycode(core->d, XK_r);
-            ref.type = BindingTypePress;
-            ref.active = true;
-            ref.mod = ControlMask | Mod1Mask;
-            ref.action = [] (Context *ctx) {
-                core->terminate = true;
-                shdata[0] = 1;
-            };
-            core->addKey(&ref, true);
-        }
-};
+Config *config;
+
 #define Crash 101
 #define max_frames 100
 
@@ -141,9 +128,17 @@ void signalHandle(int sig) {
     }
 }
 
-void runOnce() { // simulates launching a new program
+void runOnce(int argc, const char **argv) { // simulates launching a new program
 
                  // get the shared memory from the main process
+    if(argc < 2){
+        std::cout << "No configuration file!" <<
+            " Using default settings" << std::endl;
+        config = new Config();
+    }
+    else
+        config = new Config(argv[1]);
+
     shmid = shmget(shmkey, shmsize, 0666);
     auto dataid = shmat(shmid, 0, 0);
     shdata = (char*)dataid;
@@ -159,8 +154,7 @@ void runOnce() { // simulates launching a new program
     Transform::gtrs = glm::mat4();
 
     core = new Core(shdata[1], shdata[2]);
-    core->setBackground("/tarball/backgrounds/last.jpg");
-    new Refresh();
+    core->init();
     core->loop();
 
     if(core->mainrestart)
@@ -173,7 +167,6 @@ void runOnce() { // simulates launching a new program
 }
 
 int main(int argc, const char **argv ) {
-
     signal(SIGINT, signalHandle);
     signal(SIGSEGV, signalHandle);
     signal(SIGFPE, signalHandle);
@@ -202,7 +195,7 @@ int main(int argc, const char **argv ) {
 
         auto pid = fork();
         if(pid == 0) {
-            runOnce();   // run Core()
+            runOnce(argc, argv);   // run Core()
             std::exit(0);// and exit
         }
         int status = 0;

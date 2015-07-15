@@ -6,7 +6,7 @@ void ATSwitcher::initOwnership() {
     owner->compatAll = false;
 }
 
-void ATSwitcher::init(Core *core) {
+void ATSwitcher::init() {
     using namespace std::placeholders;
 
     active = false;

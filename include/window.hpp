@@ -90,7 +90,7 @@ extern Atom winOpacityAtom;
 class Core;
 
 namespace WinUtil {
-    void init(Core *core);
+    void init();
 
     void renderWindow(FireWindow win);
     int setWindowTexture(FireWindow win);

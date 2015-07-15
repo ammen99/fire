@@ -4,12 +4,10 @@
 #include "commonincludes.hpp"
 #include "window.hpp"
 #include "glx.hpp"
-#include "plugin.hpp"
+#include "config.hpp"
+
 #include <queue>
 #include <unordered_set>
-
-#define InitialAge 50
-
 
 class WinStack;
 
@@ -84,8 +82,9 @@ struct Fade : public Animation {
     bool destroy;
     bool savetr; // used to restore transparency
 
-    Fade(FireWindow _win, Mode _mode = FadeIn,
-            int durationms = 1000);
+    static int duration;
+
+    Fade(FireWindow _win, Mode _mode = FadeIn);
     bool Step();
 };
 
@@ -177,6 +176,7 @@ class Core {
         ~Core();
         void loop();
         Core(int vx, int vy); // initial viewport position
+        void init();
 
         void run(char *command);
         void renderAllWindows();
