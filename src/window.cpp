@@ -153,7 +153,7 @@ int setWindowTexture(FireWindow win) {
     }
 
     if(win->attrib.map_state != IsViewable && !win->keepCount) {
-        err << "Invisible window";
+        std::cout << "Invisible window " << win->id << std::endl;
         win->norender = true;
         XUngrabServer(core->d);
         return 0;
@@ -263,7 +263,7 @@ void renderWindow(FireWindow win) {
     }
 
     if(!setWindowTexture(win)) {
-        err <<"failed to paint window " << win->id << " (no texture avail)";
+        std::cout <<"failed to paint window " << win->id << " (no texture avail)";
         return;
     }
 
@@ -280,7 +280,8 @@ XVisualInfo *getVisualInfoForWindow(Window win) {
     XWindowAttributes xwa;
     auto stat = XGetWindowAttributes(core->d, win, &xwa);
     if ( stat == 0 ){
-        err << "attempting to get visual info failed!" << win;
+        std::cout << "attempting to get visual info failed!"
+            << win << std::endl;
         return nullptr;
     }
 
@@ -289,7 +290,7 @@ XVisualInfo *getVisualInfoForWindow(Window win) {
     int dumm;
     xvi = XGetVisualInfo(core->d, VisualIDMask, &dummy, &dumm);
     if(dumm == 0 || !xvi)
-        err << "Cannot get default visual!\n";
+        std::cout << "Cannot get default visual!\n";
     return xvi;
 }
 

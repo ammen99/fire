@@ -113,7 +113,7 @@ void signalHandle(int sig) {
             break;
 
         default: // program crashed, so restart core
-            err << "Crash Detected!!!!!!" << std::endl;
+            std::cout << "Crash Detected!!!!!!" << std::endl;
             shdata[0] = 1;
 
             // try to fully recover, i.e do not lose windows

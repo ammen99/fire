@@ -16,8 +16,8 @@
 
 #include <sys/time.h>
 #include <poll.h>
-#include <glog/logging.h>
-
+#include <dlfcn.h>
+#include <unistd.h>
 #include <cstdlib>
 #include <sys/ipc.h>
 #include <sys/shm.h>
@@ -42,13 +42,7 @@
 #define ILUT_USE_OPENGL
 #include <IL/ilut.h>
 
-
-//#define err LOG(ERROR)
-//#define info LOG(INFO)
-//
-//#define err (cout<<__FILE__<<" "<<__LINE__<<" ")
 #include <fstream>
-extern std::fstream err;
 
 #ifdef YCM
 #define private public

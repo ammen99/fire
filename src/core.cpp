@@ -20,6 +20,8 @@ class CorePlugin : public Plugin {
             options.insert(newIntOption("fadeduration", 150));
             options.insert(newStringOption("background", ""));
             options.insert(newStringOption("shadersrc", ""));
+            options.insert(newStringOption("pluginpath", ""));
+            options.insert(newStringOption("plugins", ""));
         }
         void initOwnership() {
             owner->name = "core";
@@ -33,28 +35,6 @@ class CorePlugin : public Plugin {
 
 PluginPtr plug;
 
-
-Context::Context(XEvent ev) : xev(ev){}
-Hook::Hook() : active(false) {}
-
-void Hook::enable() {
-    if(this->active)
-        return;
-    this->active = true;
-    core->cntHooks++;
-}
-
-void Hook::disable() {
-    if(!this->active)
-        return;
-
-    this->active = false;
-    core->cntHooks--;
-}
-
-bool Hook::getState() {
-    return this->active;
-}
 
 Core::Core(int vx, int vy) {
     this->vx = vx;
@@ -120,8 +100,20 @@ void Core::init() {
 
     run(const_cast<char*>("setxkbmap -model pc104 -layout us,bg -variant ,phonetic -option grp:alt_shift_toggle"));
 
-
+    std::cout << "Made it to here" << std::endl;
     initDefaultPlugins();
+
+    /* load core options */
+    plug->owner = std::make_shared<_Ownership>();
+    plug->initOwnership();
+    plug->init();
+    config->setOptionsForPlugin(plug);
+    plug->updateConfiguration();
+
+    std::cout << "loaded default plugins" << std::endl;
+    loadDynamicPlugins();
+    std::cout << "loaded dynamic plugins" << std::endl;
+
     for(auto p : plugins) {
         p->owner = std::make_shared<_Ownership>();
         p->initOwnership();
@@ -130,7 +122,6 @@ void Core::init() {
         config->setOptionsForPlugin(p);
         p->updateConfiguration();
     }
-
     vwidth = plug->options["vwidth"]->data.ival;
     vheight= plug->options["vheight"]->data.ival;
 
@@ -197,8 +188,6 @@ Core::~Core(){
     XDestroyWindow(core->d, s0owner);
     XCompositeReleaseOverlayWindow(d, overlay);
     XCloseDisplay(d);
-
-    err.close();
 }
 
 void Core::run(char *command) {
@@ -232,6 +221,27 @@ void Core::remHook(uint id) {
     hooks.erase(id);
 }
 
+Context::Context(XEvent ev) : xev(ev){}
+Hook::Hook() : active(false) {}
+
+void Hook::enable() {
+    if(this->active)
+        return;
+    this->active = true;
+    core->cntHooks++;
+}
+
+void Hook::disable() {
+    if(!this->active)
+        return;
+
+    this->active = false;
+    core->cntHooks--;
+}
+
+bool Hook::getState() {
+    return this->active;
+}
 uint Core::addKey(KeyBinding *kb, bool grab) {
     if(!kb)
         return -1;
@@ -721,7 +731,7 @@ void Core::handleEvent(XEvent xev){
 
 
                 if(!dmg)
-                    err << "dmg is null!!!!" << std::endl;
+                    std::cout << "dmg is null!!!!" << std::endl;
 
                 XUnionRegion(damagedArea, dmg, dmg);
                 XDestroyRegion(damagedArea);
@@ -955,9 +965,52 @@ int Core::getRefreshRate() {
     return refreshrate;
 }
 
+namespace {
+    template<class A, class B> B unionCast(A object) {
+        union {
+            A x;
+            B y;
+        } helper;
+        helper.x = object;
+        return helper.y;
+    }
+}
+
+PluginPtr Core::loadPluginFromFile(std::string path) {
+    void *handle = dlopen(path.c_str(), RTLD_NOW);
+    if(handle == NULL){
+        std::cout << "Error loading plugin " << path << std::endl;
+        std::cout << dlerror() << std::endl;
+        return nullptr;
+    }
+
+    auto initptr = dlsym(handle, "newInstance");
+    if(initptr == NULL) {
+        std::cout << "Failed to load newInstance from file " <<
+            path << std::endl;
+        std::cout << dlerror();
+        return nullptr;
+    }
+    LoadFunction init = unionCast<void*, LoadFunction>(initptr);
+    return init();
+}
+
+void Core::loadDynamicPlugins() {
+    std::stringstream stream(*plug->options["plugins"]->data.sval);
+    auto path = *plug->options["pluginpath"]->data.sval;
+
+    std::string plugin;
+    while(stream >> plugin){
+        if(plugin != "") {
+            auto ptr = loadPluginFromFile(path + "/" + plugin + ".so");
+            if(ptr) plugins.push_back(ptr);
+        }
+    }
+}
+
+
 void Core::initDefaultPlugins() {
     plug = createPlugin<CorePlugin>();
-    plugins.push_back(plug);
     plugins.push_back(createPlugin<Move>());
     plugins.push_back(createPlugin<Resize>());
     plugins.push_back(createPlugin<WSSwitch>());

@@ -170,6 +170,9 @@ class Core {
                                    // we registered for SubstructureRedirect
         WinStack *wins;
         pollfd fd;
+    private:
+        PluginPtr loadPluginFromFile(std::string path);
+        void loadDynamicPlugins();
 
     public:
         ~Core();
