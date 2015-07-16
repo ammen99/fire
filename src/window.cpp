@@ -410,7 +410,7 @@ void setInputFocusToWindow(Window win) {
 }
 
 
-void moveWindow(FireWindow win, int x, int y) {
+void moveWindow(FireWindow win, int x, int y, bool configure) {
 
     bool existPreviousRegion = !(win->region == nullptr);
 
@@ -433,18 +433,21 @@ void moveWindow(FireWindow win, int x, int y) {
         return;
     }
 
-    XWindowChanges xwc;
-    xwc.x = x;
-    xwc.y = y;
 
     glDeleteBuffers(1, &win->vbo);
     glDeleteVertexArrays(1, &win->vao);
 
-    XConfigureWindow(core->d, win->id, CWX | CWY, &xwc);
+
+    if(configure) {
+        XWindowChanges xwc;
+        xwc.x = x;
+        xwc.y = y;
+        XConfigureWindow(core->d, win->id, CWX | CWY, &xwc);
+    }
     win->updateVBO();
 }
 
-void resizeWindow(FireWindow win, int w, int h) {
+void resizeWindow(FireWindow win, int w, int h, bool configure) {
 
     bool existPreviousRegion = !(win->region == nullptr);
     Region prevRegion = nullptr;
@@ -459,14 +462,17 @@ void resizeWindow(FireWindow win, int w, int h) {
         XUnionRegion(core->dmg, prevRegion,  core->dmg);
     XUnionRegion(core->dmg, win->region, core->dmg);
 
-    XWindowChanges xwc;
-    xwc.width  = w;
-    xwc.height = h;
-
     glDeleteBuffers(1, &win->vbo);
     glDeleteVertexArrays(1, &win->vao);
 
-    XConfigureWindow(core->d, win->id, CWWidth | CWHeight, &xwc);
+    if(configure) {
+
+        XWindowChanges xwc;
+        xwc.width  = w;
+        xwc.height = h;
+        XConfigureWindow(core->d, win->id, CWWidth | CWHeight, &xwc);
+    }
+    
     win->updateVBO();
 
     if(win->shared.existing) {

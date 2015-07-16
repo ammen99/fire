@@ -99,8 +99,8 @@ namespace WinUtil {
 
     void setInputFocusToWindow(Window win);
 
-    void moveWindow(FireWindow win, int x, int y);
-    void resizeWindow(FireWindow win, int w, int h);
+    void moveWindow(FireWindow win, int x, int y, bool configure = true);
+    void resizeWindow(FireWindow win, int w, int h, bool configure = true);
     void syncWindowAttrib(FireWindow win);
 
     XVisualInfo *getVisualInfoForWindow(Window win);

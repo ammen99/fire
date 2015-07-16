@@ -160,6 +160,7 @@ void runOnce(int argc, const char **argv) { // simulates launching a new program
         shdata[0] = 1;
 
     GetTuple(vx, vy, core->getWorkspace());
+    delete core;
 
     shdata[1] = int(vx);
     shdata[2] = int(vy);

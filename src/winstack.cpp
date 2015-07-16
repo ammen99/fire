@@ -75,6 +75,10 @@ void WinStack::renderWindows() {
                 XIntersectRegion(core->dmg, w->region, tmp),
                 XXorRegion(core->dmg, tmp, core->dmg);
 
+//            if(w->mapTryNum)           // workaround for some 
+//                core->damageWindow(w),
+//                w->damaged = true;
+//
             winsToDraw.push_back(w);
         }
     }

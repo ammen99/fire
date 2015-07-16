@@ -704,9 +704,28 @@ void Core::handleEvent(XEvent xev){
             break;
         }
 
-        case ConfigureNotify:
-            if(xev.xconfigure.window == root)
+        case ConfigureNotify: {
+            if(xev.xconfigure.window == root) {
                 terminate = true, mainrestart = true;
+                break;
+            }
+            //break;
+
+            auto w = findWindow(xev.xconfigure.window);
+            if(!w) break;
+
+            WinUtil::resizeWindow(w, xev.xconfigure.width,
+                                     xev.xconfigure.height,
+                                     false);
+            WinUtil::moveWindow(w, xev.xconfigure.x,
+                                   xev.xconfigure.y,
+                                   false);
+            break;
+
+            //wins->restackAbove(w, findWindow(xev.xconfigure.above));
+        }
+
+
         case EnterNotify:       // we don't handle
         case FocusIn:           // any of these
         case CirculateRequest:

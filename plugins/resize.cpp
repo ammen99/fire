@@ -3,6 +3,7 @@
 class Resize : public Plugin {
     private:
         int sx, sy; // starting pointer x, y
+        int cx, cy; // coordinates of the center of the window
         FireWindow win; // window we're operating on
 
     private:
@@ -68,6 +69,9 @@ class Resize : public Plugin {
 
         this->sx = xev.x_root;
         this->sy = xev.y_root;
+
+        cx = w->attrib.x + w->attrib.width / 2;
+        cy = w->attrib.y + w->attrib.height/ 2;
 
         owner->active = true;
         core->setRedrawEverything(true);
