@@ -2,8 +2,6 @@
 
 class Expo : public Plugin {
     private:
-        KeyBinding keys[4];
-        KeyCode switchWorkspaceBindings[4];
         KeyBinding toggle;
         ButtonBinding press, release;
 
@@ -30,15 +28,6 @@ class Expo : public Plugin {
         options.insert(newIntOption("duration", 1000));
 
         using namespace std::placeholders;
-        for(int i = 0; i < 4; i++) {
-            keys[i].key = switchWorkspaceBindings[i];
-            keys[i].active = false;
-            keys[i].mod = NoMods;
-            keys[i].action =
-                std::bind(std::mem_fn(&Expo::handleKey), this, _1);
-            core->addKey(&keys[i]);
-        }
-
         toggle.key = XKeysymToKeycode(core->d, XK_e);
         toggle.mod = Mod4Mask;
         toggle.active = true;
@@ -104,11 +93,16 @@ class Expo : public Plugin {
         GetTuple(vwidth, vheight, core->getWorksize());
         GetTuple(width, height, core->getScreenSize());
 
-        int midx = vwidth / 2;
-        int midy = vheight / 2;
+        float midx = vwidth / 2;
+        float midy = vheight / 2;
 
         float offX = float(vx - midx) * 2.f / float(vwidth );
         float offY = float(midy - vy) * 2.f / float(vheight);
+
+        if(vwidth % 2 == 0)
+            offX += 1.f / float(vwidth);
+        if(vheight % 2 == 0)
+            offY += -1.f / float(vheight);
 
         float scaleX = 1.f / float(vwidth);
         float scaleY = 1.f / float(vheight);
@@ -234,8 +228,6 @@ class Expo : public Plugin {
         int realy = (vy - cvy) * h + y * vh;
 
         return save(realx, realy);
-    }
-    void handleKey(Context *ctx) {
     }
 };
 

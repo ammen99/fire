@@ -15,7 +15,7 @@ class VSwitch : public Plugin {
     public:
 
     void initOwnership() {
-        this->owner->name = "wsswitch";
+        this->owner->name = "vswitch";
         this->owner->compatAll = false;
     }
 

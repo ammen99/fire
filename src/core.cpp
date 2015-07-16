@@ -352,8 +352,8 @@ void Core::setBackground(const char *path) {
             backgrounds[i][j]->norender = false;
             backgrounds[i][j]->texture  = texture;
 
-            backgrounds[i][j]->attrib.x = (i - vx) * width;
-            backgrounds[i][j]->attrib.y = (j - vy) * height;
+            backgrounds[i][j]->attrib.x = (j - vx) * width;
+            backgrounds[i][j]->attrib.y = (i - vy) * height;
             backgrounds[i][j]->attrib.width  = width;
             backgrounds[i][j]->attrib.height = height;
 
