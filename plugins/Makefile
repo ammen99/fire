@@ -24,6 +24,8 @@ all: $(SOFILES)
 	$(call colorecho, "Building cpp file " $<)
 	@$(CC) $(CFLAGS) $< -o $@
 
+.SECONDARY : $(OBJECTS)
+
 clean:
 	@rm -rf $(OBJECTS) $(DEPS) $(SOFILES)
 
