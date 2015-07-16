@@ -20,8 +20,6 @@ void getOffsetStepForWindow(FireWindow win, float c,
     int newposX = sw / 2 - win->attrib.width / (2.f / c);
     int newposY = sh / 2 - win->attrib.height/ (2.f / c);
 
-    std::cout << newposX << " " << newposY << std::endl;
-
     offX =  2 * float(win->attrib.x - newposX) / float(sw);
     offY = -2 * float(win->attrib.y - newposY) / float(sh);
 }
@@ -29,7 +27,6 @@ void getOffsetStepForWindow(FireWindow win, float c,
 struct WinAttrib {
     FireWindow win;
     bool tr = false;
-    float transparency;
     float rotateAngle;
     float offX;
     float offY;
@@ -115,7 +112,7 @@ class ATSwitcher : public Plugin {
         core->addKey(&backward);
 
         terminate.mod = 0;
-        terminate.key = XKeysymToKeycode(core->d, XK_KP_Enter);
+        terminate.key = XKeysymToKeycode(core->d, XK_Return);
         terminate.type = BindingTypePress;
         terminate.action = initiate.action;
         terminate.active = false;
@@ -164,8 +161,14 @@ class ATSwitcher : public Plugin {
                 moveRight();
         }
 
-        if(xev.keycode == XKeysymToKeycode(core->d, XK_KP_Enter))
-            Terminate();
+        if(xev.keycode == XKeysymToKeycode(core->d, XK_Return))
+            if(active) {
+                if(ini.getState() || rnd.getState()) {
+                    if(!block)
+                        dirs.push(0), block = true;
+                } else
+                    Terminate();
+            }
     }
 
     void Initiate() {
@@ -177,6 +180,8 @@ class ATSwitcher : public Plugin {
 
         windows.clear();
         windows = core->getWindowsOnViewport(core->getWorkspace());
+        std::cout << "Switcher initiated with " << windows.size() <<
+            " windows" << std::endl;
         active = true;
 
         background = nullptr;
@@ -345,11 +350,6 @@ class ATSwitcher : public Plugin {
                     attr.win->transform.rotation,
                     attr.rotateAngle / initsteps,
                     glm::vec3(0, 1, 0));
-
-            if(attr.tr)
-                attr.win->transform.color +=
-                    attr.transparency / float(initsteps);
-
         }
         curstep++;
         if(curstep == initsteps) {
@@ -401,8 +401,6 @@ class ATSwitcher : public Plugin {
                 attr.win->transform.scalation =
                     glm::scale(glm::mat4(), glm::vec3(c, c, 1));
             }
-            if(attr.tr)
-                attr.win->transform.color[3] += attr.transparency / steps;
         }
         curstep++;
         if(curstep == steps) {
@@ -564,7 +562,6 @@ class ATSwitcher : public Plugin {
 
                 wia.tr = true;
                 windows[i]->transform.color[3] = 0;
-                wia.transparency = 1.0;
                 wia.offX = 0;
                 wia.offY = 0;
                 wia.offZ = 0;
