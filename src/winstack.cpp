@@ -5,12 +5,7 @@
 
 
 typedef std::list<FireWindow>::iterator StackIterator;
-WinStack::WinStack() {
-    using namespace std::placeholders;
-    findWindowAtCursorPosition =
-        std::bind(std::mem_fn(&WinStack::__findWindowAtCursorPosition),
-                this, _1, _2);
-}
+WinStack::WinStack() { }
 
 void WinStack::addWindow(FireWindow win) {
     if(win->type == WindowTypeDesktop) {
@@ -80,6 +75,10 @@ void WinStack::renderWindows() {
                 XIntersectRegion(core->dmg, w->region, tmp),
                 XXorRegion(core->dmg, tmp, core->dmg);
 
+//            if(w->mapTryNum)           // workaround for some 
+//                core->damageWindow(w),
+//                w->damaged = true;
+//
             winsToDraw.push_back(w);
         }
     }
@@ -315,11 +314,11 @@ void WinStack::focusWindow(FireWindow win) {
     XConfigureWindow(core->d, activeWin->id, CWSibling|CWStackMode, &xwc);
 
     WinUtil::setInputFocusToWindow(activeWin->id);
-    core->redraw = true;
-
+    core->damageWindow(w1);
+    core->damageWindow(w2);
 }
 
-FireWindow WinStack::__findWindowAtCursorPosition(int x, int y) {
+FireWindow WinStack::findWindowAtCursorPosition(int x, int y) {
     for(auto w : wins)
         if(w->attrib.map_state == IsViewable && // desktop and invisible
            w->type != WindowTypeDesktop      && // windows should be

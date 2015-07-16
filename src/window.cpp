@@ -153,7 +153,7 @@ int setWindowTexture(FireWindow win) {
     }
 
     if(win->attrib.map_state != IsViewable && !win->keepCount) {
-        err << "Invisible window";
+        std::cout << "Invisible window " << win->id << std::endl;
         win->norender = true;
         XUngrabServer(core->d);
         return 0;
@@ -263,7 +263,7 @@ void renderWindow(FireWindow win) {
     }
 
     if(!setWindowTexture(win)) {
-        err <<"failed to paint window " << win->id << " (no texture avail)";
+        std::cout <<"failed to paint window " << win->id << " (no texture avail)";
         return;
     }
 
@@ -280,7 +280,8 @@ XVisualInfo *getVisualInfoForWindow(Window win) {
     XWindowAttributes xwa;
     auto stat = XGetWindowAttributes(core->d, win, &xwa);
     if ( stat == 0 ){
-        err << "attempting to get visual info failed!" << win;
+        std::cout << "attempting to get visual info failed!"
+            << win << std::endl;
         return nullptr;
     }
 
@@ -289,7 +290,7 @@ XVisualInfo *getVisualInfoForWindow(Window win) {
     int dumm;
     xvi = XGetVisualInfo(core->d, VisualIDMask, &dummy, &dumm);
     if(dumm == 0 || !xvi)
-        err << "Cannot get default visual!\n";
+        std::cout << "Cannot get default visual!\n";
     return xvi;
 }
 
@@ -409,7 +410,7 @@ void setInputFocusToWindow(Window win) {
 }
 
 
-void moveWindow(FireWindow win, int x, int y) {
+void moveWindow(FireWindow win, int x, int y, bool configure) {
 
     bool existPreviousRegion = !(win->region == nullptr);
 
@@ -432,18 +433,21 @@ void moveWindow(FireWindow win, int x, int y) {
         return;
     }
 
-    XWindowChanges xwc;
-    xwc.x = x;
-    xwc.y = y;
 
     glDeleteBuffers(1, &win->vbo);
     glDeleteVertexArrays(1, &win->vao);
 
-    XConfigureWindow(core->d, win->id, CWX | CWY, &xwc);
+
+    if(configure) {
+        XWindowChanges xwc;
+        xwc.x = x;
+        xwc.y = y;
+        XConfigureWindow(core->d, win->id, CWX | CWY, &xwc);
+    }
     win->updateVBO();
 }
 
-void resizeWindow(FireWindow win, int w, int h) {
+void resizeWindow(FireWindow win, int w, int h, bool configure) {
 
     bool existPreviousRegion = !(win->region == nullptr);
     Region prevRegion = nullptr;
@@ -458,14 +462,17 @@ void resizeWindow(FireWindow win, int w, int h) {
         XUnionRegion(core->dmg, prevRegion,  core->dmg);
     XUnionRegion(core->dmg, win->region, core->dmg);
 
-    XWindowChanges xwc;
-    xwc.width  = w;
-    xwc.height = h;
-
     glDeleteBuffers(1, &win->vbo);
     glDeleteVertexArrays(1, &win->vao);
 
-    XConfigureWindow(core->d, win->id, CWWidth | CWHeight, &xwc);
+    if(configure) {
+
+        XWindowChanges xwc;
+        xwc.width  = w;
+        xwc.height = h;
+        XConfigureWindow(core->d, win->id, CWWidth | CWHeight, &xwc);
+    }
+    
     win->updateVBO();
 
     if(win->shared.existing) {

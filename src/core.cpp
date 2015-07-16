@@ -20,6 +20,8 @@ class CorePlugin : public Plugin {
             options.insert(newIntOption("fadeduration", 150));
             options.insert(newStringOption("background", ""));
             options.insert(newStringOption("shadersrc", ""));
+            options.insert(newStringOption("pluginpath", ""));
+            options.insert(newStringOption("plugins", ""));
         }
         void initOwnership() {
             owner->name = "core";
@@ -33,28 +35,6 @@ class CorePlugin : public Plugin {
 
 PluginPtr plug;
 
-
-Context::Context(XEvent ev) : xev(ev){}
-Hook::Hook() : active(false) {}
-
-void Hook::enable() {
-    if(this->active)
-        return;
-    this->active = true;
-    core->cntHooks++;
-}
-
-void Hook::disable() {
-    if(!this->active)
-        return;
-
-    this->active = false;
-    core->cntHooks--;
-}
-
-bool Hook::getState() {
-    return this->active;
-}
 
 Core::Core(int vx, int vy) {
     this->vx = vx;
@@ -96,6 +76,11 @@ void Core::init() {
 
     wins = new WinStack();
 
+    using namespace std::placeholders;
+    this->getWindowAtPoint =
+        std::bind(std::mem_fn(&WinStack::findWindowAtCursorPosition),
+                wins, _1, _2);
+
     XSetErrorHandler(&Core::onXError);
     overlay = XCompositeGetOverlayWindow(d, root);
     outputwin = GLXUtils::createNewWindowWithContext(overlay);
@@ -120,8 +105,20 @@ void Core::init() {
 
     run(const_cast<char*>("setxkbmap -model pc104 -layout us,bg -variant ,phonetic -option grp:alt_shift_toggle"));
 
-
+    std::cout << "Made it to here" << std::endl;
     initDefaultPlugins();
+
+    /* load core options */
+    plug->owner = std::make_shared<_Ownership>();
+    plug->initOwnership();
+    plug->init();
+    config->setOptionsForPlugin(plug);
+    plug->updateConfiguration();
+
+    std::cout << "loaded default plugins" << std::endl;
+    loadDynamicPlugins();
+    std::cout << "loaded dynamic plugins" << std::endl;
+
     for(auto p : plugins) {
         p->owner = std::make_shared<_Ownership>();
         p->initOwnership();
@@ -130,7 +127,6 @@ void Core::init() {
         config->setOptionsForPlugin(p);
         p->updateConfiguration();
     }
-
     vwidth = plug->options["vwidth"]->data.ival;
     vheight= plug->options["vheight"]->data.ival;
 
@@ -197,8 +193,6 @@ Core::~Core(){
     XDestroyWindow(core->d, s0owner);
     XCompositeReleaseOverlayWindow(d, overlay);
     XCloseDisplay(d);
-
-    err.close();
 }
 
 void Core::run(char *command) {
@@ -232,6 +226,27 @@ void Core::remHook(uint id) {
     hooks.erase(id);
 }
 
+Context::Context(XEvent ev) : xev(ev){}
+Hook::Hook() : active(false) {}
+
+void Hook::enable() {
+    if(this->active)
+        return;
+    this->active = true;
+    core->cntHooks++;
+}
+
+void Hook::disable() {
+    if(!this->active)
+        return;
+
+    this->active = false;
+    core->cntHooks--;
+}
+
+bool Hook::getState() {
+    return this->active;
+}
 uint Core::addKey(KeyBinding *kb, bool grab) {
     if(!kb)
         return -1;
@@ -314,8 +329,6 @@ Region Core::getRegionFromRect(int tlx, int tly, int brx, int bry) {
 
 
 void Core::setBackground(const char *path) {
-    std::cout << "hier" << std::endl;
-
     this->run(const_cast<char*>(std::string("feh --bg-scale ")
                 .append(path).c_str()));
 
@@ -339,8 +352,8 @@ void Core::setBackground(const char *path) {
             backgrounds[i][j]->norender = false;
             backgrounds[i][j]->texture  = texture;
 
-            backgrounds[i][j]->attrib.x = (i - vx) * width;
-            backgrounds[i][j]->attrib.y = (j - vy) * height;
+            backgrounds[i][j]->attrib.x = (j - vx) * width;
+            backgrounds[i][j]->attrib.y = (i - vy) * height;
             backgrounds[i][j]->attrib.width  = width;
             backgrounds[i][j]->attrib.height = height;
 
@@ -426,7 +439,6 @@ void Core::closeWindow(FireWindow win) {
 void Core::renderAllWindows() {
     XIntersectRegion(dmg, output, dmg);
 
-    std::cout << "hier " << std::endl;
     OpenGLWorker::preStage();
     wins->renderWindows();
     GLXUtils::endFrame(outputwin);
@@ -532,14 +544,11 @@ void Core::handleEvent(XEvent xev){
     switch(xev.type) {
         case Expose:
             dmg = getMaximisedRegion();
-            redraw = true;
         case KeyPress: {
             // check keybindings
             for(auto kb : keys)
                 if(checkKey(kb.second, xev.xkey))
                    kb.second->action(new Context(xev));
-
-            redraw = true;
             break;
         }
 
@@ -695,9 +704,28 @@ void Core::handleEvent(XEvent xev){
             break;
         }
 
-        case ConfigureNotify:
-            if(xev.xconfigure.window == root)
+        case ConfigureNotify: {
+            if(xev.xconfigure.window == root) {
                 terminate = true, mainrestart = true;
+                break;
+            }
+            //break;
+
+            auto w = findWindow(xev.xconfigure.window);
+            if(!w) break;
+
+            WinUtil::resizeWindow(w, xev.xconfigure.width,
+                                     xev.xconfigure.height,
+                                     false);
+            WinUtil::moveWindow(w, xev.xconfigure.x,
+                                   xev.xconfigure.y,
+                                   false);
+            break;
+
+            //wins->restackAbove(w, findWindow(xev.xconfigure.above));
+        }
+
+
         case EnterNotify:       // we don't handle
         case FocusIn:           // any of these
         case CirculateRequest:
@@ -707,7 +735,6 @@ void Core::handleEvent(XEvent xev){
 
         default:
             if(xev.type == damage + XDamageNotify) {
-                redraw = true;
                 XDamageNotifyEvent *x =
                     reinterpret_cast<XDamageNotifyEvent*> (&xev);
 
@@ -725,7 +752,7 @@ void Core::handleEvent(XEvent xev){
 
 
                 if(!dmg)
-                    err << "dmg is null!!!!" << std::endl;
+                    std::cout << "dmg is null!!!!" << std::endl;
 
                 XUnionRegion(damagedArea, dmg, dmg);
                 XDestroyRegion(damagedArea);
@@ -740,10 +767,6 @@ void Core::handleEvent(XEvent xev){
 #define MinRR 61
 
 void Core::loop(){
-
-    std::cout << "Got refresh rate" <<
-        plug->options["rrate"]->data.ival << std::endl;;
-    redraw = true;
 
     int currentCycle = Second / plug->options["rrate"]->data.ival;
     int baseCycle = currentCycle;
@@ -782,9 +805,8 @@ void Core::loop(){
                         hook.second->action();
             }
 
-            if(redraw || __FireWindow::allDamaged || !XEmptyRegion(dmg))
-                renderAllWindows(),   // we just redraw
-                redraw = false;       // everything
+            if(__FireWindow::allDamaged || !XEmptyRegion(dmg))
+                renderAllWindows();   // we just redraw
 
             /* optimisation when too slow,
              * so we can update more rarely,
@@ -917,7 +939,6 @@ void Core::damageWindow(FireWindow win) {
         XFixesDestroyRegion(core->d, reg);
         return;
     }
-    redraw = true;
     if(!dmg)
         dmg = getRegionFromRect(0, 0, 0, 0);
 
@@ -952,10 +973,6 @@ void Core::removeWindow(FireWindow win) {
     wins->removeWindow(win);
 }
 
-FireWindow Core::getWindowAtPoint(int x, int y) {
-    return wins->findWindowAtCursorPosition(x, y);
-}
-
 template<class T>
 PluginPtr Core::createPlugin() {
     return std::static_pointer_cast<Plugin>(std::make_shared<T>());
@@ -965,18 +982,54 @@ int Core::getRefreshRate() {
     return refreshrate;
 }
 
+namespace {
+    template<class A, class B> B unionCast(A object) {
+        union {
+            A x;
+            B y;
+        } helper;
+        helper.x = object;
+        return helper.y;
+    }
+}
+
+PluginPtr Core::loadPluginFromFile(std::string path) {
+    void *handle = dlopen(path.c_str(), RTLD_LAZY);
+    if(handle == NULL){
+        std::cout << "Error loading plugin " << path << std::endl;
+        std::cout << dlerror() << std::endl;
+        return nullptr;
+    }
+
+    auto initptr = dlsym(handle, "newInstance");
+    if(initptr == NULL) {
+        std::cout << "Failed to load newInstance from file " <<
+            path << std::endl;
+        std::cout << dlerror();
+        return nullptr;
+    }
+    LoadFunction init = unionCast<void*, LoadFunction>(initptr);
+    return std::shared_ptr<Plugin>(init());
+}
+
+void Core::loadDynamicPlugins() {
+    std::stringstream stream(*plug->options["plugins"]->data.sval);
+    auto path = *plug->options["pluginpath"]->data.sval;
+
+    std::string plugin;
+    while(stream >> plugin){
+        if(plugin != "") {
+            auto ptr = loadPluginFromFile(path + "/" + plugin + ".so");
+            if(ptr) plugins.push_back(ptr);
+        }
+    }
+}
+
 void Core::initDefaultPlugins() {
     plug = createPlugin<CorePlugin>();
-    plugins.push_back(plug);
-    plugins.push_back(createPlugin<Move>());
-    plugins.push_back(createPlugin<Resize>());
-    plugins.push_back(createPlugin<WSSwitch>());
-    plugins.push_back(createPlugin<Expo>());
     plugins.push_back(createPlugin<Focus>());
     plugins.push_back(createPlugin<Exit>());
     plugins.push_back(createPlugin<Run>());
     plugins.push_back(createPlugin<Close>());
-    plugins.push_back(createPlugin<ATSwitcher>());
-    plugins.push_back(createPlugin<Grid>());
     plugins.push_back(createPlugin<Refresh>());
 }
