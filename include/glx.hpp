@@ -17,6 +17,6 @@ namespace GLXUtils {
     GLuint loadImage(char *path);
     GLuint loadShader(const char *path, GLuint type);
     GLuint compileShader(const char* src, GLuint type);
-    GLuint textureFromWindow(Window pixmap, int w, int h, SharedImage *sh);
+    GLuint textureFromPixmap(Pixmap pixmap, int w, int h, SharedImage *sh);
 };
 #endif

@@ -73,6 +73,9 @@ bool __FireWindow::shouldBeDrawn() {
 }
 
 void __FireWindow::updateVBO() {
+    if(this->disableVBOChange)
+        return;
+
     if(type == WindowTypeDesktop)
         OpenGLWorker::generateVAOVBO(attrib.x,
             attrib.y + attrib.height,
@@ -144,12 +147,18 @@ void init() {
 
 
 int setWindowTexture(FireWindow win) {
+    std::cout << "set win texture begin" << std::endl;
     XGrabServer(core->d);
 
     if(win->mapTryNum --> 0) {        // we try five times
         XMapWindow(core->d, win->id); // to map a window
         syncWindowAttrib(win);        // in order to get a
         XSync(core->d, 0);            // pixmap
+
+        if(win->pixmap)
+            XFreePixmap(core->d, win->pixmap);
+        win->pixmap = XCompositeNameWindowPixmap(core->d, win->id);
+
     }
 
     if(win->attrib.map_state != IsViewable && !win->keepCount) {
@@ -159,26 +168,34 @@ int setWindowTexture(FireWindow win) {
         return 0;
     }
 
-    if(!win->damaged) {
+    if(!win->damaged)  {
+//            (win->keepCount && win->attrib.map_state != IsViewable)) {
         glBindTexture(GL_TEXTURE_2D, win->texture);
+        std::cout << "set win texture use prev" << std::endl;
         return 1;
     }
 
     glDeleteTextures(1, &win->texture);
-    win->texture = GLXUtils::textureFromWindow(win->id,
+
+    if(win->pixmap == 0)
+        win->pixmap = XCompositeNameWindowPixmap(core->d, win->id);
+
+    win->texture = GLXUtils::textureFromPixmap(win->pixmap,
             win->attrib.width, win->attrib.height, &win->shared);
 
     XUngrabServer(core->d);
+
+    std::cout << "set win texture end" << std::endl;
     return 1;
 }
 
 void initWindow(FireWindow win) {
 
-    XSetWindowAttributes swa;
-    swa.backing_store = Always;
-    XChangeWindowAttributes(core->d, win->id, CWBackingStore, &swa);
+    auto status = XGetWindowAttributes(core->d, win->id, &win->attrib);
+    if(status != Success) {
+        win->norender = true;
+    }
 
-    XGetWindowAttributes(core->d, win->id, &win->attrib);
     XSizeHints hints;
     long flags;
     XGetWMNormalHints(core->d, win->id, &hints, &flags);
@@ -254,6 +271,7 @@ void finishWindow(FireWindow win) {
 
 void renderWindow(FireWindow win) {
 
+    std::cout << "Render win begin" << std::endl;
     OpenGLWorker::color = win->transform.color;
     if(win->type == WindowTypeDesktop){
         OpenGLWorker::renderTransformedTexture(win->texture,
@@ -273,6 +291,8 @@ void renderWindow(FireWindow win) {
     OpenGLWorker::depth = win->attrib.depth;
     OpenGLWorker::renderTransformedTexture(win->texture,
             win->vao, win->vbo, win->transform.compose());
+
+    std::cout << "render win end" << std::endl;
 }
 
 XVisualInfo *getVisualInfoForWindow(Window win) {
@@ -434,8 +454,9 @@ void moveWindow(FireWindow win, int x, int y, bool configure) {
     }
 
 
-    glDeleteBuffers(1, &win->vbo);
-    glDeleteVertexArrays(1, &win->vao);
+    if(!win->disableVBOChange)
+        glDeleteBuffers(1, &win->vbo),
+        glDeleteVertexArrays(1, &win->vao);
 
 
     if(configure) {
@@ -444,7 +465,8 @@ void moveWindow(FireWindow win, int x, int y, bool configure) {
         xwc.y = y;
         XConfigureWindow(core->d, win->id, CWX | CWY, &xwc);
     }
-    win->updateVBO();
+    if(!win->disableVBOChange)
+        win->updateVBO();
 }
 
 void resizeWindow(FireWindow win, int w, int h, bool configure) {
@@ -462,18 +484,19 @@ void resizeWindow(FireWindow win, int w, int h, bool configure) {
         XUnionRegion(core->dmg, prevRegion,  core->dmg);
     XUnionRegion(core->dmg, win->region, core->dmg);
 
-    glDeleteBuffers(1, &win->vbo);
-    glDeleteVertexArrays(1, &win->vao);
+    if(!win->disableVBOChange)
+        glDeleteBuffers(1, &win->vbo),
+        glDeleteVertexArrays(1, &win->vao);
 
     if(configure) {
-
         XWindowChanges xwc;
         xwc.width  = w;
         xwc.height = h;
         XConfigureWindow(core->d, win->id, CWWidth | CWHeight, &xwc);
     }
-    
-    win->updateVBO();
+
+    if(!win->disableVBOChange)
+        win->updateVBO();
 
     if(win->shared.existing) {
         XShmDetach(core->d, &win->shared.shminfo);
@@ -483,6 +506,10 @@ void resizeWindow(FireWindow win, int w, int h, bool configure) {
         win->shared.existing = false;
         win->shared.init = true;
     }
+
+    if(win->pixmap)
+        XFreePixmap(core->d, win->pixmap);
+    win->pixmap = XCompositeNameWindowPixmap(core->d, win->id);
 
 }
 void syncWindowAttrib(FireWindow win) {

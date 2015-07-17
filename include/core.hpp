@@ -169,7 +169,7 @@ class Core {
         WinStack *wins;
         pollfd fd;
     private:
-        PluginPtr loadPluginFromFile(std::string path);
+        PluginPtr loadPluginFromFile(std::string path, void **handle);
         void loadDynamicPlugins();
 
     public:

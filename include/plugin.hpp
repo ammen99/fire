@@ -97,6 +97,10 @@ class Plugin {
         virtual void updateConfiguration();
         virtual void init() = 0;
         Ownership owner;
+
+        bool dynamic = false; // dynamically loaded
+        void *handle; // handle to plugin's .so file,
+                      // in case the plugin is dynamically loaded
 };
 
 using PluginPtr = std::shared_ptr<Plugin>;
