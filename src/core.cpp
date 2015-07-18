@@ -462,15 +462,17 @@ void Core::wait(int timeout) {
     poll(&fd, 1, timeout / 1000); // convert from usec to msec
 }
 
-void Core::mapWindow(FireWindow win) {
+void Core::mapWindow(FireWindow win, bool xmap) {
     std::cout << "map win begin" << std::endl;
 
     win->norender = false;
     win->damaged = true;
     new AnimationHook(new Fade(win), this);
 
-    //XMapWindow(d, win->id);
-    XSync(d, 0);
+    if(xmap)
+        XMapWindow(d, win->id),
+        XSync(d, 0);
+
     if(win->pixmap)
         XFreePixmap(d, win->pixmap);
     win->pixmap = XCompositeNameWindowPixmap(d, win->id);
@@ -611,6 +613,8 @@ void Core::handleEvent(XEvent xev){
             break;
         }
         case MapNotify: {
+            auto w = findWindow(xev.xmap.window);
+            if(w) mapWindow(w, false);
             break;
         }
         case UnmapNotify: {
