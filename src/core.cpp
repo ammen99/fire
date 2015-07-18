@@ -590,7 +590,7 @@ void Core::handleEvent(XEvent xev){
             if(w == nullptr)
                 break;
 
-            mapWindow(w);
+            //mapWindow(w);
             break;
         }
         case UnmapNotify: {
