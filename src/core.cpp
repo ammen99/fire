@@ -7,52 +7,49 @@
 #include <memory>
 
 bool wmDetected;
-std::mutex wmMutex;
-
 
 Core *core;
-std::fstream err;
+int refreshrate;
 
+class CorePlugin : public Plugin {
+    public:
+        void init() {
+            options.insert(newIntOption("rrate", 100));
+            options.insert(newIntOption("vwidth", 3));
+            options.insert(newIntOption("vheight", 3));
+            options.insert(newIntOption("fadeduration", 150));
+            options.insert(newStringOption("background", ""));
+            options.insert(newStringOption("shadersrc", ""));
+            options.insert(newStringOption("pluginpath", ""));
+            options.insert(newStringOption("plugins", ""));
+        }
+        void initOwnership() {
+            owner->name = "core";
+            owner->compatAll = true;
+        }
+        void updateConfiguration() {
+            refreshrate = options["rrate"]->data.ival;
+            Fade::duration = options["fadeduration"]->data.ival;
+        }
+};
 
-Context::Context(XEvent ev) : xev(ev){}
-Hook::Hook() : active(false) {}
+PluginPtr plug;
 
-void Hook::enable() {
-    if(this->active)
-        return;
-    this->active = true;
-    core->cntHooks++;
-}
-
-void Hook::disable() {
-    if(!this->active)
-        return;
-    this->active = false;
-    core->cntHooks--;
-}
-
-bool Hook::getState() {
-    return this->active;
-}
 
 Core::Core(int vx, int vy) {
+    this->vx = vx;
+    this->vy = vy;
+}
 
-    err.open("/home/ilex/work/fire/log2",
-            std::ios::out | std::ios::trunc);
-
-    if(!err.is_open())
-        std::cout << "Failed to open debug output, exiting" << std::endl,
-        std::exit(0);
-
-    err << "Creating new Core" << std::endl;
+void Core::init() {
 
     d = XOpenDisplay(NULL);
 
     if ( d == nullptr )
-        err << "Failed to open display!" << std::endl;
-
+        std::cout << "Failed to open display!" << std::endl;
 
     XSynchronize(d, 1);
+
     root = DefaultRootWindow(d);
     fd.fd = ConnectionNumber(d);
     fd.events = POLLIN;
@@ -77,13 +74,18 @@ Core::Core(int vx, int vy) {
              Button1MotionMask);
 
     if(wmDetected)
-       err << "Another WM already running!\n", std::exit(-1);
+       std::cout << "Another WM already running!\n", std::exit(-1);
 
     wins = new WinStack();
 
+    using namespace std::placeholders;
+    this->getWindowAtPoint =
+        std::bind(std::mem_fn(&WinStack::findWindowAtCursorPosition),
+                wins, _1, _2);
+
     XSetErrorHandler(&Core::onXError);
     overlay = XCompositeGetOverlayWindow(d, root);
-    outputwin = GLXUtils::createNewWindowWithContext(overlay, this);
+    outputwin = GLXUtils::createNewWindowWithContext(overlay);
 
     enableInputPass(overlay);
     enableInputPass(outputwin);
@@ -93,9 +95,6 @@ Core::Core(int vx, int vy) {
 
     cntHooks = 0;
     output = getMaximisedRegion();
-
-    initDefaultPlugins();
-
     // enable compositing to be recognized by other programs
     Atom a;
     s0owner = XCreateSimpleWindow (d, root, 0, 0, 1, 1, 0, None, None);
@@ -108,23 +107,38 @@ Core::Core(int vx, int vy) {
 
     run(const_cast<char*>("setxkbmap -model pc104 -layout us,bg -variant ,phonetic -option grp:alt_shift_toggle"));
 
-    WinUtil::init(this);
-    GLXUtils::initGLX(this);
-    OpenGLWorker::initOpenGL(this, "/home/ilex/work/fire/shaders");
-    resetDMG = true;
 
-    core = this;
-    addExistingWindows();
+    initDefaultPlugins();
 
+    /* load core options */
+    plug->owner = std::make_shared<_Ownership>();
+    plug->initOwnership();
+    plug->init();
+    config->setOptionsForPlugin(plug);
+    plug->updateConfiguration();
 
-    vwidth = vheight = 3;
-    this->vx = vx;
-    this->vy = vy;
+    loadDynamicPlugins();
 
-    for(auto p : plugins)
-        p->init(this);
+    for(auto p : plugins) {
+        p->owner = std::make_shared<_Ownership>();
+        p->initOwnership();
+        regOwner(p->owner);
+        p->init();
+        config->setOptionsForPlugin(p);
+        p->updateConfiguration();
+    }
+    vwidth = plug->options["vwidth"]->data.ival;
+    vheight= plug->options["vheight"]->data.ival;
+
+    WinUtil::init();
+    GLXUtils::initGLX();
+    OpenGLWorker::initOpenGL((*plug->options["shadersrc"]->data.sval).c_str());
 
     dmg = getMaximisedRegion();
+    resetDMG = true;
+    addExistingWindows();
+
+    core->setBackground((*plug->options["background"]->data.sval).c_str());
 }
 
 void Core::enableInputPass(Window win) {
@@ -141,8 +155,6 @@ void Core::addExistingWindows() {
     Window  *children;
 
     XQueryTree(d, root, &dummy1, &dummy2, &children, &size);
-
-    std::cout << "Query is " << size << std::endl;
 
     if(size == 0)
         return;
@@ -163,26 +175,16 @@ void Core::addExistingWindows() {
 
 Core::~Core(){
 
-    for(auto p : plugins)
+    for(auto p : plugins) {
+        if(p->dynamic)
+            dlclose(p->handle),
         p.reset();
-
-    int nx, ny;
-    for(auto w : wins->wins) {
-        nx = w->attrib.x % width;
-        ny = w->attrib.y % height;
-
-        nx += width; ny += height;
-        ny %= width; ny %= height;
-
-        WinUtil::moveWindow(w, nx, ny);
     }
 
     XDestroyWindow(core->d, outputwin);
     XDestroyWindow(core->d, s0owner);
-    XCompositeReleaseOverlayWindow(d, overlay);
-    XCloseDisplay(d);
 
-    err.close();
+    XCompositeReleaseOverlayWindow(d, overlay);
 }
 
 void Core::run(char *command) {
@@ -192,7 +194,6 @@ void Core::run(char *command) {
         std::string str("DISPLAY=");
         str = str.append(XDisplayString(d));
         putenv(const_cast<char*>(str.c_str()));
-
         std::exit(execl("/bin/sh", "/bin/sh", "-c", command, NULL));
     }
 }
@@ -217,6 +218,27 @@ void Core::remHook(uint id) {
     hooks.erase(id);
 }
 
+Context::Context(XEvent ev) : xev(ev){}
+Hook::Hook() : active(false) {}
+
+void Hook::enable() {
+    if(this->active)
+        return;
+    this->active = true;
+    core->cntHooks++;
+}
+
+void Hook::disable() {
+    if(!this->active)
+        return;
+
+    this->active = false;
+    core->cntHooks--;
+}
+
+bool Hook::getState() {
+    return this->active;
+}
 uint Core::addKey(KeyBinding *kb, bool grab) {
     if(!kb)
         return -1;
@@ -299,10 +321,6 @@ Region Core::getRegionFromRect(int tlx, int tly, int brx, int bry) {
 
 
 void Core::setBackground(const char *path) {
-
-    //this->run(const_cast<char*>(std::string("feh --bg-scale ")
-    //            .append(path).c_str()));
-
     auto texture = GLXUtils::loadImage(const_cast<char*>(path));
 
     uint vao, vbo;
@@ -323,8 +341,8 @@ void Core::setBackground(const char *path) {
             backgrounds[i][j]->norender = false;
             backgrounds[i][j]->texture  = texture;
 
-            backgrounds[i][j]->attrib.x = (i - vx) * width;
-            backgrounds[i][j]->attrib.y = (j - vy) * height;
+            backgrounds[i][j]->attrib.x = (j - vx) * width;
+            backgrounds[i][j]->attrib.y = (i - vy) * height;
             backgrounds[i][j]->attrib.width  = width;
             backgrounds[i][j]->attrib.height = height;
 
@@ -335,7 +353,6 @@ void Core::setBackground(const char *path) {
             wins->addWindow(backgrounds[i][j]);
         }
     }
-
 }
 
 FireWindow Core::findWindow(Window win) {
@@ -345,6 +362,8 @@ FireWindow Core::findWindow(Window win) {
 }
 
 FireWindow Core::getActiveWindow() {
+    if(!wins->activeWin)
+        return wins->getTopmostToplevel();
     return wins->activeWin;
 }
 
@@ -355,9 +374,7 @@ void Core::addWindow(XCreateWindowEvent xev) {
     if(xev.parent != root && xev.parent != 0)
         w->transientFor = findWindow(xev.parent);
 
-    w->xvi = nullptr;
     w->keepCount = 0;
-
     wins->addWindow(w);
     WinUtil::initWindow(w);
 
@@ -365,8 +382,6 @@ void Core::addWindow(XCreateWindowEvent xev) {
         wins->focusWindow(w);
 }
 void Core::addWindow(Window id) {
-
-    std::cout << "Adding window" << std::endl;
     XCreateWindowEvent xev;
     xev.window = id;
     xev.parent = 0;
@@ -411,65 +426,134 @@ void Core::closeWindow(FireWindow win) {
 }
 
 void Core::renderAllWindows() {
-
-    std::cout << "Reg " << dmg->rects[0].x1 << " "
-        << dmg->rects[0].y1 << " " << dmg->rects[0].x2
-        << " " << dmg->rects[0].y2 << std::endl;;
-
     XIntersectRegion(dmg, output, dmg);
 
     OpenGLWorker::preStage();
     wins->renderWindows();
     GLXUtils::endFrame(outputwin);
 
-    if(resetDMG) {
-        if(dmg)
-            XDestroyRegion(dmg);
-
-        dmg = XCreateRegion();
-        dmg->numRects = 1;
-        dmg->rects[0].x1 = 0;
-        dmg->rects[0].x2 = 0;
-        dmg->rects[0].y1 = 0;
-        dmg->rects[0].y2 = 0;
-    }
+    if(resetDMG)
+        XDestroyRegion(dmg),
+        dmg = getRegionFromRect(0, 0, 0, 0);
 }
 
 void Core::wait(int timeout) {
     poll(&fd, 1, timeout / 1000); // convert from usec to msec
 }
 
-void Core::mapWindow(FireWindow win) {
+void Core::mapWindow(FireWindow win, bool xmap) {
+
     win->norender = false;
+    win->damaged = true;
     new AnimationHook(new Fade(win), this);
+
+    if(xmap) {
+        XMapWindow(d, win->id);
+        XSync(d, 0);
+
+        if(win->pixmap)
+            XFreePixmap(d, win->pixmap);
+        win->pixmap = XCompositeNameWindowPixmap(d, win->id);
+    }
+
+    win->pixmap = XCompositeNameWindowPixmap(d, win->id);
+
     win->attrib.map_state = IsViewable;
     damageWindow(win);
 
     WinUtil::syncWindowAttrib(win);
-    std::cout << "restacking transients mapWindow" << std::endl;
+
     if(win->transientFor)
         wins->restackTransients(win->transientFor);
+
 }
 
 void Core::unmapWindow(FireWindow win) {
     win->attrib.map_state = IsUnmapped;
     new AnimationHook(new Fade(win, Fade::FadeOut), this);
+
+}
+
+void Core::regOwner(Ownership owner) {
+    owners.insert(owner);
+}
+
+bool Core::activateOwner(Ownership owner) {
+
+    if(!owner) {
+        std::cout << "Error detected ?? calling with nullptr!!1" << std::endl;
+        return false;
+    }
+
+    if(owner->active || owner->special) {
+        owner->active = true;
+        return true;
+    }
+
+    for(auto o : owners)
+        if(o && o->active)
+            if(o->compat.find(owner->name) ==
+               o->compat.end() && !o->compatAll)
+                return false;
+
+    owner->active = true;
+    return true;
+}
+
+bool Core::deactivateOwner(Ownership owner) {
+    owner->ungrab();
+    owner->active = false;
+    return true;
+}
+
+bool Core::checkKey(KeyBinding *kb, XKeyEvent xkey) {
+    if(!kb->active)
+        return false;
+
+    if(kb->key != xkey.keycode)
+        return false;
+
+    if(kb->mod != xkey.state)
+        return false;
+
+    return true;
+}
+
+bool Core::checkButPress(ButtonBinding *bb, XButtonEvent xb) {
+    if(!bb->active)
+        return false;
+
+    if(bb->type != BindingTypePress)
+        return false;
+
+    if(!(bb->mod & xb.state) && !(bb->mod == NoMods && xb.state == 0))
+        return false;
+
+    if(bb->button != xb.button)
+        return false;
+
+    return true;
+}
+
+bool Core::checkButRelease(ButtonBinding *bb, XButtonEvent kb) {
+    if(!bb->active)
+        return false;
+
+    if(bb->type != BindingTypeRelease)
+        return false;
+
+    return true;
 }
 
 void Core::handleEvent(XEvent xev){
     switch(xev.type) {
         case Expose:
             dmg = getMaximisedRegion();
-            redraw = true;
         case KeyPress: {
             // check keybindings
             for(auto kb : keys)
-                if(kb.second->key == xev.xkey.keycode &&
-                   kb.second->mod == xev.xkey.state)
-                if(kb.second->active)
-                    kb.second->action(new Context(xev));
-
-            redraw = true;
+                if(checkKey(kb.second, xev.xkey))
+                   kb.second->action(new Context(xev));
             break;
         }
 
@@ -507,11 +591,8 @@ void Core::handleEvent(XEvent xev){
             break;
         }
         case MapNotify: {
-            auto w = wins->findWindow(xev.xmap.window);
-            if(w == nullptr)
-                break;
-
-            mapWindow(w);
+            auto w = findWindow(xev.xmap.window);
+            if(w) mapWindow(w, false);
             break;
         }
         case UnmapNotify: {
@@ -527,12 +608,7 @@ void Core::handleEvent(XEvent xev){
             mousey = xev.xbutton.y_root;
 
             for(auto bb : buttons)
-                if(bb.second->active)
-                if(bb.second->type == BindingTypePress)
-                if((bb.second->mod & xev.xbutton.state) ||
-                   (bb.second->mod == NoMods            && // check if there
-                    xev.xbutton.state == 0))               // are no mods
-                if(bb.second->button == xev.xbutton.button) {// and we're
+                if(checkButPress(bb.second, xev.xbutton)) {
                     bb.second->action(new Context(xev));
                     break;
                 }
@@ -545,8 +621,7 @@ void Core::handleEvent(XEvent xev){
                             // activated => there is no need to check
                             // for buttons
             for(auto bb : this->buttons)
-                if(bb.second->type == BindingTypeRelease)
-                if(bb.second->active)
+                if(checkButRelease(bb.second, xev.xbutton))
                     bb.second->action(new Context(xev));
 
             XAllowEvents(d, ReplayPointer, xev.xbutton.time);
@@ -598,8 +673,6 @@ void Core::handleEvent(XEvent xev){
                 if(xev.xconfigurerequest.above) {
                     auto below = findWindow(xev.xconfigurerequest.above);
                     if(below) {
-                        std::cout << "Configuring in XConfigureRequest"
-                            << std::endl;
                         if(xev.xconfigurerequest.detail == Above)
                             wins->restackAbove(w, below);
                         else
@@ -610,6 +683,8 @@ void Core::handleEvent(XEvent xev){
                     if(xev.xconfigurerequest.detail == Above)
                         focusWindow(w);
             }
+
+            mapWindow(w);
 
         }
 
@@ -633,9 +708,28 @@ void Core::handleEvent(XEvent xev){
             break;
         }
 
-        case ConfigureNotify:
-            if(xev.xconfigure.window == root)
+        case ConfigureNotify: {
+            if(xev.xconfigure.window == root) {
                 terminate = true, mainrestart = true;
+                break;
+            }
+            //break;
+
+            auto w = findWindow(xev.xconfigure.window);
+            if(!w) break;
+
+            WinUtil::resizeWindow(w, xev.xconfigure.width,
+                                     xev.xconfigure.height,
+                                     false);
+            WinUtil::moveWindow(w, xev.xconfigure.x,
+                                   xev.xconfigure.y,
+                                   false);
+            break;
+
+            //wins->restackAbove(w, findWindow(xev.xconfigure.above));
+        }
+
+
         case EnterNotify:       // we don't handle
         case FocusIn:           // any of these
         case CirculateRequest:
@@ -645,7 +739,6 @@ void Core::handleEvent(XEvent xev){
 
         default:
             if(xev.type == damage + XDamageNotify) {
-                redraw = true;
                 XDamageNotifyEvent *x =
                     reinterpret_cast<XDamageNotifyEvent*> (&xev);
 
@@ -653,6 +746,7 @@ void Core::handleEvent(XEvent xev){
                 if(!w)
                     return;
 
+                w->damaged = true;
 
                 Region damagedArea = getRegionFromRect(
                         x->area.x + w->attrib.x,
@@ -660,28 +754,22 @@ void Core::handleEvent(XEvent xev){
                         x->area.x + w->attrib.x + x->area.width,
                         x->area.y + w->attrib.y + x->area.height);
 
-                //if(__FireWindow::allDamaged)
-                //    break;
-                XUnionRegion(dmg, damagedArea, dmg);
-                XDestroyRegion(damagedArea);
+               if(!dmg)
+                    std::cout << "dmg is null!!!!" << std::endl;
 
-                std::cout << "Breaking away" << std::endl;
+                XUnionRegion(damagedArea, dmg, dmg);
+                XDestroyRegion(damagedArea);
             break;
             }
     }
 }
-
-#define RefreshRate 100
 #define Second 1000000
 #define MaxDelay 1000
 #define MinRR 61
 
 void Core::loop(){
 
-    std::lock_guard<std::mutex> lock(wmMutex);
-    redraw = true;
-
-    int currentCycle = Second / RefreshRate;
+    int currentCycle = Second / plug->options["rrate"]->data.ival;
     int baseCycle = currentCycle;
 
     timeval before, after;
@@ -691,6 +779,7 @@ void Core::loop(){
     XEvent xev;
 
     while(!terminate) {
+
         /* handle current events */
         while(XPending(d)) {
             XNextEvent(d, &xev);
@@ -704,7 +793,8 @@ void Core::loop(){
         if(diff < currentCycle) {     // we have time to next redraw, wait
             wait(currentCycle - diff);// for events
 
-            if(fd.revents & POLLIN || !resetDMG) { /* disable optimisation */
+            if(fd.revents & POLLIN || !resetDMG || cntHooks) {
+                /* disable optimisation */
                 hadEvents = true;
                 currentCycle = baseCycle;
                 continue;
@@ -719,16 +809,15 @@ void Core::loop(){
                         hook.second->action();
             }
 
-            if(redraw || __FireWindow::allDamaged || !XEmptyRegion(dmg))
-                renderAllWindows(),   // we just redraw
-                redraw = false;       // everything
+            if(__FireWindow::allDamaged || !XEmptyRegion(dmg))
+                renderAllWindows();   // we just redraw
 
             /* optimisation when too slow,
              * so we can update more rarely,
              * i.e reduce lagging */
             if(diff - currentCycle > MaxDelay &&
                     Second / MinRR <= currentCycle)
-                currentCycle += 2000; // 1ms slower redraws
+                currentCycle += 2000; // 2ms slower redraws
 
             /* optimisation when idle */
             if(!cntHooks && !hadEvents && currentCycle < Second && resetDMG)
@@ -750,23 +839,9 @@ int Core::onXError(Display *d, XErrorEvent *xev) {
     if(xev->resourceid == 0) // invalid window
         return 0;
 
-    return 0;
+    //return 0;
     /* some of the calls to obtain a texture from this window
      * have failed, so don't draw it the next time */
-
-    if(xev->error_code == BadMatch    ||
-       xev->error_code == BadDrawable ||
-       xev->error_code == BadWindow   ){
-
-       std::cout << "caught BadMatch/Drawable/Window. Disabling window drawing "
-            << xev->resourceid;
-
-        auto x = core->wins->findWindow(xev->resourceid);
-        if (x != nullptr)
-            x->norender = true;
-
-        return 0;
-    }
 
     std::cout << std::endl << "____________________________" << std::endl;
     std::cout << "XError code   " << int(xev->error_code) << std::endl;
@@ -813,40 +888,26 @@ void Core::switchWorkspace(std::tuple<int, int> nPos) {
 }
 
 std::vector<FireWindow> Core::getWindowsOnViewport(std::tuple<int, int> vp) {
-
-    //std::cout << "gwov stawrt" << std::endl;
     auto x = std::get<0>(vp);
     auto y = std::get<1>(vp);
 
     auto view = getRegionFromRect((x - vx) * width, (y - vy) * height,
                        (x - vx + 1) * width, (y - vy + 1) * height);
 
-    //std::cout << "got visible part" << std::endl;
-
     std::vector<FireWindow> ret;
     Region tmp = XCreateRegion();
     for(auto w : wins->wins) {
-
-        std::cout << "itereating" << std::endl;
-
-        if(!w->region) {
-            std::cout << "Window without region!!!" << std::endl;
+        if(!w->region)
             continue;
-        }
         if(!view)
             continue;
-
-        std::cout << "intersecting" << std::endl;
 
         XIntersectRegion(view, w->region, tmp);
         if(tmp && !XEmptyRegion(tmp) && !w->norender)
             ret.push_back(w);
-
-        std::cout << "end iter" << std::endl;
     }
     XDestroyRegion(view);
     XDestroyRegion(tmp);
-    std::cout << "end gwov" << std::endl;
 
     return ret;
 }
@@ -865,15 +926,28 @@ void Core::damageWindow(FireWindow win) {
                     WindowRegionBounding);
 
         XDamageAdd(core->d, win->id, reg);
-
         XFixesDestroyRegion(core->d, reg);
         return;
     }
-    redraw = true;
     if(!dmg)
         dmg = getRegionFromRect(0, 0, 0, 0);
 
     XUnionRegion(dmg, win->region, dmg);
+}
+
+namespace {
+    int fullRedraw = 0;
+}
+
+void Core::setRedrawEverything(bool val) {
+    if(val) {
+        fullRedraw++;
+        __FireWindow::allDamaged = true;
+        core->resetDMG = false;
+    }
+    else if(--fullRedraw == 0)
+        __FireWindow::allDamaged = false,
+        core->resetDMG = true;
 }
 
 void Core::focusWindow(FireWindow win) {
@@ -889,29 +963,68 @@ void Core::removeWindow(FireWindow win) {
     wins->removeWindow(win);
 }
 
-FireWindow Core::getWindowAtPoint(int x, int y) {
-    return wins->findWindowAtCursorPosition(x, y);
-}
-
 template<class T>
 PluginPtr Core::createPlugin() {
     return std::static_pointer_cast<Plugin>(std::make_shared<T>());
 }
 
 int Core::getRefreshRate() {
-    return Second / RefreshRate - 50;
+    return refreshrate;
+}
+
+namespace {
+    template<class A, class B> B unionCast(A object) {
+        union {
+            A x;
+            B y;
+        } helper;
+        helper.x = object;
+        return helper.y;
+    }
+}
+
+PluginPtr Core::loadPluginFromFile(std::string path, void **h) {
+    void *handle = dlopen(path.c_str(), RTLD_NOW);
+    if(handle == NULL){
+        std::cout << "Error loading plugin " << path << std::endl;
+        std::cout << dlerror() << std::endl;
+        return nullptr;
+    }
+
+    auto initptr = dlsym(handle, "newInstance");
+    if(initptr == NULL) {
+        std::cout << "Failed to load newInstance from file " <<
+            path << std::endl;
+        std::cout << dlerror();
+        return nullptr;
+    }
+    LoadFunction init = unionCast<void*, LoadFunction>(initptr);
+    *h = handle;
+    return std::shared_ptr<Plugin>(init());
+}
+
+void Core::loadDynamicPlugins() {
+    std::stringstream stream(*plug->options["plugins"]->data.sval);
+    auto path = *plug->options["pluginpath"]->data.sval;
+
+    std::string plugin;
+    while(stream >> plugin){
+        if(plugin != "") {
+            void *handle;
+            auto ptr = loadPluginFromFile(path + "/" + plugin + ".so",
+                    &handle);
+            if(ptr) ptr->handle  = handle,
+                    ptr->dynamic = true,
+                    plugins.push_back(ptr);
+        }
+    }
 }
 
 void Core::initDefaultPlugins() {
-    plugins.push_back(createPlugin<Move>());
-    plugins.push_back(createPlugin<Resize>());
-    plugins.push_back(createPlugin<WSSwitch>());
-    plugins.push_back(createPlugin<Expo>());
+    plug = createPlugin<CorePlugin>();
     plugins.push_back(createPlugin<Focus>());
     plugins.push_back(createPlugin<Exit>());
     plugins.push_back(createPlugin<Run>());
     plugins.push_back(createPlugin<Close>());
-    plugins.push_back(createPlugin<ATSwitcher>());
-    plugins.push_back(createPlugin<Grid>());
-    plugins.push_back(createPlugin<RefreshWin>());
+    plugins.push_back(createPlugin<Refresh>());
 }

@@ -5,12 +5,7 @@
 
 
 typedef std::list<FireWindow>::iterator StackIterator;
-WinStack::WinStack() {
-    using namespace std::placeholders;
-    findWindowAtCursorPosition =
-        std::bind(std::mem_fn(&WinStack::__findWindowAtCursorPosition),
-                this, _1, _2);
-}
+WinStack::WinStack() { }
 
 void WinStack::addWindow(FireWindow win) {
     if(win->type == WindowTypeDesktop) {
@@ -60,9 +55,21 @@ FireWindow WinStack::findWindow(Window win) {
 void WinStack::renderWindows() {
     int num = 0;
 
-    if(__FireWindow::allDamaged)
-        XDestroyRegion(core->dmg),
+    if(__FireWindow::allDamaged) {
+        XDestroyRegion(core->dmg);
         core->dmg = copyRegion(output);
+
+        auto it = wins.rbegin();
+        while(it != wins.rend()) {
+            auto w = *it;
+            if(w && w->shouldBeDrawn()) {
+                w->transform.stackID = num--;
+                WinUtil::renderWindow(w);
+            }
+            ++it;
+        }
+        return;
+    }
 
     if(!core->dmg)
         core->dmg = copyRegion(output);
@@ -72,8 +79,9 @@ void WinStack::renderWindows() {
     auto tmp = XCreateRegion();
     for(auto w : wins) {
         if(w && w->shouldBeDrawn()) {
+
             w->transform.stackID = num--;
-            if(w->transparent || (w->xvi && w->xvi->depth == 32))
+            if(w->transparent || w->attrib.depth == 32)
                 w->transparent = true;
             else
                 XIntersectRegion(core->dmg, w->region, tmp),
@@ -85,7 +93,6 @@ void WinStack::renderWindows() {
 
     auto it = winsToDraw.rbegin();
     while(it != winsToDraw.rend())
-        std::cout << "Rendering " << (*it)->id << std::endl,
         WinUtil::renderWindow(*it), ++it;
 
     XDestroyRegion(tmp);
@@ -182,9 +189,6 @@ void WinStack::restackAbove(FireWindow above, FireWindow below, bool x) {
     if(above == nullptr || below == nullptr)
         return;
 
-    std::cout << "Attempting to restack " << above->id <<
-        " above " << below->id << std::endl;
-
     auto pos = getIteratorPositionForWindow(below);
     auto val = getIteratorPositionForWindow(above);
 
@@ -197,7 +201,6 @@ void WinStack::restackAbove(FireWindow above, FireWindow below, bool x) {
             below->type == WindowTypeWidget) // we should not restack
         return;                              // a widget below
 
-    std::cout << "Checks passed, restacking" << std::endl;
     wins.erase(val);
     wins.insert(pos, above);
 
@@ -287,16 +290,12 @@ void WinStack::focusWindow(FireWindow win) {
     if(!win->shouldBeDrawn())
         return;
 
-    std::cout << "focusing " << win->id << std::endl;
-
     if(win->type == WindowTypeWidget && wins.size()) {
         if(win->transientFor)
             restackAbove(win, win->transientFor),
             win = win->transientFor;
-        else {
-            std::cout << "focused1" << std::endl;
+        else
             return;
-        }
     }
 
     if(win->type == WindowTypeModal) {
@@ -304,7 +303,6 @@ void WinStack::focusWindow(FireWindow win) {
             restackAbove(win, win->transientFor);
         WinUtil::setInputFocusToWindow(win->id);
         activeWin = win;
-        std::cout << "focused2" << std::endl;
         return;
     }
 
@@ -321,7 +319,6 @@ void WinStack::focusWindow(FireWindow win) {
      * then just focus the window */
     if(w2->id == (*wins.begin())->id || w1 == nullptr){
         WinUtil::setInputFocusToWindow(w2->id);
-        std::cout << "focused3" << std::endl;
         return;
     }
 
@@ -333,12 +330,11 @@ void WinStack::focusWindow(FireWindow win) {
     XConfigureWindow(core->d, activeWin->id, CWSibling|CWStackMode, &xwc);
 
     WinUtil::setInputFocusToWindow(activeWin->id);
-    core->redraw = true;
-
-    std::cout << "focused4" << std::endl;
+    core->damageWindow(w1);
+    core->damageWindow(w2);
 }
 
-FireWindow WinStack::__findWindowAtCursorPosition(int x, int y) {
+FireWindow WinStack::findWindowAtCursorPosition(int x, int y) {
     for(auto w : wins)
         if(w->attrib.map_state == IsViewable && // desktop and invisible
            w->type != WindowTypeDesktop      && // windows should be

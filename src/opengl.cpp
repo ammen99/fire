@@ -116,8 +116,6 @@ void OpenGLWorker::preStage() {
         glScissor(blx, bly, rect.width, rect.height);
     else
         glScissor(0, 0, sw, sh);
-
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
 #define cout std::cout
@@ -169,11 +167,11 @@ void errorHandler(GLenum src, GLenum type,
 
 
 
-void OpenGLWorker::initOpenGL(Core *core, const char *shaderSrcPath) {
-//
-//    glEnable(GL_DEBUG_OUTPUT);
-//    glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-//    glDebugMessageCallback(errorHandler, (void*)0);
+void OpenGLWorker::initOpenGL(const char *shaderSrcPath) {
+
+    //glEnable(GL_DEBUG_OUTPUT);
+    //glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+    //glDebugMessageCallback(errorHandler, (void*)0);
     //
     GetTuple(sw, sh, core->getScreenSize());
 

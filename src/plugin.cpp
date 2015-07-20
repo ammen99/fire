@@ -1,0 +1,81 @@
+#include "../include/core.hpp"
+
+namespace {
+    int grabCount = 0;
+}
+
+Data::Data(){}
+SubData::SubData() {}
+
+void _Ownership::grab() {
+    if(this->grabbed || !this->active)
+        return;
+
+    this->grabbed = true;
+    grabCount++;
+
+    if(grabCount == 1) {
+        XGrabPointer(core->d, core->overlay, TRUE,
+                ButtonPressMask | ButtonReleaseMask |
+                PointerMotionMask,
+                GrabModeAsync, GrabModeAsync,
+                core->root, None, CurrentTime);
+
+        XGrabKeyboard(core->d, core->overlay, True,
+                GrabModeAsync, GrabModeAsync, CurrentTime);
+    }
+}
+
+void _Ownership::ungrab() {
+    if(!grabbed || !active)
+        return;
+
+    grabbed = false;
+    grabCount--;
+    if(grabCount == 0) {
+        XUngrabPointer(core->d, CurrentTime);
+        XUngrabKeyboard(core->d, CurrentTime);
+    }
+
+    if(grabCount < 0)
+        grabCount = 0;
+}
+
+void Plugin::initOwnership() {
+    owner->name = "Unknown";
+    owner->compatAll = true;
+}
+
+void Plugin::updateConfiguration() {}
+
+std::pair<std::string, Data*> newIntOption(std::string name,
+                                           int defaultVal) {
+    auto pair = std::make_pair(name, new Data());
+    pair.second->type = DataTypeInt;
+    pair.second->def.ival = defaultVal;
+    return pair;
+}
+
+std::pair<std::string, Data*> newFloatOption(std::string name,
+                                             float defaultVal) {
+    auto pair = std::make_pair(name, new Data());
+    pair.second->type = DataTypeFloat;
+    pair.second->def.fval = defaultVal;
+    return pair;
+}
+
+std::pair<std::string, Data*> newBoolOption(std::string name,
+                                            bool defaultVal) {
+    auto pair = std::make_pair(name, new Data());
+    pair.second->type = DataTypeBool;
+    pair.second->def.bval = defaultVal;
+    return pair;
+}
+
+std::pair<std::string, Data*> newStringOption(std::string name,
+                                              std::string defaultVal) {
+    auto pair = std::make_pair(name, new Data());
+    pair.second->type = DataTypeString;
+    pair.second->def.sval = new std::string(defaultVal);
+    return pair;
+}

@@ -19,8 +19,7 @@ class WinStack {
 
         StackIterator getIteratorPositionForWindow(FireWindow win);
         StackIterator getIteratorPositionForWindow(Window win);
-        FireWindow __findWindowAtCursorPosition(int x, int y);
-        bool recurseIsAncestor(FireWindow parent, FireWindow win);
+            bool recurseIsAncestor(FireWindow parent, FireWindow win);
 
     public:
         FireWindow activeWin;
@@ -36,7 +35,7 @@ class WinStack {
         void focusWindow(FireWindow win);
         /* rstr shows whether we have to restack transients also */
         void restackAbove(FireWindow above, FireWindow below, bool rstr = true);
-        std::function<FireWindow(int, int)> findWindowAtCursorPosition;
+        FireWindow findWindowAtCursorPosition(int x, int y);
 
         void updateTransientsAttrib(FireWindow win, int, int, int, int);
 

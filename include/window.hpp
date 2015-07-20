@@ -30,25 +30,30 @@ class Transform {
 extern Region output;
 Region copyRegion(Region r);
 
+struct SharedImage {
+    XShmSegmentInfo shminfo;
+    XImage *image;
+    bool init = true;
+    bool existing = false;
+};
+
 class __FireWindow {
-    private:
-        bool damaged = false;
     public:
 
         static bool allDamaged;
-        XVisualInfo *xvi;
-        Pixmap pixmap;
         Window id;
         GLuint texture; // image on screen
 
         bool norender = false; // should we draw window?
         bool destroyed = false; // is window dead?
         bool transparent = false; // is the window transparent
+        bool damaged = true;
 
         int mapTryNum = 5; // how many times have we tried to map this window?
-        int keepCount = 0; // used to determine whether to destory window
+        int keepCount = 0; // used to determine whether to destroy window
         Transform transform;
 
+        bool disableVBOChange = false;
         GLuint vbo = -1;
         GLuint vao = -1;
 
@@ -61,6 +66,9 @@ class __FireWindow {
         WindowType type;
         XWindowAttributes attrib;
         Region region = nullptr;
+
+        Pixmap pixmap = 0;
+        SharedImage shared;
 
         bool shouldBeDrawn();
         void updateVBO();
@@ -85,7 +93,7 @@ extern Atom winOpacityAtom;
 class Core;
 
 namespace WinUtil {
-    void init(Core *core);
+    void init();
 
     void renderWindow(FireWindow win);
     int setWindowTexture(FireWindow win);
@@ -94,8 +102,8 @@ namespace WinUtil {
 
     void setInputFocusToWindow(Window win);
 
-    void moveWindow(FireWindow win, int x, int y);
-    void resizeWindow(FireWindow win, int w, int h);
+    void moveWindow(FireWindow win, int x, int y, bool configure = true);
+    void resizeWindow(FireWindow win, int w, int h, bool configure = true);
     void syncWindowAttrib(FireWindow win);
 
     XVisualInfo *getVisualInfoForWindow(Window win);

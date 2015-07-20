@@ -3,3 +3,7 @@ log
 log2
 2
 src/2
+*.so
+*.d
+*.o
+manager

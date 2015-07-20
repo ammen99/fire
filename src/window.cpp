@@ -74,6 +74,9 @@ bool __FireWindow::shouldBeDrawn() {
 }
 
 void __FireWindow::updateVBO() {
+    if(this->disableVBOChange)
+        return;
+
     if(type == WindowTypeDesktop)
         OpenGLWorker::generateVAOVBO(attrib.x,
             attrib.y + attrib.height,
@@ -107,7 +110,7 @@ Atom wmNameAtom;
 Atom winOpacityAtom;
 
 namespace WinUtil {
-void init(Core *core) {
+void init() {
 
     activeWinAtom  = XInternAtom(core->d, "_NET_ACTIVE_WINDOW", 0);
     wmNameAtom     = XInternAtom(core->d, "WM_NAME", 0);
@@ -147,47 +150,31 @@ void init(Core *core) {
 int setWindowTexture(FireWindow win) {
     XGrabServer(core->d);
 
-    if(win->mapTryNum --> 0) {        // we try five times
-        XMapWindow(core->d, win->id); // to map a window
-        syncWindowAttrib(win);        // in order to get a
-        XSync(core->d, 0);            // pixmap
-    }
     if(win->attrib.map_state != IsViewable && !win->keepCount) {
-        err << "Invisible window";
+        std::cout << "Invisible window " << win->id << std::endl;
         win->norender = true;
         XUngrabServer(core->d);
         return 0;
     }
 
-    Pixmap pix = win->pixmap;
-    if(!win->destroyed)
-        pix = XCompositeNameWindowPixmap(core->d, win->id);
-
-    if(win->pixmap == pix ||
-            (win->keepCount && win->attrib.map_state != IsViewable)) {
+    if(!win->damaged)  {
         glBindTexture(GL_TEXTURE_2D, win->texture);
-        XUngrabServer(core->d);
         return 1;
     }
 
-    if(win->pixmap != 0) {
-        XFreePixmap(core->d, win->pixmap);
-        glDeleteTextures(1, &win->texture);
-    }
-
-    win->pixmap = pix;
-
-    if(win->xvi == nullptr)
-        win->xvi = getVisualInfoForWindow(win->id);
-    if (win->xvi == nullptr) {
-        err << "No visual info, deny rendering";
+    XWindowAttributes xwa;
+    if(!win->mapTryNum && !XGetWindowAttributes(core->d, win->id, &xwa)) {
         win->norender = true;
-        XUngrabServer(core->d);
         return 0;
     }
 
+    glDeleteTextures(1, &win->texture);
+
+    if(win->pixmap == 0)
+        win->pixmap = XCompositeNameWindowPixmap(core->d, win->id);
+
     win->texture = GLXUtils::textureFromPixmap(win->pixmap,
-            win->attrib.width, win->attrib.height, win->xvi);
+            win->attrib.width, win->attrib.height, &win->shared);
 
     XUngrabServer(core->d);
     return 1;
@@ -195,7 +182,11 @@ int setWindowTexture(FireWindow win) {
 
 void initWindow(FireWindow win) {
 
-    XGetWindowAttributes(core->d, win->id, &win->attrib);
+    auto status = XGetWindowAttributes(core->d, win->id, &win->attrib);
+    if(status != Success) {
+        win->norender = true;
+    }
+
     XSizeHints hints;
     long flags;
     XGetWMNormalHints(core->d, win->id, &hints, &flags);
@@ -235,6 +226,8 @@ void initWindow(FireWindow win) {
     win->transform.color = glm::vec4(1., 1., 1., 1.);
     win->transform.color[3] = readProp(win->id,
             winOpacityAtom, 0xffff) / 0xffff;
+
+    glGenTextures(1, &win->texture);
 }
 
 #define uchar unsigned char
@@ -260,9 +253,6 @@ int readProp(Window win, Atom prop, int def) {
 }
 
 void finishWindow(FireWindow win) {
-    if(win->pixmap != 0)
-        XFreePixmap(core->d, win->pixmap);
-
     glDeleteTextures(1, &win->texture);
     glDeleteBuffers(1, &win->vbo);
     glDeleteVertexArrays(1, &win->vao);
@@ -272,7 +262,6 @@ void finishWindow(FireWindow win) {
 void renderWindow(FireWindow win) {
 
     OpenGLWorker::color = win->transform.color;
-
     if(win->type == WindowTypeDesktop){
         OpenGLWorker::renderTransformedTexture(win->texture,
                 win->vao, win->vbo,
@@ -281,27 +270,14 @@ void renderWindow(FireWindow win) {
     }
 
     if(!setWindowTexture(win)) {
-        err <<"failed to paint window " << win->id << " (no texture avail)";
+        std::cout <<"failed to paint window " << win->id << " (no texture avail)";
         return;
     }
 
     if(win->vbo == -1 || win->vao == -1)
         win->updateVBO();
 
-    if(!win->xvi) {
-        std::cout << "no visual info, trying to get new one" << std::endl;
-        win->xvi = getVisualInfoForWindow(win->id);
-        if(!win->xvi) {
-        if(win->type == WindowTypeDesktop) {
-            std::cout << "problem is a desktop window" << std::endl;
-        }
-        std::cout << "fail " << win->id << std::endl;
-        return;
-        }
-        std::cout << "got new" << std::endl;
-    }
-    OpenGLWorker::depth = win->xvi->depth;
-
+    OpenGLWorker::depth = win->attrib.depth;
     OpenGLWorker::renderTransformedTexture(win->texture,
             win->vao, win->vbo, win->transform.compose());
 }
@@ -311,7 +287,8 @@ XVisualInfo *getVisualInfoForWindow(Window win) {
     XWindowAttributes xwa;
     auto stat = XGetWindowAttributes(core->d, win, &xwa);
     if ( stat == 0 ){
-        err << "attempting to get visual info failed!" << win;
+        std::cout << "attempting to get visual info failed!"
+            << win << std::endl;
         return nullptr;
     }
 
@@ -320,7 +297,7 @@ XVisualInfo *getVisualInfoForWindow(Window win) {
     int dumm;
     xvi = XGetVisualInfo(core->d, VisualIDMask, &dummy, &dumm);
     if(dumm == 0 || !xvi)
-        err << "Cannot get default visual!\n";
+        std::cout << "Cannot get default visual!\n";
     return xvi;
 }
 
@@ -395,7 +372,7 @@ WindowType getWindowType(FireWindow win) {
         else if ( a == winTypeToolbarAtom )
             return WindowTypeWidget;
         else if ( a == winTypeUtilAtom )
-            return WindowTypeOther;
+            return WindowTypeWidget;
         else if ( a == winTypeSplashAtom )
             return WindowTypeNormal;
         else if ( a == winTypeDialogAtom )
@@ -409,9 +386,9 @@ WindowType getWindowType(FireWindow win) {
         else if ( a == winTypeNotificationAtom )
             return WindowTypeWidget;
         else if ( a == winTypeComboAtom )
-            return WindowTypeOther;
+            return WindowTypeWidget;
         else if ( a == winTypeDndAtom )
-            return WindowTypeOther;
+            return WindowTypeWidget;
     }
     return WindowTypeOther;
 }
@@ -440,7 +417,7 @@ void setInputFocusToWindow(Window win) {
 }
 
 
-void moveWindow(FireWindow win, int x, int y) {
+void moveWindow(FireWindow win, int x, int y, bool configure) {
 
     bool existPreviousRegion = !(win->region == nullptr);
 
@@ -463,18 +440,23 @@ void moveWindow(FireWindow win, int x, int y) {
         return;
     }
 
-    XWindowChanges xwc;
-    xwc.x = x;
-    xwc.y = y;
 
-    glDeleteBuffers(1, &win->vbo);
-    glDeleteVertexArrays(1, &win->vao);
+    if(!win->disableVBOChange)
+        glDeleteBuffers(1, &win->vbo),
+        glDeleteVertexArrays(1, &win->vao);
 
-    XConfigureWindow(core->d, win->id, CWX | CWY, &xwc);
-    win->updateVBO();
+
+    if(configure) {
+        XWindowChanges xwc;
+        xwc.x = x;
+        xwc.y = y;
+        XConfigureWindow(core->d, win->id, CWX | CWY, &xwc);
+    }
+    if(!win->disableVBOChange)
+        win->updateVBO();
 }
 
-void resizeWindow(FireWindow win, int w, int h) {
+void resizeWindow(FireWindow win, int w, int h, bool configure) {
 
     bool existPreviousRegion = !(win->region == nullptr);
     Region prevRegion = nullptr;
@@ -489,15 +471,32 @@ void resizeWindow(FireWindow win, int w, int h) {
         XUnionRegion(core->dmg, prevRegion,  core->dmg);
     XUnionRegion(core->dmg, win->region, core->dmg);
 
-    XWindowChanges xwc;
-    xwc.width  = w;
-    xwc.height = h;
+    if(!win->disableVBOChange)
+        glDeleteBuffers(1, &win->vbo),
+        glDeleteVertexArrays(1, &win->vao);
 
-    glDeleteBuffers(1, &win->vbo);
-    glDeleteVertexArrays(1, &win->vao);
+    if(configure) {
+        XWindowChanges xwc;
+        xwc.width  = w;
+        xwc.height = h;
+        XConfigureWindow(core->d, win->id, CWWidth | CWHeight, &xwc);
+    }
 
-    XConfigureWindow(core->d, win->id, CWWidth | CWHeight, &xwc);
-    win->updateVBO();
+    if(!win->disableVBOChange)
+        win->updateVBO();
+
+    if(win->shared.existing) {
+        XShmDetach(core->d, &win->shared.shminfo);
+        XDestroyImage(win->shared.image);
+        shmdt(win->shared.shminfo.shmaddr);
+        shmctl(win->shared.shminfo.shmid, IPC_RMID, NULL);
+        win->shared.existing = false;
+        win->shared.init = true;
+    }
+
+    if(win->pixmap)
+        XFreePixmap(core->d, win->pixmap);
+    win->pixmap = XCompositeNameWindowPixmap(core->d, win->id);
 
 }
 void syncWindowAttrib(FireWindow win) {
