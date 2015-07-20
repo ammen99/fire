@@ -180,26 +180,32 @@ Core::~Core(){
     std::cout << "Core is here destroyed" << std::endl;
 
     for(auto p : plugins) {
+        std::cout << "plugin " << p->owner->name << std::endl;
         if(p->dynamic)
             dlclose(p->handle),
         p.reset();
     }
 
-    int nx, ny;
-    for(auto w : wins->wins) {
-        nx = w->attrib.x % width;
-        ny = w->attrib.y % height;
+    std::cout << "Made it to here" << std::endl;
 
-        nx += width; ny += height;
-        nx %= width; ny %= height;
-
-        WinUtil::moveWindow(w, nx, ny);
-    }
+//    int nx, ny;
+//    for(auto w : wins->wins) {
+//        nx = w->attrib.x % width;
+//        ny = w->attrib.y % height;
+//
+//        nx += width; ny += height;
+//        nx %= width; ny %= height;
+//
+//        WinUtil::moveWindow(w, nx, ny);
+//    }
 
     XDestroyWindow(core->d, outputwin);
     XDestroyWindow(core->d, s0owner);
+
+    std::cout << "Destroyed windows" << std::endl;
     XCompositeReleaseOverlayWindow(d, overlay);
-    XCloseDisplay(d);
+    std::cout << "closing display" << std::endl;
+    std::cout << "End of core destructor" << std::endl;
 }
 
 void Core::run(char *command) {
@@ -382,11 +388,13 @@ FireWindow Core::findWindow(Window win) {
 }
 
 FireWindow Core::getActiveWindow() {
+    if(!wins->activeWin)
+        return wins->getTopmostToplevel();
     return wins->activeWin;
 }
 
 void Core::addWindow(XCreateWindowEvent xev) {
-    std::cout << "Add win begin" << std::endl;
+    std::cout << "Add win begin" << xev.window << std::endl;
     FireWindow w = std::make_shared<__FireWindow>();
     w->id = xev.window;
 
@@ -400,7 +408,7 @@ void Core::addWindow(XCreateWindowEvent xev) {
     if(w->type != WindowTypeWidget)
         wins->focusWindow(w);
 
-    std::cout << "Add win end" << std::endl;
+    std::cout << "Add win end" << xev.window << std::endl;
 }
 void Core::addWindow(Window id) {
     XCreateWindowEvent xev;
@@ -463,29 +471,30 @@ void Core::wait(int timeout) {
 }
 
 void Core::mapWindow(FireWindow win, bool xmap) {
-    std::cout << "map win begin" << std::endl;
+    std::cout << "map win begin" << win->id << " " << xmap << std::endl;
 
     win->norender = false;
     win->damaged = true;
     new AnimationHook(new Fade(win), this);
 
-    if(xmap)
-        XMapWindow(d, win->id),
+    if(xmap) {
+        XMapWindow(d, win->id);
         XSync(d, 0);
 
-    if(win->pixmap)
-        XFreePixmap(d, win->pixmap);
-    win->pixmap = XCompositeNameWindowPixmap(d, win->id);
+        if(win->pixmap)
+            XFreePixmap(d, win->pixmap);
+        win->pixmap = XCompositeNameWindowPixmap(d, win->id);
+    }
 
     win->attrib.map_state = IsViewable;
     damageWindow(win);
 
     WinUtil::syncWindowAttrib(win);
+
     if(win->transientFor)
         wins->restackTransients(win->transientFor);
 
-
-    std::cout << "map win end" << std::endl;
+    std::cout << "map win end" << win->id << std::endl;
 }
 
 void Core::unmapWindow(FireWindow win) {
@@ -706,6 +715,8 @@ void Core::handleEvent(XEvent xev){
                         focusWindow(w);
             }
 
+            mapWindow(w);
+
         }
 
         case PropertyNotify: {
@@ -801,9 +812,13 @@ void Core::loop(){
     XEvent xev;
 
     while(!terminate) {
+
         /* handle current events */
+        int zahl = 1;
         while(XPending(d)) {
             XNextEvent(d, &xev);
+            if(zahl++ % 1000 == 0)
+                std::cout << "Received event " << xev.type << std::endl;
             handleEvent(xev);
         }
 

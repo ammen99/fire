@@ -123,13 +123,14 @@ void signalHandle(int sig) {
             shdata[2] = int(vy);
 
             print_trace(SIGSEGV);
+            delete core;
             break;
     }
 }
 
-void runOnce(int argc, const char **argv) { // simulates launching a new program
+/* simulates launchig a new program */
+void runOnce(int argc, const char **argv) {
 
-                 // get the shared memory from the main process
     if(argc < 2){
         std::cout << "No configuration file!" <<
             " Using default settings" << std::endl;

@@ -149,17 +149,17 @@ void init() {
 int setWindowTexture(FireWindow win) {
     std::cout << "set win texture begin" << std::endl;
     XGrabServer(core->d);
-
-    if(win->mapTryNum --> 0) {        // we try five times
-        XMapWindow(core->d, win->id); // to map a window
-        syncWindowAttrib(win);        // in order to get a
-        XSync(core->d, 0);            // pixmap
-
-        if(win->pixmap)
-            XFreePixmap(core->d, win->pixmap);
-        win->pixmap = XCompositeNameWindowPixmap(core->d, win->id);
-
-    }
+//
+//    if(win->mapTryNum --> 0) {        // we try five times
+//        XMapWindow(core->d, win->id); // to map a window
+//        syncWindowAttrib(win);        // in order to get a
+//        XSync(core->d, 0);            // pixmap
+//
+//        if(win->pixmap)
+//            XFreePixmap(core->d, win->pixmap);
+//        win->pixmap = XCompositeNameWindowPixmap(core->d, win->id);
+//
+//    }
 
     if(win->attrib.map_state != IsViewable && !win->keepCount) {
         std::cout << "Invisible window " << win->id << std::endl;
@@ -173,6 +173,14 @@ int setWindowTexture(FireWindow win) {
         glBindTexture(GL_TEXTURE_2D, win->texture);
         std::cout << "set win texture use prev" << std::endl;
         return 1;
+    }
+
+    XWindowAttributes xwa;
+    if(!win->mapTryNum && !XGetWindowAttributes(core->d, win->id, &xwa)) {
+        std::cout << "Could not get xwindowattributes! "
+            << win->id << std::endl;;
+        win->norender = true;
+        return 0;
     }
 
     glDeleteTextures(1, &win->texture);
@@ -385,7 +393,7 @@ WindowType getWindowType(FireWindow win) {
         else if ( a == winTypeToolbarAtom )
             return WindowTypeWidget;
         else if ( a == winTypeUtilAtom )
-            return WindowTypeOther;
+            return WindowTypeWidget;
         else if ( a == winTypeSplashAtom )
             return WindowTypeNormal;
         else if ( a == winTypeDialogAtom )
@@ -399,9 +407,9 @@ WindowType getWindowType(FireWindow win) {
         else if ( a == winTypeNotificationAtom )
             return WindowTypeWidget;
         else if ( a == winTypeComboAtom )
-            return WindowTypeOther;
+            return WindowTypeWidget;
         else if ( a == winTypeDndAtom )
-            return WindowTypeOther;
+            return WindowTypeWidget;
     }
     return WindowTypeOther;
 }

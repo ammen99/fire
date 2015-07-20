@@ -55,9 +55,21 @@ FireWindow WinStack::findWindow(Window win) {
 void WinStack::renderWindows() {
     int num = 0;
 
-    if(__FireWindow::allDamaged)
-        XDestroyRegion(core->dmg),
+    if(__FireWindow::allDamaged) {
+        XDestroyRegion(core->dmg);
         core->dmg = copyRegion(output);
+
+        auto it = wins.rbegin();
+        while(it != wins.rend()) {
+            auto w = *it;
+            if(w && w->shouldBeDrawn()) {
+                w->transform.stackID = num--;
+                WinUtil::renderWindow(w);
+            }
+            ++it;
+        }
+        return;
+    }
 
     if(!core->dmg)
         core->dmg = copyRegion(output);
@@ -75,10 +87,6 @@ void WinStack::renderWindows() {
                 XIntersectRegion(core->dmg, w->region, tmp),
                 XXorRegion(core->dmg, tmp, core->dmg);
 
-//            if(w->mapTryNum)           // workaround for some 
-//                core->damageWindow(w),
-//                w->damaged = true;
-//
             winsToDraw.push_back(w);
         }
     }
