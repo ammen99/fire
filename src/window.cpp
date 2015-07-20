@@ -147,19 +147,7 @@ void init() {
 
 
 int setWindowTexture(FireWindow win) {
-    std::cout << "set win texture begin" << std::endl;
     XGrabServer(core->d);
-//
-//    if(win->mapTryNum --> 0) {        // we try five times
-//        XMapWindow(core->d, win->id); // to map a window
-//        syncWindowAttrib(win);        // in order to get a
-//        XSync(core->d, 0);            // pixmap
-//
-//        if(win->pixmap)
-//            XFreePixmap(core->d, win->pixmap);
-//        win->pixmap = XCompositeNameWindowPixmap(core->d, win->id);
-//
-//    }
 
     if(win->attrib.map_state != IsViewable && !win->keepCount) {
         std::cout << "Invisible window " << win->id << std::endl;
@@ -169,16 +157,12 @@ int setWindowTexture(FireWindow win) {
     }
 
     if(!win->damaged)  {
-//            (win->keepCount && win->attrib.map_state != IsViewable)) {
         glBindTexture(GL_TEXTURE_2D, win->texture);
-        std::cout << "set win texture use prev" << std::endl;
         return 1;
     }
 
     XWindowAttributes xwa;
     if(!win->mapTryNum && !XGetWindowAttributes(core->d, win->id, &xwa)) {
-        std::cout << "Could not get xwindowattributes! "
-            << win->id << std::endl;;
         win->norender = true;
         return 0;
     }
@@ -192,8 +176,6 @@ int setWindowTexture(FireWindow win) {
             win->attrib.width, win->attrib.height, &win->shared);
 
     XUngrabServer(core->d);
-
-    std::cout << "set win texture end" << std::endl;
     return 1;
 }
 
@@ -279,7 +261,6 @@ void finishWindow(FireWindow win) {
 
 void renderWindow(FireWindow win) {
 
-    std::cout << "Render win begin" << std::endl;
     OpenGLWorker::color = win->transform.color;
     if(win->type == WindowTypeDesktop){
         OpenGLWorker::renderTransformedTexture(win->texture,
@@ -299,8 +280,6 @@ void renderWindow(FireWindow win) {
     OpenGLWorker::depth = win->attrib.depth;
     OpenGLWorker::renderTransformedTexture(win->texture,
             win->vao, win->vbo, win->transform.compose());
-
-    std::cout << "render win end" << std::endl;
 }
 
 XVisualInfo *getVisualInfoForWindow(Window win) {
