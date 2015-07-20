@@ -305,9 +305,7 @@ GLuint textureFromPixmap(Pixmap pixmap, int w, int h, SharedImage *sim) {
             sim->existing = true;
             XShmAttach(core->d, &sim->shminfo);
         }
-        std::cout << "Wrong answer" << std::endl;
         XShmGetImage(core->d, pixmap, sim->image, 0, 0, AllPlanes);
-        std::cout << "yep , u guessed it" << std::endl;
 
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0,
                 GL_RGBA, GL_UNSIGNED_BYTE, (void*)(&sim->image->data[0]));
@@ -316,7 +314,6 @@ GLuint textureFromPixmap(Pixmap pixmap, int w, int h, SharedImage *sim) {
               the *slower* XGetImage */
         auto xim = XGetImage(core->d, pixmap, 0, 0, w, h, AllPlanes, ZPixmap);
         if(xim == nullptr){
-            std::cout << "xgetimage returned null!!" << std::endl;
             return -1;
         }
 
@@ -324,8 +321,6 @@ GLuint textureFromPixmap(Pixmap pixmap, int w, int h, SharedImage *sim) {
                 GL_RGBA, GL_UNSIGNED_BYTE, (void*)(&xim->data[0]));
         XDestroyImage(xim);
     }
-
-    std::cout << "tex from win end" << std::endl;
 
     return tex;
 }

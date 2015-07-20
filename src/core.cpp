@@ -48,7 +48,7 @@ void Core::init() {
     if ( d == nullptr )
         std::cout << "Failed to open display!" << std::endl;
 
-    XSynchronize(d, 1);
+    //XSynchronize(d, 1);
 
     root = DefaultRootWindow(d);
     fd.fd = ConnectionNumber(d);
