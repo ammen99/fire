@@ -48,6 +48,8 @@ void Core::init() {
     if ( d == nullptr )
         std::cout << "Failed to open display!" << std::endl;
 
+    XSynchronize(d, 1);
+
     root = DefaultRootWindow(d);
     fd.fd = ConnectionNumber(d);
     fd.events = POLLIN;
@@ -105,7 +107,6 @@ void Core::init() {
 
     run(const_cast<char*>("setxkbmap -model pc104 -layout us,bg -variant ,phonetic -option grp:alt_shift_toggle"));
 
-    std::cout << "Made it to here" << std::endl;
     initDefaultPlugins();
 
     /* load core options */
@@ -115,9 +116,7 @@ void Core::init() {
     config->setOptionsForPlugin(plug);
     plug->updateConfiguration();
 
-    std::cout << "loaded default plugins" << std::endl;
     loadDynamicPlugins();
-    std::cout << "loaded dynamic plugins" << std::endl;
 
     for(auto p : plugins) {
         p->owner = std::make_shared<_Ownership>();
@@ -175,24 +174,16 @@ void Core::addExistingWindows() {
 
 Core::~Core(){
 
-    for(auto p : plugins)
+    for(auto p : plugins) {
+        if(p->dynamic)
+            dlclose(p->handle),
         p.reset();
-
-    int nx, ny;
-    for(auto w : wins->wins) {
-        nx = w->attrib.x % width;
-        ny = w->attrib.y % height;
-
-        nx += width; ny += height;
-        ny %= width; ny %= height;
-
-        WinUtil::moveWindow(w, nx, ny);
     }
 
     XDestroyWindow(core->d, outputwin);
     XDestroyWindow(core->d, s0owner);
+
     XCompositeReleaseOverlayWindow(d, overlay);
-    XCloseDisplay(d);
 }
 
 void Core::run(char *command) {
@@ -364,8 +355,6 @@ void Core::setBackground(const char *path) {
             wins->addWindow(backgrounds[i][j]);
         }
     }
-    std::cout << "dort" << std::endl;
-
 }
 
 FireWindow Core::findWindow(Window win) {
@@ -375,6 +364,8 @@ FireWindow Core::findWindow(Window win) {
 }
 
 FireWindow Core::getActiveWindow() {
+    if(!wins->activeWin)
+        return wins->getTopmostToplevel();
     return wins->activeWin;
 }
 
@@ -452,21 +443,37 @@ void Core::wait(int timeout) {
     poll(&fd, 1, timeout / 1000); // convert from usec to msec
 }
 
-void Core::mapWindow(FireWindow win) {
+void Core::mapWindow(FireWindow win, bool xmap) {
+
     win->norender = false;
     win->damaged = true;
     new AnimationHook(new Fade(win), this);
+
+    if(xmap) {
+        XMapWindow(d, win->id);
+        XSync(d, 0);
+
+        if(win->pixmap)
+            XFreePixmap(d, win->pixmap);
+        win->pixmap = XCompositeNameWindowPixmap(d, win->id);
+    }
+
+    win->pixmap = XCompositeNameWindowPixmap(d, win->id);
+
     win->attrib.map_state = IsViewable;
     damageWindow(win);
 
     WinUtil::syncWindowAttrib(win);
+
     if(win->transientFor)
         wins->restackTransients(win->transientFor);
+
 }
 
 void Core::unmapWindow(FireWindow win) {
     win->attrib.map_state = IsUnmapped;
     new AnimationHook(new Fade(win, Fade::FadeOut), this);
+
 }
 
 void Core::regOwner(Ownership owner) {
@@ -586,11 +593,8 @@ void Core::handleEvent(XEvent xev){
             break;
         }
         case MapNotify: {
-            auto w = wins->findWindow(xev.xmap.window);
-            if(w == nullptr)
-                break;
-
-            //mapWindow(w);
+            auto w = findWindow(xev.xmap.window);
+            if(w) mapWindow(w, false);
             break;
         }
         case UnmapNotify: {
@@ -682,6 +686,8 @@ void Core::handleEvent(XEvent xev){
                         focusWindow(w);
             }
 
+            mapWindow(w);
+
         }
 
         case PropertyNotify: {
@@ -761,7 +767,6 @@ void Core::handleEvent(XEvent xev){
     }
 }
 
-#define RefreshRate 61
 #define Second 1000000
 #define MaxDelay 1000
 #define MinRR 61
@@ -778,6 +783,7 @@ void Core::loop(){
     XEvent xev;
 
     while(!terminate) {
+
         /* handle current events */
         while(XPending(d)) {
             XNextEvent(d, &xev);
@@ -791,7 +797,8 @@ void Core::loop(){
         if(diff < currentCycle) {     // we have time to next redraw, wait
             wait(currentCycle - diff);// for events
 
-            if(fd.revents & POLLIN || !resetDMG) { /* disable optimisation */
+            if(fd.revents & POLLIN || !resetDMG || cntHooks) {
+                /* disable optimisation */
                 hadEvents = true;
                 currentCycle = baseCycle;
                 continue;
@@ -835,23 +842,9 @@ int Core::onXError(Display *d, XErrorEvent *xev) {
     if(xev->resourceid == 0) // invalid window
         return 0;
 
-    return 0;
+    //return 0;
     /* some of the calls to obtain a texture from this window
      * have failed, so don't draw it the next time */
-
-    if(xev->error_code == BadMatch    ||
-       xev->error_code == BadDrawable ||
-       xev->error_code == BadWindow   ){
-
-       std::cout << "caught BadMatch/Drawable/Window. Disabling window drawing "
-            << xev->resourceid;
-
-        auto x = core->wins->findWindow(xev->resourceid);
-        if (x != nullptr)
-            x->norender = true;
-
-        return 0;
-    }
 
     std::cout << std::endl << "____________________________" << std::endl;
     std::cout << "XError code   " << int(xev->error_code) << std::endl;
@@ -993,8 +986,8 @@ namespace {
     }
 }
 
-PluginPtr Core::loadPluginFromFile(std::string path) {
-    void *handle = dlopen(path.c_str(), RTLD_LAZY);
+PluginPtr Core::loadPluginFromFile(std::string path, void **h) {
+    void *handle = dlopen(path.c_str(), RTLD_NOW);
     if(handle == NULL){
         std::cout << "Error loading plugin " << path << std::endl;
         std::cout << dlerror() << std::endl;
@@ -1009,6 +1002,7 @@ PluginPtr Core::loadPluginFromFile(std::string path) {
         return nullptr;
     }
     LoadFunction init = unionCast<void*, LoadFunction>(initptr);
+    *h = handle;
     return std::shared_ptr<Plugin>(init());
 }
 
@@ -1019,8 +1013,12 @@ void Core::loadDynamicPlugins() {
     std::string plugin;
     while(stream >> plugin){
         if(plugin != "") {
-            auto ptr = loadPluginFromFile(path + "/" + plugin + ".so");
-            if(ptr) plugins.push_back(ptr);
+            void *handle;
+            auto ptr = loadPluginFromFile(path + "/" + plugin + ".so",
+                    &handle);
+            if(ptr) ptr->handle  = handle,
+                    ptr->dynamic = true,
+                    plugins.push_back(ptr);
         }
     }
 }

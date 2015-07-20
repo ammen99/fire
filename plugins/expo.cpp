@@ -205,6 +205,7 @@ class Expo : public Plugin {
             if(!active) {
                 output = core->getMaximisedRegion();
                 core->setRedrawEverything(false);
+                core->dmg = core->getMaximisedRegion();
                 core->getWindowAtPoint = save;
             }
 

@@ -50,9 +50,10 @@ class __FireWindow {
         bool damaged = true;
 
         int mapTryNum = 5; // how many times have we tried to map this window?
-        int keepCount = 0; // used to determine whether to destory window
+        int keepCount = 0; // used to determine whether to destroy window
         Transform transform;
 
+        bool disableVBOChange = false;
         GLuint vbo = -1;
         GLuint vao = -1;
 
@@ -65,6 +66,8 @@ class __FireWindow {
         WindowType type;
         XWindowAttributes attrib;
         Region region = nullptr;
+
+        Pixmap pixmap = 0;
         SharedImage shared;
 
         bool shouldBeDrawn();

@@ -182,6 +182,12 @@ class ATSwitcher : public Plugin {
         windows = core->getWindowsOnViewport(core->getWorkspace());
         std::cout << "Switcher initiated with " << windows.size() <<
             " windows" << std::endl;
+
+        if(windows.size() == 1) {
+            core->deactivateOwner(owner);
+            return;
+        }
+
         active = true;
 
         background = nullptr;
@@ -196,6 +202,8 @@ class ATSwitcher : public Plugin {
         }
 
         for(auto w : windows) {
+
+            std::cout << "Switcher got winID = " << w->id << std::endl;
             WinAttrib wia;
             wia.win = w;
 
@@ -207,6 +215,7 @@ class ATSwitcher : public Plugin {
 
             w->transform.translation = glm::translate(
                     glm::mat4(), glm::vec3(offx, offy, 0));
+            w->disableVBOChange = true;
             OpenGLWorker::generateVAOVBO(w->attrib.width,
                     w->attrib.height, w->vao, w->vbo);
         }
@@ -361,6 +370,7 @@ class ATSwitcher : public Plugin {
                 w->transform.translation =
                 w->transform.rotation    = glm::mat4(),
                 w->transform.color[3] = 1,
+                w->disableVBOChange = false,
                 OpenGLWorker::generateVAOVBO(w->attrib.x,
                         w->attrib.y,
                         w->attrib.width,

@@ -79,5 +79,3 @@ std::pair<std::string, Data*> newStringOption(std::string name,
     pair.second->def.sval = new std::string(defaultVal);
     return pair;
 }
-
-
