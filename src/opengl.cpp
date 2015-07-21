@@ -164,10 +164,14 @@ void preStage() {
     int blx = rect.x;
     int bly = sh - (rect.y + rect.height);
 
-    if(!__FireWindow::allDamaged) // do not scissor if damaging everything
-        glScissor(blx, bly, rect.width, rect.height);
-    else
-        glScissor(0, 0, sw, sh);
+    int x = blx, y = bly, w = rect.width, h = rect.height;
+
+    if(__FireWindow::allDamaged)
+        x = y = 0, w = sw, h = sh;
+
+    glScissor(x, y, w, h);
+//    glAddSwapHintRectWIN(x, y, w, h);
+
 }
 
 void endStage() {
@@ -180,7 +184,16 @@ void endStage() {
     GetTuple(sw, sh, core->getScreenSize());
     glScissor(0, 0, sw, sh);
 
+
+    //glClear(GL_COLOR_BUFFER_BIT);
     renderTexture(framebufferTexture, fullVAO, fullVBO);
+    glFlush();
+    //glFinish();
+
+    uint sync;
+    GLXUtils::glXGetVideoSyncSGI_func(&sync);
+    GLXUtils::glXWaitVideoSyncSGI_func(2, (sync + 1) % 2, &sync);
+
     glXSwapBuffers(core->d, core->outputwin);
     glUniform1i(bgraID, 0);
 }
@@ -193,8 +206,8 @@ void initOpenGL(const char *shaderSrcPath) {
 
     GetTuple(sw, sh, core->getScreenSize());
 
-    glClearColor (.0f, .0f, .0f, 1.f);
-    glClearDepth (1.f);
+    glClearColor (.0f, .0f, .0f, 0.f);
+    //glClearDepth (1.f);
 //    glEnable     (GL_DEPTH_TEST);
     glEnable     (GL_ALPHA_TEST);
     glEnable     (GL_BLEND);
@@ -264,11 +277,11 @@ void initOpenGL(const char *shaderSrcPath) {
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, sw, sh, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
 
 
-//    glGenRenderbuffers(1, &depthbuffer);
-//    glBindRenderbuffer(GL_RENDERBUFFER, depthbuffer);
-//    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, sw, sh);
-//    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
-//            GL_RENDERBUFFER, depthbuffer);
+    glGenRenderbuffers(1, &depthbuffer);
+    glBindRenderbuffer(GL_RENDERBUFFER, depthbuffer);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, sw, sh);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+            GL_RENDERBUFFER, depthbuffer);
 
     glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, framebufferTexture, 0);
 

@@ -5,6 +5,11 @@
 class Core;
 struct SharedImage;
 namespace GLXUtils {
+
+    extern PFNGLXWAITVIDEOSYNCSGIPROC glXWaitVideoSyncSGI_func;
+    extern PFNGLXGETVIDEOSYNCSGIPROC glXGetVideoSyncSGI_func;
+
+
     void initGLX();
 
     void destroyContext(Window win);

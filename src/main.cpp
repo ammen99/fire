@@ -164,7 +164,9 @@ void runOnce(int argc, const char **argv) {
 
     std::cout << "set up everything" << std::endl;
     core = new Core(shdata[1], shdata[2]);
+    std::cout << "Calling init" << std::endl;
     core->init();
+    std::cout << "Fail " << std::endl;
     core->loop();
     std::cout << "after loop" << std::endl;
 

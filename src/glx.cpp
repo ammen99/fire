@@ -3,6 +3,11 @@
 
 namespace GLXUtils {
 
+
+    PFNGLXWAITVIDEOSYNCSGIPROC glXWaitVideoSyncSGI_func = NULL;
+    PFNGLXGETVIDEOSYNCSGIPROC glXGetVideoSyncSGI_func = NULL;
+
+
     namespace {
         typedef GLXContext (*glXCreateContextAttribsARBProc) (Display*,
                 GLXFBConfig, GLXContext,
@@ -10,6 +15,10 @@ namespace GLXUtils {
 
         PFNGLXBINDTEXIMAGEEXTPROC glXBindTexImageEXT_func = NULL;
         PFNGLXRELEASETEXIMAGEEXTPROC glXReleaseTexImageEXT_func = NULL;
+
+        PFNGLXSWAPINTERVALMESAPROC glXSwapIntervalMESA_func = NULL;
+        //PFNGLXWAITVIDEOSYNCSGIPROC glXWaitVideoSyncSGI_func = NULL;
+        //PFNGLXGETVIDEOSYNCSGIPROC glXGetVideoSyncSGI_func = NULL;
 
         bool useXShm = false;
         XVisualInfo *defaultVisual;
@@ -119,6 +128,7 @@ static int attrListDbl[] = {
  };
 static int attrListVisual[] = {
      GLX_RGBA, GLX_DOUBLEBUFFER,
+     GLX_RGBA,
      GLX_RED_SIZE, 8,
      GLX_BLUE_SIZE, 8,
      GLX_GREEN_SIZE, 8,
@@ -178,6 +188,7 @@ Window createNewWindowWithContext(Window parent) {
             fbconfig[0], NULL, true, ogl44 );
 
     glXMakeCurrent ( core->d, window, context );
+    //glXSwapIntervalMESA(1);
     return window;
 }
 
@@ -209,6 +220,21 @@ void initGLX() {
         glXGetProcAddress((GLubyte *) "glXBindTexImageEXT");
     glXReleaseTexImageEXT_func = (PFNGLXRELEASETEXIMAGEEXTPROC)
         glXGetProcAddress((GLubyte*) "glXReleaseTexImageEXT");
+
+    glXSwapIntervalMESA_func = (PFNGLXSWAPINTERVALMESAPROC)
+        glXGetProcAddress((GLubyte *) "glXSwapIntervalMESA");
+
+    glXWaitVideoSyncSGI_func = (PFNGLXWAITVIDEOSYNCSGIPROC)
+        glXGetProcAddress((GLubyte *) "glXWaitVideoSyncSGI");
+
+    glXGetVideoSyncSGI_func = (PFNGLXGETVIDEOSYNCSGIPROC)
+        glXGetProcAddress((GLubyte *) "glXGetVideoSyncSGI");
+
+    if(glXSwapIntervalMESA_func == NULL) {
+        std::cout << "Posibble reason for crashing" << std::endl;
+    }
+
+    //glXSwapIntervalMESA_func(1);
 
     int ignore, major, minor;
     Bool pixmaps;
@@ -263,6 +289,18 @@ GLuint loadShader(const char *path, GLuint type) {
     return compileShader(str.c_str(), type);
 }
 
+//<<<<<<< Updated upstream
+//=======
+//
+//void endFrame(Window win) {
+//    uint sync;
+//    glXGetVideoSyncSGI_func(&sync);
+//    glXWaitVideoSyncSGI_func(2, (sync + 1) % 2, &sync);
+//    glXSwapBuffers(core->d, win);
+//    //glClear(GL_COLOR_BUFFER_BIT);
+//}
+//
+//>>>>>>> Stashed changes
 GLuint textureFromPixmap(Pixmap pixmap, int w, int h, SharedImage *sim) {
     GLuint tex;
     glGenTextures(1, &tex);
