@@ -34,7 +34,7 @@ Transform::Transform() {
 
 glm::mat4 Transform::compose() {
     float c = -1;
-    if(OpenGLWorker::transformed)
+    if(OpenGL::transformed)
         c = 1;
 
     c = 1;
@@ -78,12 +78,12 @@ void __FireWindow::updateVBO() {
         return;
 
     if(type == WindowTypeDesktop)
-        OpenGLWorker::generateVAOVBO(attrib.x,
+        OpenGL::generateVAOVBO(attrib.x,
             attrib.y + attrib.height,
             attrib.width, -attrib.height,
             vao, vbo);
     else
-        OpenGLWorker::generateVAOVBO(attrib.x, attrib.y,
+        OpenGL::generateVAOVBO(attrib.x, attrib.y,
             attrib.width, attrib.height,
             vao, vbo);
 }
@@ -261,9 +261,9 @@ void finishWindow(FireWindow win) {
 
 void renderWindow(FireWindow win) {
 
-    OpenGLWorker::color = win->transform.color;
+    OpenGL::color = win->transform.color;
     if(win->type == WindowTypeDesktop){
-        OpenGLWorker::renderTransformedTexture(win->texture,
+        OpenGL::renderTransformedTexture(win->texture,
                 win->vao, win->vbo,
                 win->transform.compose());
         return;
@@ -277,8 +277,8 @@ void renderWindow(FireWindow win) {
     if(win->vbo == -1 || win->vao == -1)
         win->updateVBO();
 
-    OpenGLWorker::depth = win->attrib.depth;
-    OpenGLWorker::renderTransformedTexture(win->texture,
+    OpenGL::depth = win->attrib.depth;
+    OpenGL::renderTransformedTexture(win->texture,
             win->vao, win->vbo, win->transform.compose());
 }
 

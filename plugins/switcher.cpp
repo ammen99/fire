@@ -216,11 +216,11 @@ class ATSwitcher : public Plugin {
             w->transform.translation = glm::translate(
                     glm::mat4(), glm::vec3(offx, offy, 0));
             w->disableVBOChange = true;
-            OpenGLWorker::generateVAOVBO(w->attrib.width,
+            OpenGL::generateVAOVBO(w->attrib.width,
                     w->attrib.height, w->vao, w->vbo);
         }
 ////
-        OpenGLWorker::transformed = true;
+        OpenGL::transformed = true;
         if(background) {
             background->transform.translation = glm::translate(glm::mat4(),
                     glm::vec3(0.f, 0.f, -1.0f));
@@ -371,7 +371,7 @@ class ATSwitcher : public Plugin {
                 w->transform.rotation    = glm::mat4(),
                 w->transform.color[3] = 1,
                 w->disableVBOChange = false,
-                OpenGLWorker::generateVAOVBO(w->attrib.x,
+                OpenGL::generateVAOVBO(w->attrib.x,
                         w->attrib.y,
                         w->attrib.width,
                         w->attrib.height,
@@ -385,7 +385,7 @@ class ATSwitcher : public Plugin {
                 background->transform.translation = glm::mat4(),
                 background->transform.scalation   = glm::mat4();
 
-            OpenGLWorker::transformed = false;
+            OpenGL::transformed = false;
             winsToMove.clear();
         }
     }
