@@ -268,7 +268,6 @@ void endFrame(Window win) {
 }
 
 GLuint textureFromPixmap(Pixmap pixmap, int w, int h, SharedImage *sim) {
-    std::cout << "texfromwin b" << std::endl;
     GLuint tex;
     glGenTextures(1, &tex);
     glBindTexture(GL_TEXTURE_2D, tex);

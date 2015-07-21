@@ -111,6 +111,14 @@ void signalHandle(int sig) {
             core->terminate = true;  // and make core exit
             break;
 
+        case SIGUSR1:
+            std::cout << "SIGUSR1" << std::endl;
+            shdata[0] = 1;
+            if(!core) {
+                std::cout << "in main process" << std::endl;
+            }
+            break;
+
         default: // program crashed, so restart core
             std::cout << "Crash Detected!!!!!!" << std::endl;
             shdata[0] = 1;
@@ -148,6 +156,7 @@ void runOnce(int argc, const char **argv) {
     signal(SIGSEGV, signalHandle);
     signal(SIGFPE, signalHandle);
     signal(SIGILL, signalHandle);
+    signal(SIGUSR1, signalHandle);
 
     Transform::proj = Transform::view =
     Transform::grot = Transform::gscl =
@@ -172,6 +181,7 @@ int main(int argc, const char **argv ) {
     signal(SIGSEGV, signalHandle);
     signal(SIGFPE, signalHandle);
     signal(SIGILL, signalHandle);
+    signal(SIGUSR1, signalHandle);
 
     /* get a bit of shared memory
      * it is used to check if fork() wants us to exit
