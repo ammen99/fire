@@ -131,7 +131,7 @@ void Core::init() {
 
     WinUtil::init();
     GLXUtils::initGLX();
-    OpenGLWorker::initOpenGL((*plug->options["shadersrc"]->data.sval).c_str());
+    OpenGL::initOpenGL((*plug->options["shadersrc"]->data.sval).c_str());
 
     dmg = getMaximisedRegion();
     resetDMG = true;
@@ -326,7 +326,7 @@ void Core::setBackground(const char *path) {
     auto texture = GLXUtils::loadImage(const_cast<char*>(path));
 
     uint vao, vbo;
-    OpenGLWorker::generateVAOVBO(0, height, width, -height, vao, vbo);
+    OpenGL::generateVAOVBO(0, height, width, -height, vao, vbo);
 
     backgrounds.clear();
     backgrounds.resize(vheight);
@@ -430,9 +430,9 @@ void Core::closeWindow(FireWindow win) {
 void Core::renderAllWindows() {
     XIntersectRegion(dmg, output, dmg);
 
-    OpenGLWorker::preStage();
+    OpenGL::preStage();
     wins->renderWindows();
-    GLXUtils::endFrame(outputwin);
+    OpenGL::endStage();
 
     if(resetDMG)
         XDestroyRegion(dmg),
