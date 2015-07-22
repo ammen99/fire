@@ -263,7 +263,7 @@ void WinStack::updateTransientsAttrib(FireWindow win,
             glDeleteBuffers(1, &w->vbo);
             glDeleteVertexArrays(1, &w->vao);
 
-            OpenGLWorker::generateVAOVBO(w->attrib.x, w->attrib.y,
+            OpenGL::generateVAOVBO(w->attrib.x, w->attrib.y,
                     w->attrib.width, w->attrib.height, w->vao, w->vbo);
         }
     }

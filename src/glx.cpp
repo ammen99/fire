@@ -233,16 +233,16 @@ GLuint compileShader(const char *src, GLuint type) {
     if ( s == GL_FALSE ) {
         std::stringstream srcStream, errorStream;
         std::string line;
-        err << "shader compilation failed!";
-        err << "src: *****************************";
+        err << "shader compilation failed!" << std::endl;;
+        err << "src: *****************************" << std::endl;
         srcStream << src;
         while(std::getline(srcStream, line))
-            err << line;
-        err << "**********************************";
+            err << line << std::endl;
+        err << "**********************************" << std::endl;
         errorStream << b1;
         while(std::getline(errorStream, line))
-            err << line;
-        err << "**********************************";
+            err << line << std::endl;
+        err << "**********************************" << std::endl;
         return -1;
     }
     return shader;
@@ -260,11 +260,6 @@ GLuint loadShader(const char *path, GLuint type) {
         str += line, str += '\n';
 
     return compileShader(str.c_str(), type);
-}
-
-
-void endFrame(Window win) {
-    glXSwapBuffers(core->d, win);
 }
 
 GLuint textureFromPixmap(Pixmap pixmap, int w, int h, SharedImage *sim) {
