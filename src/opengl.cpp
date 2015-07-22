@@ -5,14 +5,12 @@ bool OpenGLWorker::transformed = false;
 GLuint OpenGLWorker::program;
 GLuint OpenGLWorker::mvpID;
 GLuint OpenGLWorker::transformID;
-GLuint OpenGLWorker::normalID;
 GLuint OpenGLWorker::depthID;
 GLuint OpenGLWorker::colorID;
 
 glm::mat4 OpenGLWorker::MVP;
 glm::mat4 OpenGLWorker::View;
 glm::mat4 OpenGLWorker::Proj;
-glm::mat3 OpenGLWorker::NM;
 
 int   OpenGLWorker::depth;
 glm::vec4 OpenGLWorker::color;
@@ -226,7 +224,6 @@ void OpenGLWorker::initOpenGL(const char *shaderSrcPath) {
     glUseProgram (program);
 
     mvpID = glGetUniformLocation(program, "MVP");
-    normalID = glGetUniformLocation(program, "NormalMatrix");
     depthID = glGetUniformLocation(program, "depth");
     colorID = glGetUniformLocation(program, "color");
     color = glm::vec4(1.f, 1.f, 1.f, 1.f);
@@ -237,10 +234,8 @@ void OpenGLWorker::initOpenGL(const char *shaderSrcPath) {
     Proj = glm::perspective(45.f, 1.f, .1f, 100.f);
 
     MVP = glm::mat4();
-    NM = glm::inverse(glm::transpose(glm::mat3(View)));
 
     glUniformMatrix4fv(mvpID, 1, GL_FALSE, &MVP[0][0]);
-    glUniformMatrix3fv(normalID, 1, GL_FALSE, &NM[0][0]);
 
     auto w2ID = glGetUniformLocation(program, "w2");
     auto h2ID = glGetUniformLocation(program, "h2");
