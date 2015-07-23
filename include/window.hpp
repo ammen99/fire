@@ -9,6 +9,13 @@ enum WindowType {
     WindowTypeOther
 };
 
+enum WindowState {
+    WindowStateSticky,
+    WindowStateNormal,
+    WindowStateSkipTaskbar,
+    WindowStateFullscreen
+};
+
 class Transform {
     public: // applied to all windows
         static glm::mat4 proj;
@@ -37,6 +44,8 @@ struct SharedImage {
     bool existing = false;
 };
 
+enum Layer {LayerAbove = 0, LayerNormal = 1, LayerBelow = 2};
+
 class __FireWindow {
     public:
 
@@ -61,6 +70,7 @@ class __FireWindow {
 
         std::shared_ptr<__FireWindow> transientFor; // transientFor
         std::shared_ptr<__FireWindow> leader;
+        Layer layer;
 
         char *name;
         WindowType type;
@@ -69,6 +79,7 @@ class __FireWindow {
 
         Pixmap pixmap = 0;
         SharedImage shared;
+
 
         bool shouldBeDrawn();
         void updateVBO();

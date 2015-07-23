@@ -445,25 +445,34 @@ void Core::wait(int timeout) {
 
 void Core::mapWindow(FireWindow win, bool xmap) {
 
+    std::cout << "mapping a window" << std::endl;
+
     win->norender = false;
     win->damaged = true;
+    std::cout << "adding hook" << std::endl;
     new AnimationHook(new Fade(win), this);
+
+    std::cout << "hook added" << std::endl;
 
     if(xmap) {
         XMapWindow(d, win->id);
         XSync(d, 0);
 
-        if(win->pixmap)
-            XFreePixmap(d, win->pixmap);
+        //if(win->pixmap)
+        //    XFreePixmap(d, win->pixmap);
         win->pixmap = XCompositeNameWindowPixmap(d, win->id);
     }
 
     win->pixmap = XCompositeNameWindowPixmap(d, win->id);
+    std::cout << "got pixmap" << std::endl;
 
     win->attrib.map_state = IsViewable;
     damageWindow(win);
 
+    std::cout << "damaged win" << std::endl;
+
     WinUtil::syncWindowAttrib(win);
+    std::cout << "syncing win attrib" << std::endl;
 
     if(win->transientFor)
         wins->restackTransients(win->transientFor);
@@ -548,9 +557,11 @@ bool Core::checkButRelease(ButtonBinding *bb, XButtonEvent kb) {
 }
 
 void Core::handleEvent(XEvent xev){
+    std::cout << "handle event start" << std::endl;
     switch(xev.type) {
         case Expose:
             dmg = getMaximisedRegion();
+            break;
         case KeyPress: {
             // check keybindings
             for(auto kb : keys)
@@ -560,6 +571,7 @@ void Core::handleEvent(XEvent xev){
         }
 
         case CreateNotify: {
+            std::cout << "Create notify" << std::endl;
             if (xev.xcreatewindow.window == overlay)
                 break;
 
@@ -586,6 +598,7 @@ void Core::handleEvent(XEvent xev){
             break;
         }
         case MapRequest: {
+            std::cout << "map req" << std::endl;
             auto w = wins->findWindow(xev.xmaprequest.window);
             if(w == nullptr)
                 break;
@@ -593,7 +606,9 @@ void Core::handleEvent(XEvent xev){
             break;
         }
         case MapNotify: {
+            std::cout << "map notify" << std::endl;
             auto w = findWindow(xev.xmap.window);
+            std::cout << "dort" << std::endl;
             if(w) mapWindow(w, false);
             break;
         }
@@ -608,6 +623,8 @@ void Core::handleEvent(XEvent xev){
         case ButtonPress: {
             mousex = xev.xbutton.x_root;
             mousey = xev.xbutton.y_root;
+
+            std::cout << "button press" << std::endl;
 
             for(auto bb : buttons)
                 if(checkButPress(bb.second, xev.xbutton)) {
@@ -635,6 +652,7 @@ void Core::handleEvent(XEvent xev){
             break;
 
         case ConfigureRequest: {
+            std::cout << "Configure request" << std::endl;
             auto w = findWindow(xev.xconfigurerequest.window);
             if(!w) { // from compiz window manager
                 XWindowChanges xwc;
@@ -671,33 +689,44 @@ void Core::handleEvent(XEvent xev){
             WinUtil::moveWindow(w, x, y);
             WinUtil::resizeWindow(w, width, height);
 
-            if(xev.xconfigurerequest.value_mask & CWStackMode) {
-                if(xev.xconfigurerequest.above) {
-                    auto below = findWindow(xev.xconfigurerequest.above);
-                    if(below) {
-                        if(xev.xconfigurerequest.detail == Above)
-                            wins->restackAbove(w, below);
-                        else
-                            wins->restackAbove(below, w);
-                    }
-                }
-                else
-                    if(xev.xconfigurerequest.detail == Above)
-                        focusWindow(w);
-            }
+//            if(xev.xconfigurerequest.value_mask & CWStackMode) {
+//                if(xev.xconfigurerequest.above) {
+//                    auto below = findWindow(xev.xconfigurerequest.above);
+//                    if(below) {
+//                        if(xev.xconfigurerequest.detail == Above)
+//                            wins->restackAbove(w, below);
+//                        else
+//                            wins->restackAbove(below, w);
+//                    }
+//                }
+//                else
+//                    if(xev.xconfigurerequest.detail == Above)
+//                        focusWindow(w);
+//            }
 
             mapWindow(w);
 
         }
 
         case PropertyNotify: {
+            std::cout << "property notify" << std::endl;
             auto w = findWindow(xev.xproperty.window);
             if(!w)
                 break;
 
-            if(xev.xproperty.atom == winTypeAtom)
-                w->type = WinUtil::getWindowType(w),
+            if(xev.xproperty.atom == winTypeAtom) {
+                std::cout << "win type atom" << std::endl;
+                w->type = WinUtil::getWindowType(w);
+                std::cout << w->type << std::endl;
+
+                /* move to LayerAbove or LayerBelow */
+                if(w->type == WindowTypeDock ||
+                        w->type == WindowTypeModal ||
+                        w->type == WindowTypeDesktop)
+                    wins->recalcWindowLayer(w);
+
                 wins->restackTransients(w);
+            }
 
             if(xev.xproperty.atom == XA_WM_TRANSIENT_FOR)
                 w->transientFor = WinUtil::getTransient(w),
@@ -765,6 +794,7 @@ void Core::handleEvent(XEvent xev){
             break;
             }
     }
+    std::cout << "handle event end" << std::endl;
 }
 
 #define Second 1000000
@@ -879,8 +909,11 @@ void Core::switchWorkspace(std::tuple<int, int> nPos) {
     auto dx = (vx - nx) * width;
     auto dy = (vy - ny) * height;
 
-    for(auto w : wins->wins)
+    using namespace std::placeholders;
+    auto proc = [dx, dy] (FireWindow w) {
         WinUtil::moveWindow(w, w->attrib.x + dx, w->attrib.y + dy);
+    };
+    wins->forEachWindow(proc);
 
     vx = nx;
     vy = ny;
@@ -899,16 +932,17 @@ std::vector<FireWindow> Core::getWindowsOnViewport(std::tuple<int, int> vp) {
 
     std::vector<FireWindow> ret;
     Region tmp = XCreateRegion();
-    for(auto w : wins->wins) {
+
+    auto proc = [view, &ret, tmp] (FireWindow w) {
         if(!w->region)
-            continue;
-        if(!view)
-            continue;
+            return;
 
         XIntersectRegion(view, w->region, tmp);
         if(tmp && !XEmptyRegion(tmp) && !w->norender)
             ret.push_back(w);
-    }
+    };
+
+    wins->forEachWindow(proc);
     XDestroyRegion(view);
     XDestroyRegion(tmp);
 
