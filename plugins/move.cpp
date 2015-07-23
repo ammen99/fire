@@ -78,11 +78,11 @@ class Move : public Plugin {
             int nx = win->attrib.x + dx;
             int ny = win->attrib.y + dy;
 
-            WinUtil::moveWindow(win, nx, ny);
+            win->move(nx, ny);
             core->setRedrawEverything(false);
 
             core->focusWindow(win);
-            core->damageWindow(win);
+            win->addDamage();
         }
 
         void Intermediate() {

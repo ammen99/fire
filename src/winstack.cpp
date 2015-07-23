@@ -28,9 +28,14 @@ void WinStack::addWindow(FireWindow win) {
 
 Layer WinStack::getTargetLayerForWindow(FireWindow win) {
     if(win->type == WindowTypeDesktop)
+//           win->state & WindowStateBelow)
         return LayerBelow;
 
-    else if(win->type == WindowTypeDock || win->type == WindowTypeModal)
+    else if(win->type == WindowTypeDock ||
+            win->type == WindowTypeModal)
+//            win->state & WindowStateAbove ||
+//            win->state & WindowStateFullscreen)
+
         return LayerAbove;
 
     else return LayerNormal;
@@ -63,8 +68,7 @@ StackIterator WinStack::getIteratorPositionForWindow(FireWindow win) {
 }
 
 FireWindow WinStack::findWindow(Window win) {
-    FireWindow tmp = std::make_shared<__FireWindow>();
-    tmp->id = win;
+    FireWindow tmp = std::make_shared<FireWin>(win, false);
 
     for(int layer = 0; layer < layers.size(); layer++) {
         tmp->layer = (Layer)layer;
@@ -79,7 +83,7 @@ FireWindow WinStack::findWindow(Window win) {
 void WinStack::renderWindows() {
     int num = 0;
 
-    if(__FireWindow::allDamaged) {
+    if(FireWin::allDamaged) {
         XDestroyRegion(core->dmg);
         core->dmg = copyRegion(output);
 
@@ -87,10 +91,10 @@ void WinStack::renderWindows() {
             auto it = layers[layer].rbegin();
             while(it != layers[layer].rend()) {
                 auto w = *it;
-                if(w && w->shouldBeDrawn()) {
-                    w->transform.stackID = num--;
-                    WinUtil::renderWindow(w);
-                }
+                if(w && w->shouldBeDrawn())
+                    w->transform.stackID = num--,
+                    w->render();
+
                 ++it;
             }
         }
@@ -122,7 +126,7 @@ void WinStack::renderWindows() {
 
     auto it = winsToDraw.rbegin();
     while(it != winsToDraw.rend())
-        WinUtil::renderWindow(*it), ++it;
+        (*it)->render(), ++it;
 
     XDestroyRegion(tmp);
 }
@@ -357,8 +361,8 @@ void WinStack::focusWindow(FireWindow win) {
     XConfigureWindow(core->d, activeWin->id, CWSibling|CWStackMode, &xwc);
 
     WinUtil::setInputFocusToWindow(activeWin->id);
-    core->damageWindow(w1);
-    core->damageWindow(w2);
+    w1->addDamage();
+    w2->addDamage();
 }
 
 FireWindow WinStack::findWindowAtCursorPosition(int x, int y) {

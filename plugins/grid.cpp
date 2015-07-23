@@ -4,6 +4,8 @@
 #define GetProgress(start,end,curstep,steps) (((end)*(curstep)+(start) \
                                             *((steps)-(curstep)))/(steps))
 
+// TODO: allow grid plugin to use FireWin::data
+
 struct GridWindow {
     FireWindow win;
     XWindowAttributes size;
@@ -113,10 +115,10 @@ class Grid : public Plugin {
             currentWin.win->transform.translation = glm::mat4();
             currentWin.win->transform.scalation = glm::mat4();
 
-            WinUtil::moveWindow(currentWin.win,
-                    currentWin.size.x, currentWin.size.y);
-            WinUtil::resizeWindow(currentWin.win,
-                    currentWin.size.width, currentWin.size.height);
+            currentWin.win->move(currentWin.size.x, currentWin.size.y);
+            currentWin.win->resize(currentWin.size.width,
+                    currentWin.size.height);
+
             core->setRedrawEverything(false);
             core->dmg = core->getMaximisedRegion();
             rnd.disable();

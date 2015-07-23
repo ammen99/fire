@@ -163,7 +163,7 @@ void preStage() {
     int blx = rect.x;
     int bly = sh - (rect.y + rect.height);
 
-    if(!__FireWindow::allDamaged) // do not scissor if damaging everything
+    if(!FireWin::allDamaged) // do not scissor if damaging everything
         glScissor(blx, bly, rect.width, rect.height);
     else
         glScissor(0, 0, sw, sh);

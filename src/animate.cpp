@@ -77,7 +77,7 @@ bool Fade::Step() {
     progress += mode;
     win->transform.color[3] = (float(progress) / float(maxstep));
     std::cout << win->transform.color[3] << std::endl;
-    core->damageWindow(win);
+    win->addDamage();
 
     if(progress == target) {
         std::cout << "ending" << std::endl;
@@ -91,14 +91,15 @@ bool Fade::Step() {
 
         win->transparent = savetr;
         win->keepCount--;
-        std::cout << "midway" << std::endl;
-        if(mode == FadeOut)      // just unmap
-            XFreePixmap(core->d, win->pixmap),
-            win->norender = true;
 
-        if(mode == FadeOut && win->destroyed) // window is closed
-            core->removeWindow(win);
-        std::cout << "returning false" << std::endl;
+        if(mode == FadeOut && !win->keepCount) {
+            // just unmap
+            win->norender = true,
+            XFreePixmap(core->d, win->pixmap);
+
+            if(win->destroyed) // window is closed
+                core->removeWindow(win);
+        }
 
         return false;
     }

@@ -191,7 +191,6 @@ class Core {
         void removeWindow(FireWindow win);
         void mapWindow(FireWindow win, bool xmap = true);
         void unmapWindow(FireWindow win);
-        void damageWindow(FireWindow win);
         int getRefreshRate();
 
 

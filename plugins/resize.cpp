@@ -94,16 +94,14 @@ class Resize : public Plugin {
 
         int nw = win->attrib.width  + dw;
         int nh = win->attrib.height + dh;
-        WinUtil::resizeWindow(win, nw, nh);
+        win->resize(nw, nh);
 
         core->setRedrawEverything(false);
-        core->damageWindow(win);
+        win->addDamage();
         core->deactivateOwner(owner);
     }
 
     void Intermediate() {
-
-
         GetTuple(cmx, cmy, core->getMouseCoord());
         int dw = cmx - sx;
         int dh = cmy - sy;
@@ -113,7 +111,6 @@ class Resize : public Plugin {
 
         float kW = float(nw) / float(win->attrib.width );
         float kH = float(nh) / float(win->attrib.height);
-
 
         GetTuple(sw, sh, core->getScreenSize());
 

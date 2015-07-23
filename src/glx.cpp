@@ -54,13 +54,30 @@ GLuint loadImage (char* path) {
             ilGetInteger (IL_IMAGE_WIDTH),
             ilGetInteger (IL_IMAGE_HEIGHT),
             0,
-//            ilGetInteger(IL_IMAGE_FORMAT)
             GL_RGB,
             GL_UNSIGNED_BYTE,
             ilGetData() );
     return textureID;
 }
 
+XVisualInfo *getVisualInfoForWindow(Window win) {
+    XVisualInfo *xvi, dummy;
+    XWindowAttributes xwa;
+    auto stat = XGetWindowAttributes(core->d, win, &xwa);
+    if ( stat == 0 ){
+            std::cout << "attempting to get visual info failed!"
+                << win << std::endl;
+            return nullptr;
+        }
+
+    dummy.visualid = XVisualIDFromVisual(xwa.visual);
+
+    int dumm;
+    xvi = XGetVisualInfo(core->d, VisualIDMask, &dummy, &dumm);
+    if(dumm == 0 || !xvi)
+        std::cout << "Cannot get default visual!\n";
+    return xvi;
+}
 
 void createNewContext(Window win) {
     int dummy;
@@ -71,7 +88,7 @@ void createNewContext(Window win) {
         printf ( "Couldn't get FBConfigs list!\n" ),
                std::exit (-1);
 
-    auto xvi = WinUtil::getVisualInfoForWindow(win);
+    auto xvi = getVisualInfoForWindow(win);
     int i = 0;
     for (; i < dummy; i++ ) {
         auto id = glXGetVisualFromFBConfig(core->d, fbconfig[i]);
@@ -100,7 +117,7 @@ void createNewContext(Window win) {
 
 }
 void createDefaultContext(Window win) {
-    auto xvi = WinUtil::getVisualInfoForWindow(win);
+    auto xvi = getVisualInfoForWindow(win);
     GLXContext ctx = glXCreateContext(core->d, xvi, NULL, 0);
     glXMakeCurrent(core->d, win, ctx);
     XFree(xvi);
