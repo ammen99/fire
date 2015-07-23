@@ -18,6 +18,8 @@ void WinStack::addWindow(FireWindow win) {
     }
 
     win->layer = getTargetLayerForWindow(win);
+    if(win->layer == LayerAbove)
+        std::cout << "Adding to top layer" << std::endl;
 
     layers[win->layer].push_front(win);
     restackTransients(win);

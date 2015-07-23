@@ -54,6 +54,7 @@ struct Hook {
 };
 
 struct Animation {
+    virtual bool Run();
     virtual bool Step() = 0; // return true if continue, false otherwise
     virtual ~Animation();
 };
@@ -79,13 +80,15 @@ struct Fade : public Animation {
     int progress = 0;
     int maxstep = 0;
     int target = 0;
-    bool destroy;
+    bool run = true;
+    bool restoretr = true;
     bool savetr; // used to restore transparency
 
     static int duration;
 
     Fade(FireWindow _win, Mode _mode = FadeIn);
     bool Step();
+    bool Run();
 };
 
 

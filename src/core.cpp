@@ -48,7 +48,7 @@ void Core::init() {
     if ( d == nullptr )
         std::cout << "Failed to open display!" << std::endl;
 
-    //XSynchronize(d, 1);
+    XSynchronize(d, 1);
 
     root = DefaultRootWindow(d);
     fd.fd = ConnectionNumber(d);
@@ -450,16 +450,13 @@ void Core::mapWindow(FireWindow win, bool xmap) {
     win->norender = false;
     win->damaged = true;
     std::cout << "adding hook" << std::endl;
-    new AnimationHook(new Fade(win), this);
-
     std::cout << "hook added" << std::endl;
 
     if(xmap) {
         XMapWindow(d, win->id);
         XSync(d, 0);
+        new AnimationHook(new Fade(win), this);
 
-        //if(win->pixmap)
-        //    XFreePixmap(d, win->pixmap);
         win->pixmap = XCompositeNameWindowPixmap(d, win->id);
     }
 
@@ -998,6 +995,10 @@ void Core::focusWindow(FireWindow win) {
 void Core::removeWindow(FireWindow win) {
     WinUtil::finishWindow(win);
     wins->removeWindow(win);
+
+    for(auto data : win->data)
+        delete data.second;
+    win->data.clear();
 }
 
 template<class T>
