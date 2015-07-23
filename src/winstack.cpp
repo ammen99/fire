@@ -128,14 +128,16 @@ void WinStack::renderWindows() {
 }
 
 void WinStack::removeWindow(FireWindow win) {
-    for(auto wins : layers) {
+    for(auto &wins : layers) {
         auto x = std::find_if(wins.begin(), wins.end(),
                 [win] (FireWindow w) {
                 return w->id == win->id;
                 });
 
-        if(x != wins.end())
+        if(x != wins.end()) {
             wins.erase(x);
+            std::cout << "found!!" << std::endl;
+        }
     }
 }
 

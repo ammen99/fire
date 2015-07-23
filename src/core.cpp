@@ -577,7 +577,8 @@ void Core::handleEvent(XEvent xev){
 
             auto it = findWindow(xev.xcreatewindow.window);
             if(it != nullptr) {
-                WinUtil::finishWindow(it);
+                std::cout << "old window!!!" << std::endl;
+                //WinUtil::finishWindow(it);
                 wins->removeWindow(it);
             }
 
@@ -686,6 +687,7 @@ void Core::handleEvent(XEvent xev){
             WinUtil::moveWindow(w, x, y);
             WinUtil::resizeWindow(w, width, height);
 
+            //TODO:
 //            if(xev.xconfigurerequest.value_mask & CWStackMode) {
 //                if(xev.xconfigurerequest.above) {
 //                    auto below = findWindow(xev.xconfigurerequest.above);

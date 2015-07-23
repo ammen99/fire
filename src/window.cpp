@@ -204,9 +204,12 @@ void initWindow(FireWindow win) {
 
     win->updateRegion();
 
-    if(win->attrib.c_class != InputOnly)
+    if(win->attrib.c_class ==InputOutput) {
+        std::cout << "creating damage" << std::endl;
         win->damage =
             XDamageCreate(core->d, win->id, XDamageReportRawRectangles);
+        std::cout << "created damage" << std::endl;
+    }
     else
         win->attrib.map_state = IsUnmapped,
         win->damage = None;
