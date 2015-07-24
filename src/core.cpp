@@ -858,15 +858,8 @@ void Core::loop(){
             if(FireWin::allDamaged || !XEmptyRegion(dmg))
                 renderAllWindows();   // we just redraw
 
-            /* optimisation when too slow,
-             * so we can update more rarely,
-             * i.e reduce lagging */
-            if(diff - currentCycle > MaxDelay &&
-                    Second / MinRR <= currentCycle)
-                currentCycle += 2000; // 2ms slower redraws
-
             /* optimisation when idle */
-            if(!cntHooks && !hadEvents && currentCycle < Second && resetDMG)
+            if(!cntHooks && !hadEvents && currentCycle <= Second && resetDMG)
                 currentCycle *= 2;
 
             before = after;

@@ -283,7 +283,7 @@ void FireWin::render() {
             id << " (no texture avail)" << std::endl;
         return;
     }
-
+//
     if(vbo == -1 || vao == -1)
         updateVBO();
 

@@ -154,19 +154,18 @@ void renderTransformedTexture(GLuint tex,
 void preStage() {
 
     glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-
     GetTuple(sw, sh, core->getScreenSize());
+    if(FireWin::allDamaged) {
+        glScissor(0, 0, sw, sh);
+        return;
+    }
 
     XRectangle rect;
     XClipBox(core->dmg, &rect);
 
     int blx = rect.x;
     int bly = sh - (rect.y + rect.height);
-
-    if(!FireWin::allDamaged) // do not scissor if damaging everything
-        glScissor(blx, bly, rect.width, rect.height);
-    else
-        glScissor(0, 0, sw, sh);
+    glScissor(blx, bly, rect.width, rect.height);
 }
 
 void endStage() {
