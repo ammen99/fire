@@ -61,7 +61,6 @@ StackIterator WinStack::getIteratorPositionForWindow(FireWindow win) {
 }
 
 FireWindow WinStack::findWindow(Window win) {
-
     if(windows.find(win) != windows.end())
         return windows[win];
 

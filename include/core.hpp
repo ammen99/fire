@@ -135,8 +135,11 @@ class Core {
 
         bool terminate = false; // should main loop exit?
         bool mainrestart = false; // should main() restart us?
+
         bool resetDMG;
         Region dmg;
+        void damageRegion(Region r);
+        void damageREGION(REGION r);
 
         float scaleX = 1, scaleY = 1; // used for operations which
                               // depend on mouse moving
@@ -200,6 +203,7 @@ class Core {
 
         Region getMaximisedRegion();
         Region getRegionFromRect(int tlx, int tly, int brx, int bry);
+        REGION getREGIONFromRect(int tlx, int tly, int brx, int bry);
         /* use this function to draw all windows
          * but do not forget to turn it off
          * as it is extremely bad for performance */

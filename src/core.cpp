@@ -302,21 +302,24 @@ Region Core::getMaximisedRegion() {
     return ret;
 }
 
-Region Core::getRegionFromRect(int tlx, int tly, int brx, int bry) {
+REGION Core::getREGIONFromRect(int tlx, int tly, int brx, int bry) {
     REGION r;
-    r.rects = &r.extents;
     r.numRects = r.size = 1;
-    r.extents.x1 = tlx;
-    r.extents.y1 = tly;
-    r.extents.x2 = brx;
-    r.extents.y2 = bry;
+    r.rects = new BOX[1];
+    r.extents.x1 = r.rects[0].x1 = tlx;
+    r.extents.y1 = r.rects[0].y1 = tly;
+    r.extents.x2 = r.rects[0].x2 = brx;
+    r.extents.y2 = r.rects[0].y2 = bry;
+    return r;
+}
 
+Region Core::getRegionFromRect(int tlx, int tly, int brx, int bry) {
+    auto r = getREGIONFromRect(tlx, tly, brx, bry);
     Region ret;
     ret = XCreateRegion();
     XUnionRegion(&r, ret, ret);
     return ret;
 }
-
 
 void Core::setBackground(const char *path) {
     this->run(const_cast<char*>(std::string("feh --bg-scale ")
@@ -357,8 +360,6 @@ void Core::setBackground(const char *path) {
 }
 
 FireWindow Core::findWindow(Window win) {
-    if(win == 0)
-        return nullptr;
     return wins->findWindow(win);
 }
 
@@ -430,7 +431,8 @@ void Core::renderAllWindows() {
 
     if(resetDMG)
         XDestroyRegion(dmg),
-        dmg = getRegionFromRect(0, 0, 0, 0);
+        dmg = getRegionFromRect(0, 0, 0, 0),
+        FireWin::allDamaged = false;
 }
 
 void Core::wait(int timeout) {
@@ -794,17 +796,13 @@ void Core::handleEvent(XEvent xev){
                 if(!w->visible && !FireWin::allDamaged)
                     break;
 
-                Region damagedArea = getRegionFromRect(
+                auto damagedArea = getREGIONFromRect(
                         x->area.x + w->attrib.x,
                         x->area.y + w->attrib.y,
                         x->area.x + w->attrib.x + x->area.width,
                         x->area.y + w->attrib.y + x->area.height);
 
-
-                if(!dmg) std::cout << "dmg is null!!!!" << std::endl;
-
-                XUnionRegion(damagedArea, dmg, dmg);
-                XDestroyRegion(damagedArea);
+                damageREGION(damagedArea);
             break;
             }
             else
@@ -1013,6 +1011,17 @@ void Core::removeWindow(FireWindow win) {
         delete data.second;
     win->data.clear();
     win.reset();
+}
+
+#define MAX_DAMAGED_RECTS 50
+
+void Core::damageRegion(Region r) {
+    XUnionRegion(r, dmg, dmg);
+    if(dmg->numRects > MAX_DAMAGED_RECTS)
+        FireWin::allDamaged = true;
+}
+void Core::damageREGION(REGION r) {
+    damageRegion(&r);
 }
 
 template<class T>

@@ -305,8 +305,8 @@ void FireWin::move(int x, int y, bool configure) {
     updateRegion();
 
     if(existPreviousRegion)
-        XUnionRegion(core->dmg, prevRegion,  core->dmg);
-    XUnionRegion(core->dmg, region, core->dmg);
+        core->damageRegion(prevRegion);
+    core->damageRegion(region);
 
     if(type == WindowTypeDesktop) {
         glDeleteBuffers(1, &vbo);
@@ -341,8 +341,8 @@ void FireWin::resize(int w, int h, bool configure) {
     updateRegion();
 
     if(existPreviousRegion)
-        XUnionRegion(core->dmg, prevRegion,  core->dmg);
-    XUnionRegion(core->dmg, region, core->dmg);
+        core->damageRegion(prevRegion);
+    core->damageRegion(region);
 
     if(!disableVBOChange)
         glDeleteBuffers(1, &vbo),
@@ -385,11 +385,7 @@ void FireWin::addDamage() {
         return;
     }
 
-    // TODO : this check is not necessary
-    if(!core->dmg)
-        core->dmg = core->getRegionFromRect(0, 0, 0, 0);
-
-    XUnionRegion(core->dmg, region, core->dmg);
+    core->damageRegion(region);
 }
 
 namespace WinUtil {
