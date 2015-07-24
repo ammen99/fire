@@ -48,7 +48,7 @@ void Core::init() {
     if ( d == nullptr )
         std::cout << "Failed to open display!" << std::endl;
 
-    XSynchronize(d, 1);
+    //XSynchronize(d, 1);
 
     root = DefaultRootWindow(d);
     fd.fd = ConnectionNumber(d);
@@ -570,7 +570,7 @@ void Core::handleEvent(XEvent xev){
             }
 
             addWindow(xev.xcreatewindow);
-            mapWindow(findWindow(xev.xcreatewindow.window));
+            //mapWindow(findWindow(xev.xcreatewindow.window));
             focusWindow(findWindow(xev.xcreatewindow.window));
             break;
         }
@@ -707,9 +707,9 @@ void Core::handleEvent(XEvent xev){
             }
 
             if(xev.xproperty.atom == winStateAtom) {
-//                w->state = WinUtil::getWindowState(w->id);
-//                wins->recalcWindowLayer(w);
-//                wins->restackTransients(w);
+                w->state = WinUtil::getWindowState(w->id);
+                wins->recalcWindowLayer(w);
+                wins->restackTransients(w);
             }
 
             if(xev.xproperty.atom == XA_WM_TRANSIENT_FOR)
@@ -766,8 +766,7 @@ void Core::handleEvent(XEvent xev){
                     reinterpret_cast<XDamageNotifyEvent*> (&xev);
 
                 auto w = findWindow(x->drawable);
-                if(!w)
-                    return;
+                if(!w) break;
 
                 w->damaged = true;
 
@@ -778,8 +777,7 @@ void Core::handleEvent(XEvent xev){
                         x->area.y + w->attrib.y + x->area.height);
 
 
-                if(!dmg)
-                    std::cout << "dmg is null!!!!" << std::endl;
+                if(!dmg) std::cout << "dmg is null!!!!" << std::endl;
 
                 XUnionRegion(damagedArea, dmg, dmg);
                 XDestroyRegion(damagedArea);

@@ -3,6 +3,8 @@
 #include <algorithm>
 
 
+std::unordered_map<Window, FireWindow> windows;
+
 
 using StackIterator = std::list<FireWindow>::iterator;
 WinStack::WinStack() {
@@ -23,18 +25,20 @@ void WinStack::addWindow(FireWindow win) {
 
     layers[win->layer].push_front(win);
     restackTransients(win);
+
+    windows[win->id] = win;
     std::cout << "Start end window" << std::endl;
 }
 
 Layer WinStack::getTargetLayerForWindow(FireWindow win) {
-    if(win->type == WindowTypeDesktop)
-//           win->state & WindowStateBelow)
+    if(win->type == WindowTypeDesktop ||
+           win->state & WindowStateBelow)
         return LayerBelow;
 
     else if(win->type == WindowTypeDock ||
-            win->type == WindowTypeModal)
-//            win->state & WindowStateAbove ||
-//            win->state & WindowStateFullscreen)
+            win->type == WindowTypeModal ||
+            win->state & WindowStateAbove ||
+            win->state & WindowStateFullscreen)
 
         return LayerAbove;
 
@@ -68,16 +72,22 @@ StackIterator WinStack::getIteratorPositionForWindow(FireWindow win) {
 }
 
 FireWindow WinStack::findWindow(Window win) {
-    FireWindow tmp = std::make_shared<FireWin>(win, false);
 
-    for(int layer = 0; layer < layers.size(); layer++) {
-        tmp->layer = (Layer)layer;
-        auto it1 = getIteratorPositionForWindow(tmp);
+    if(windows.find(win) != windows.end())
+        return windows[win];
 
-        if(it1 != layers[layer].end())
-            return *it1;
-    }
     return nullptr;
+//
+//    FireWindow tmp = std::make_shared<FireWin>(win, false);
+//
+//    for(int layer = 0; layer < layers.size(); layer++) {
+//        tmp->layer = (Layer)layer;
+//        auto it1 = getIteratorPositionForWindow(tmp);
+//
+//        if(it1 != layers[layer].end())
+//            return *it1;
+//    }
+//    return nullptr;
 }
 
 void WinStack::renderWindows() {

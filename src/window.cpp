@@ -155,12 +155,22 @@ void FireWin::updateRegion() {
 }
 
 void FireWin::updateState() {
-//    if(state & WindowStateMaxH) {
-//        GetTuple(sw, sh, core->getScreenSize());
-//        sh = 0;
-//        resize(sw, attrib.height, true);
-//        move(0, attrib.y, true);
-//    }
+    GetTuple(sw, sh, core->getScreenSize());
+    if(state & WindowStateMaxH) {
+        resize(sw, attrib.height, true);
+        move(0, attrib.y, true);
+    }
+
+    if(state & WindowStateMaxV) {
+        resize(attrib.width, sh, true);
+        move(attrib.x, 0, true);
+    }
+
+    if(state & WindowStateFullscreen){
+        resize(sw, sh, true);
+        move(0, 0, true);
+    }
+
 }
 
 void FireWin::syncAttrib() {
@@ -193,8 +203,9 @@ bool FireWin::shouldBeDrawn() {
 
     if(destroyed && !keepCount)
         return false;
-//
-//    if(state & WindowStateHidden)
+
+    if(state & WindowStateHidden)
+        return false;
 
     if(norender)
         return false;
@@ -226,12 +237,15 @@ int FireWin::setTexture() {
 
     if(!damaged)  {
         glBindTexture(GL_TEXTURE_2D, texture);
+        XUngrabServer(core->d);
         return 1;
     }
 
     XWindowAttributes xwa;
-    if(!mapTryNum && !XGetWindowAttributes(core->d, id, &xwa)) {
+    if(!mapTryNum-- && !XGetWindowAttributes(core->d, id, &xwa)) {
+        std::cout << "cannot get it" << std::endl;
         norender = true;
+        XUngrabServer(core->d);
         return 0;
     }
 
@@ -248,9 +262,11 @@ int FireWin::setTexture() {
 }
 
 void FireWin::render() {
+    std::cout << "Rendering" << id << std::endl;
 
     OpenGL::color = transform.color;
     if(type == WindowTypeDesktop){
+        std::cout << "background" << std::endl;
         OpenGL::renderTransformedTexture(texture, vao, vbo,
                 transform.compose());
         return;
