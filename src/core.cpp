@@ -70,8 +70,7 @@ void Core::init() {
              LeaveWindowMask          | EnterWindowMask          |
              KeyPressMask             | KeyReleaseMask           |
              ButtonPressMask          | ButtonReleaseMask        |
-             FocusChangeMask          | ExposureMask             |
-             Button1MotionMask);
+             FocusChangeMask          | ExposureMask             );
 
     if(wmDetected)
        std::cout << "Another WM already running!\n", std::exit(-1);
@@ -439,6 +438,7 @@ void Core::wait(int timeout) {
 }
 
 void Core::mapWindow(FireWindow win, bool xmap) {
+    std::cout << "Map window " << win->id << " " << xmap << std::endl;
 
     win->norender = false;
     win->damaged = true;
@@ -452,21 +452,22 @@ void Core::mapWindow(FireWindow win, bool xmap) {
     }
 
     win->pixmap = XCompositeNameWindowPixmap(d, win->id);
-    std::cout << "got pixmap" << std::endl;
-
     win->attrib.map_state = IsViewable;
     win->addDamage();
 
     win->syncAttrib();
-//    if(win->transientFor)
-//        wins->restackTransients(win->transientFor);
-//
+    if(win->transientFor)
+        wins->restackTransients(win->transientFor);
+
+    wins->checkAddClient(win);
 }
 
 void Core::unmapWindow(FireWindow win) {
+    std::cout << "unmapping window" << win->id;
     win->attrib.map_state = IsUnmapped;
+    //win->syncAttrib();
     new AnimationHook(new Fade(win, Fade::FadeOut), this);
-
+    wins->checkRemoveClient(win);
 }
 
 void Core::regOwner(Ownership owner) {
@@ -527,6 +528,9 @@ bool Core::checkButPress(ButtonBinding *bb, XButtonEvent xb) {
     if(bb->button != xb.button)
         return false;
 
+    if(!bb->action)
+        return false;
+
     return true;
 }
 
@@ -541,7 +545,6 @@ bool Core::checkButRelease(ButtonBinding *bb, XButtonEvent kb) {
 }
 
 void Core::handleEvent(XEvent xev){
-    std::cout << "handle event start" << std::endl;
     switch(xev.type) {
         case Expose:
             dmg = getMaximisedRegion();
@@ -593,7 +596,6 @@ void Core::handleEvent(XEvent xev){
         case MapNotify: {
             std::cout << "map notify" << std::endl;
             auto w = findWindow(xev.xmap.window);
-            std::cout << "dort" << std::endl;
             if(w) mapWindow(w, false);
             break;
         }
@@ -613,6 +615,7 @@ void Core::handleEvent(XEvent xev){
 
             for(auto bb : buttons)
                 if(checkButPress(bb.second, xev.xbutton)) {
+                    std::cout << "CAlling action" << std::endl;
                     bb.second->action(new Context(xev));
                     break;
                 }
@@ -682,32 +685,32 @@ void Core::handleEvent(XEvent xev){
                             wins->restackAbove(below, w);
                     }
                 }
-                else
-                    if(xev.xconfigurerequest.detail == Above)
+                else {
+                    if(xev.xconfigurerequest.detail == Above) {
+                        //if(w->type == WindowTypeDock)
+                        //    WinUtil::setInputFocusToWindow(w->id);
                         focusWindow(w);
+                    }
+                }
             }
-            mapWindow(w);
+            mapWindow(w, false);
 
         }
 
         case PropertyNotify: {
+            std::cout << "property notify" << std::endl;
             auto w = findWindow(xev.xproperty.window);
             if(!w) break;
 
             if(xev.xproperty.atom == winTypeAtom) {
                 w->type = WinUtil::getWindowType(w->id);
-
-                /* move to LayerAbove or LayerBelow */
-                if(w->type == WindowTypeDock ||
-                        w->type == WindowTypeModal ||
-                        w->type == WindowTypeDesktop)
-                    wins->recalcWindowLayer(w);
-
+                wins->recalcWindowLayer(w);
                 wins->restackTransients(w);
             }
 
             if(xev.xproperty.atom == winStateAtom) {
                 w->state = WinUtil::getWindowState(w->id);
+                w->updateState();
                 wins->recalcWindowLayer(w);
                 wins->restackTransients(w);
             }
@@ -720,10 +723,14 @@ void Core::handleEvent(XEvent xev){
                 w->leader = WinUtil::getClientLeader(w->id),
                 wins->restackTransients(w);
 
+            if(xev.xproperty.atom == activeWinAtom)
+                focusWindow(w);
+
             break;
         }
 
         case ConfigureNotify: {
+            std::cout << "configure notify" << std::endl;
             if(xev.xconfigure.window == root) {
                 terminate = true, mainrestart = true;
                 break;
@@ -734,9 +741,9 @@ void Core::handleEvent(XEvent xev){
 
             w->resize(xev.xconfigure.width, xev.xconfigure.height, false);
             w->move(xev.xconfigure.x, xev.xconfigure.y, false);
-            break;
 
-            //wins->restackAbove(w, findWindow(xev.xconfigure.above));
+            wins->restackAbove(findWindow(xev.xconfigure.above), w);
+            break;
         }
 
         case CirculateRequest:
@@ -749,15 +756,30 @@ void Core::handleEvent(XEvent xev){
             break;
 
         case ClientMessage:
+            if (xev.xclient.message_type == activeWinAtom) {
+                std::cout << "Active win atom" << std::endl;
+                auto w = findWindow(xev.xclient.window);
+                if(!w) break;
+                wins->focusWindow(w);
+            }
+
             std::cout << "A client message" << std::endl;
             break;
 
-        case EnterNotify:       // we don't handle
+        case EnterNotify: {
+                              std::cout << "Endter notify" << std::endl;
+            auto w = findWindow(xev.xcrossing.window);
+//            if(w && w->type == WindowTypeDock)
+//                WinUtil::setInputFocusToWindow(w->id);
+            break;
+        }
         case LeaveNotify:
         case FocusIn:           // any of these
         case MappingNotify:
         case SelectionRequest:
         case SelectionNotify:
+        case KeyRelease:
+            std::cout << "ignored" << std::endl;
             break;
 
         default:
@@ -769,6 +791,8 @@ void Core::handleEvent(XEvent xev){
                 if(!w) break;
 
                 w->damaged = true;
+                if(!w->visible && !FireWin::allDamaged)
+                    break;
 
                 Region damagedArea = getRegionFromRect(
                         x->area.x + w->attrib.x,
@@ -786,7 +810,6 @@ void Core::handleEvent(XEvent xev){
             else
                 std::cout << "Another event(skipped)\n";
     }
-    std::cout << "handle event end" << std::endl;
 }
 
 #define Second 1000000
@@ -900,10 +923,20 @@ void Core::switchWorkspace(std::tuple<int, int> nPos) {
 
     auto dx = (vx - nx) * width;
     auto dy = (vy - ny) * height;
+    GetTuple(sw, sh, core->getScreenSize());
 
     using namespace std::placeholders;
-    auto proc = [dx, dy] (FireWindow w) {
+    auto proc = [dx, dy, sw, sh] (FireWindow w) {
+        if(w->state & WindowStateSticky)
+            return;
         w->move(w->attrib.x + dx, w->attrib.y + dy);
+
+        if(w->attrib.x >= sw || w->attrib.y >= sh ||
+                w->attrib.x + w->attrib.width <= 0 ||
+                w->attrib.y + w->attrib.height <= 0)
+            w->visible = false;
+        else
+            w->visible = true;
     };
     wins->forEachWindow(proc);
 
@@ -927,6 +960,14 @@ std::vector<FireWindow> Core::getWindowsOnViewport(std::tuple<int, int> vp) {
 
     auto proc = [view, &ret, tmp] (FireWindow w) {
         if(!w->region)
+            return;
+
+        if(w->state & WindowStateSkipTaskbar)
+            return;
+
+        if(w->type == WindowTypeWidget ||
+                w->type == WindowTypeDock ||
+                w->type == WindowTypeOther)
             return;
 
         XIntersectRegion(view, w->region, tmp);

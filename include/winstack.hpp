@@ -21,12 +21,17 @@ class WinStack {
          * and LayerBelow is for desktop windows */
 
         std::vector<std::list<FireWindow> >layers;
-
+        std::unordered_set<Window> clientList;
 
         typedef std::list<FireWindow>::iterator StackIterator;
 
         StackIterator getIteratorPositionForWindow(FireWindow win);
         bool recurseIsAncestor(FireWindow parent, FireWindow win);
+
+        void addClient(FireWindow win);
+        void removeClient(FireWindow win);
+        void setNetClientList();
+        bool isClientWindow(FireWindow win);
 
     public:
         FireWindow activeWin;
@@ -40,6 +45,9 @@ class WinStack {
         FireWindow getTopmostToplevel();
         void renderWindows();
         void forEachWindow(WindowProc proc);
+
+        void checkAddClient(FireWindow win);
+        void checkRemoveClient(FireWindow win);
 
         void focusWindow(FireWindow win);
         /* rstr shows whether we have to restack transients also */

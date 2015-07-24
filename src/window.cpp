@@ -25,6 +25,7 @@ Atom wmProtocolsAtom;
 Atom wmClientLeaderAtom;
 Atom wmNameAtom;
 Atom winOpacityAtom;
+Atom clientListAtom;
 
 glm::mat4 Transform::proj;
 glm::mat4 Transform::view;
@@ -106,6 +107,8 @@ FireWin::FireWin(Window id, bool init) {
     type         = WinUtil::getWindowType(id);
     transientFor = WinUtil::getTransient(id);
     leader       = WinUtil::getClientLeader(id);
+    state        = WinUtil::getWindowState(id);
+    updateState();
 
     XSelectInput(core->d, id,   FocusChangeMask  |
                 PropertyChangeMask | EnterWindowMask);
@@ -155,22 +158,25 @@ void FireWin::updateRegion() {
 }
 
 void FireWin::updateState() {
+    std::cout << "updating state" << state << std::endl;
+    std::cout << WindowStateMaxH << " " << WindowStateMaxV << std::endl;
     GetTuple(sw, sh, core->getScreenSize());
     if(state & WindowStateMaxH) {
-        resize(sw, attrib.height, true);
-        move(0, attrib.y, true);
+        std::cout << "maxh" << std::endl;
+        this->resize(sw, attrib.height, true);
+        this->move(0, attrib.y, true);
     }
 
     if(state & WindowStateMaxV) {
-        resize(attrib.width, sh, true);
-        move(attrib.x, 0, true);
+        std::cout << "maxv" << std::endl;
+        this->resize(attrib.width, sh, true);
+        this->move(attrib.x, 0, true);
     }
 
     if(state & WindowStateFullscreen){
         resize(sw, sh, true);
         move(0, 0, true);
     }
-
 }
 
 void FireWin::syncAttrib() {
@@ -200,8 +206,10 @@ void FireWin::syncAttrib() {
 }
 
 bool FireWin::shouldBeDrawn() {
-
     if(destroyed && !keepCount)
+        return false;
+
+    if(!visible && !allDamaged)
         return false;
 
     if(state & WindowStateHidden)
@@ -235,15 +243,15 @@ int FireWin::setTexture() {
         return 0;
     }
 
-    if(!damaged)  {
-        glBindTexture(GL_TEXTURE_2D, texture);
-        XUngrabServer(core->d);
-        return 1;
-    }
+//    if(!damaged)  {
+//        glBindTexture(GL_TEXTURE_2D, texture);
+//        XUngrabServer(core->d);
+//        return 1;
+//    }
 
     XWindowAttributes xwa;
     if(!mapTryNum-- && !XGetWindowAttributes(core->d, id, &xwa)) {
-        std::cout << "cannot get it" << std::endl;
+        std::cout << "Fail !!!" << std::endl;
         norender = true;
         XUngrabServer(core->d);
         return 0;
@@ -262,11 +270,9 @@ int FireWin::setTexture() {
 }
 
 void FireWin::render() {
-    std::cout << "Rendering" << id << std::endl;
 
     OpenGL::color = transform.color;
     if(type == WindowTypeDesktop){
-        std::cout << "background" << std::endl;
         OpenGL::renderTransformedTexture(texture, vao, vbo,
                 transform.compose());
         return;
@@ -522,8 +528,9 @@ namespace WinUtil {
             return WindowStateFullscreen;
         else if ( state == winStateAboveAtom )
             return WindowStateAbove;
-        else if ( state == winStateBelowAtom )
+        else if ( state == winStateBelowAtom ) {
             return WindowStateBelow;
+        }
         else if ( state == winStateDemandsAttentionAtom )
             return WindowStateBase;
         else if ( state == winStateDisplayModalAtom )
@@ -550,6 +557,7 @@ namespace WinUtil {
 
             XFree((void*)data);
         }
+        std::cout << "Returning state" << state << std::endl;
         return state;
     }
 
@@ -580,6 +588,7 @@ namespace WinUtil {
         activeWinAtom  = XInternAtom(core->d, "_NET_ACTIVE_WINDOW", 0);
         wmNameAtom     = XInternAtom(core->d, "WM_NAME", 0);
         winOpacityAtom = XInternAtom(core->d, "_NET_WM_WINDOW_OPACITY", 0);
+        clientListAtom = XInternAtom(core->d, "_NET_CLIENT_LIST", 0);
 
         wmProtocolsAtom    = XInternAtom (core->d, "WM_PROTOCOLS", 0);
         wmTakeFocusAtom    = XInternAtom (core->d, "WM_TAKE_FOCUS", 0);

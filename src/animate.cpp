@@ -23,7 +23,6 @@ void AnimationHook::step() {
     if(!this->anim->Step()) {
         delete this->anim;
         this->hook.disable();
-        std::cout << "disabled hook" << std::endl;
        // delete this; // TODO: add deletion of used hooks
     }
 }
@@ -40,7 +39,6 @@ Fade::Fade (FireWindow _win, Mode _mode) :
         run = true;
 
         if(ExistsData(win, "fade")) {
-            std::cout << "yep, data exists" << std::endl;
             auto data = GetData(FadeWindowData, win, "fade");
             if(mode == FadeIn && data->fadeIn)
                 run = false;
@@ -76,11 +74,9 @@ Fade::Fade (FireWindow _win, Mode _mode) :
 bool Fade::Step() {
     progress += mode;
     win->transform.color[3] = (float(progress) / float(maxstep));
-    std::cout << win->transform.color[3] << std::endl;
     win->addDamage();
 
     if(progress == target) {
-        std::cout << "ending" << std::endl;
         if(restoretr)
             win->transparent = savetr;
 

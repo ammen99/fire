@@ -75,6 +75,7 @@ class FireWin {
         bool destroyed = false; // is window dead?
         bool transparent = false; // is the window transparent
         bool damaged = true;
+        bool visible = true;
 
         int mapTryNum = 5; // how many times have we tried to map this window?
         int keepCount = 0; // used to determine whether to destroy window
@@ -136,11 +137,13 @@ extern Atom winStateAtom, winStateModalAtom, winStateStickyAtom,
 
 
 extern Atom activeWinAtom;
+extern Atom winActiveAtom;
 extern Atom wmTakeFocusAtom;
 extern Atom wmProtocolsAtom;
 extern Atom wmClientLeaderAtom;
 extern Atom wmNameAtom;
 extern Atom winOpacityAtom;
+extern Atom clientListAtom;
 
 class Core;
 

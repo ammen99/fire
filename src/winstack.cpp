@@ -12,22 +12,19 @@ WinStack::WinStack() {
 }
 
 void WinStack::addWindow(FireWindow win) {
-    std::cout << "Start add window" << std::endl;
-
-    if(findWindow(win->id) != nullptr && win->type != WindowTypeDesktop) {
-        focusWindow(win);
+    if(findWindow(win->id) != nullptr &&
+            win->type != WindowTypeDesktop) {
         return;
     }
 
     win->layer = getTargetLayerForWindow(win);
-    if(win->layer == LayerAbove)
-        std::cout << "Adding to top layer" << std::endl;
 
     layers[win->layer].push_front(win);
     restackTransients(win);
 
     windows[win->id] = win;
-    std::cout << "Start end window" << std::endl;
+
+    checkAddClient(win);
 }
 
 Layer WinStack::getTargetLayerForWindow(FireWindow win) {
@@ -37,8 +34,7 @@ Layer WinStack::getTargetLayerForWindow(FireWindow win) {
 
     else if(win->type == WindowTypeDock ||
             win->type == WindowTypeModal ||
-            win->state & WindowStateAbove ||
-            win->state & WindowStateFullscreen)
+            win->state & WindowStateAbove)
 
         return LayerAbove;
 
@@ -46,29 +42,22 @@ Layer WinStack::getTargetLayerForWindow(FireWindow win) {
 }
 
 void WinStack::recalcWindowLayer(FireWindow win) {
-    std::cout << "recalcWindowLayer" << std::endl;
     auto newLayer = getTargetLayerForWindow(win);
-    std::cout << "1" << std::endl;
     if(win->layer == newLayer)
         return;
 
-    std::cout << "2" << std::endl;
     auto it = getIteratorPositionForWindow(win);
-    std::cout << "3" << std::endl;
     if(it != layers[win->layer].end())
-        std::cout << "333" << std::endl,
         layers[win->layer].erase(it),
         layers[newLayer].push_front(win);
-    std::cout << "4" << std::endl;
     win->layer = newLayer;
 }
 
 StackIterator WinStack::getIteratorPositionForWindow(FireWindow win) {
-    auto x = std::find_if(layers[win->layer].begin(), layers[win->layer].end(),
+    return std::find_if(layers[win->layer].begin(), layers[win->layer].end(),
             [win] (FireWindow w) {
                 return w->id == win->id;
             });
-    return x;
 }
 
 FireWindow WinStack::findWindow(Window win) {
@@ -77,17 +66,6 @@ FireWindow WinStack::findWindow(Window win) {
         return windows[win];
 
     return nullptr;
-//
-//    FireWindow tmp = std::make_shared<FireWin>(win, false);
-//
-//    for(int layer = 0; layer < layers.size(); layer++) {
-//        tmp->layer = (Layer)layer;
-//        auto it1 = getIteratorPositionForWindow(tmp);
-//
-//        if(it1 != layers[layer].end())
-//            return *it1;
-//    }
-//    return nullptr;
 }
 
 void WinStack::renderWindows() {
@@ -142,16 +120,13 @@ void WinStack::renderWindows() {
 }
 
 void WinStack::removeWindow(FireWindow win) {
-    for(auto &wins : layers) {
-        auto x = std::find_if(wins.begin(), wins.end(),
-                [win] (FireWindow w) {
-                return w->id == win->id;
-                });
+    if(!win) return;
+    removeClient(win);
 
-        if(x != wins.end()) {
-            wins.erase(x);
-            std::cout << "found!!" << std::endl;
-        }
+    auto it = getIteratorPositionForWindow(win);
+    if(it != layers[win->layer].end()) {
+        windows.erase(win->id);
+        layers[win->layer].erase(it);
     }
 }
 
@@ -189,7 +164,7 @@ StackType WinStack::getStackType(FireWindow win1, FireWindow win2) {
     if(isAncestorTo(win2, win1))
         return StackTypeChild;
 
-    if(win1->layer == win2->layer)
+    if(win1->layer <= win2->layer)
         return StackTypeSibling;
 
     return StackTypeNoStacking;
@@ -228,11 +203,8 @@ FireWindow WinStack::getAncestor(FireWindow win) {
 
 void WinStack::restackAbove(FireWindow above, FireWindow below, bool x) {
 
-
     if(above == nullptr || below == nullptr)
         return;
-
-    std::cout << "restack above" << std::endl;
 
     auto pos = getIteratorPositionForWindow(below);
     auto val = getIteratorPositionForWindow(above);
@@ -243,47 +215,33 @@ void WinStack::restackAbove(FireWindow above, FireWindow below, bool x) {
         return;                                // windows we do not own
 
     auto t = getStackType(above, below);
-    std::cout << "got stack type" << std::endl;
     if(t == StackTypeAncestor || t == StackTypeNoStacking ||
             isAncestorTo(above, below) ||
             below->type == WindowTypeWidget) // we should not restack
         return;                              // a widget below
 
-    std::cout << "check" << std::endl;
-
-    std::cout << above->layer << " " << below->layer << std::endl;
-
     layers[above->layer].erase(val);
-
-    std::cout << "erased" << std::endl;
-
-    if(!above->type)
-        std::cout << "here is the crash" << std::endl;
-    else
-        std::cout << "told u" << std::endl;
-
-    std::cout << "after if" << std::endl;
     layers[below->layer].insert(pos, above);
 
-    std::cout << "did magic" << std::endl;
-
     if(!isAncestorTo(below, above) && x) {
-        std::cout << "wtfff" << std::endl;
         restackTransients(above);
         restackTransients(below);
     }
-
-    std::cout << "lololo" << std::endl;
 }
 
 /* returns the topmost window that we can restack above */
 FireWindow WinStack::findTopmostStackingWindow(FireWindow win) {
-    for(auto w : layers[win->layer]) {
-        if(win->id == w->id || win->type == WindowTypeDesktop)
-            return nullptr;
-        if(win->shouldBeDrawn() && !isAncestorTo(win, w) &&
-           w->type != WindowTypeWidget && w->type != WindowTypeModal)
-            return w;
+    for(int layer = win->layer; layer < layers.size(); layer++) {
+        for(auto w : layers[layer]) {
+            if(win->id == w->id || win->type == WindowTypeDesktop)
+                return nullptr;
+
+            if(win->shouldBeDrawn() && !isAncestorTo(win, w) &&
+                    w->type != WindowTypeWidget &&
+                    w->type != WindowTypeModal &&
+                    w->type != WindowTypeDock)
+                return w;
+        }
     }
     return nullptr;
 }
@@ -303,19 +261,13 @@ void WinStack::restackTransients(FireWindow win) {
     if(win == nullptr)
         return;
 
-    std::cout << "rst begin" << std::endl;
-
     std::vector<FireWindow> winsToRestack;
     for(auto w : layers[win->layer])
         if(isAncestorTo(win, w) || isTransientInGroup(w, win))
             winsToRestack.push_back(w);
 
-    std::cout << "got windows" << winsToRestack.size() << std::endl;
-
     for(auto w : winsToRestack)
         restackAbove(w, win, false);
-
-    std::cout << "rst end" << std::endl;
 }
 
 void WinStack::focusWindow(FireWindow win) {
@@ -328,10 +280,7 @@ void WinStack::focusWindow(FireWindow win) {
     if(win->attrib.c_class == InputOnly)
         return;
 
-    if(!win->shouldBeDrawn())
-        return;
-
-    if(win->type == WindowTypeWidget && layers[win->layer].size()) {
+   if(win->type == WindowTypeWidget && layers[win->layer].size()) {
         if(win->transientFor)
             restackAbove(win, win->transientFor),
             win = win->transientFor;
@@ -352,13 +301,11 @@ void WinStack::focusWindow(FireWindow win) {
     auto w1 = findTopmostStackingWindow(activeWin); // window to restack below
     auto w2 = activeWin; // window to restack above(our window)
 
-    if(!w2)
-        return;
-
+    if(!w2) return;
 
     /* if we are already at the top of the stack
      * then just focus the window */
-    if(w2->id == (*layers[win->layer].begin())->id || w1 == nullptr){
+    if(w1 == nullptr || w1->type == WindowTypeDock){
         WinUtil::setInputFocusToWindow(w2->id);
         return;
     }
@@ -405,4 +352,43 @@ void WinStack::forEachWindow(WindowProc proc) {
     for(auto wins : layers)
         for(auto w : wins)
             proc(w);
+}
+
+void WinStack::setNetClientList() {
+    Window arr[clientList.size()];
+    int i = 0;
+    for(auto w : clientList)
+        arr[i++] = w;
+
+    XChangeProperty (core->d, core->root, clientListAtom,
+            XA_WINDOW, 32, PropModeReplace, (unsigned char *) arr, i);
+}
+
+bool WinStack::isClientWindow(FireWindow win) {
+    if(win->attrib.map_state != IsViewable)
+        return false;
+    if(win->attrib.override_redirect)
+        return false;
+
+    return true;
+}
+
+void WinStack::addClient(FireWindow win) {
+    clientList.insert(win->id);
+    setNetClientList();
+}
+void WinStack::removeClient(FireWindow win) {
+    if(clientList.find(win->id) != clientList.end())
+        clientList.erase(win->id);
+    setNetClientList();
+}
+
+void WinStack::checkAddClient(FireWindow win) {
+    if(isClientWindow(win) &&
+            clientList.find(win->id) == clientList.end())
+        addClient(win);
+}
+
+void WinStack::checkRemoveClient(FireWindow win) {
+    removeClient(win);
 }
