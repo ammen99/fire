@@ -289,7 +289,7 @@ void WinStack::focusWindow(FireWindow win) {
     if(win->type == WindowTypeModal) {
         if(win->transientFor)
             restackAbove(win, win->transientFor);
-        WinUtil::setInputFocusToWindow(win->id);
+        win->getInputFocus();
         activeWin = win;
         return;
     }
@@ -304,7 +304,7 @@ void WinStack::focusWindow(FireWindow win) {
     /* if we are already at the top of the stack
      * then just focus the window */
     if(w1 == nullptr || w1->type == WindowTypeDock){
-        WinUtil::setInputFocusToWindow(w2->id);
+        w2->getInputFocus();
         return;
     }
 
@@ -315,7 +315,7 @@ void WinStack::focusWindow(FireWindow win) {
     xwc.sibling = w1->id;
     XConfigureWindow(core->d, activeWin->id, CWSibling|CWStackMode, &xwc);
 
-    WinUtil::setInputFocusToWindow(activeWin->id);
+    activeWin->getInputFocus();
     w1->addDamage();
     w2->addDamage();
 }

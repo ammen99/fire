@@ -6,7 +6,96 @@
 #include <sstream>
 #include <memory>
 
+#include <signal.h>
+#include <sys/wait.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+
+#include <execinfo.h>
+#include <cxxabi.h>
+
+
 bool wmDetected;
+
+#define max_frames 100
+
+void print_trace() {
+    std::cout << "stack trace:\n";
+
+    // storage array for stack trace address data
+    void* addrlist[max_frames + 1];
+
+    // retrieve current stack addresses
+    int addrlen = backtrace(addrlist, sizeof(addrlist) / sizeof(void*));
+
+    if (addrlen == 0) {
+        std::cout << "<empty, possibly corrupt>\n";
+        return;
+    }
+
+    // resolve addresses into strings containing "filename(function+address)",
+    // this array must be free()-ed
+    char** symbollist = backtrace_symbols(addrlist, addrlen);
+
+    //allocate string which will be filled with
+    //the demangled function name
+    size_t funcnamesize = 256;
+    char* funcname = (char*)malloc(funcnamesize);
+
+    // iterate over the returned symbol lines. skip the first, it is the
+    // address of this function.
+    for(int i = 1; i < addrlen; i++) {
+        char *begin_name = 0, *begin_offset = 0, *end_offset = 0;
+
+        // find parentheses and +address offset surrounding the mangled name:
+        // ./module(function+0x15c)[0x8048a6d]
+        for(char* p = symbollist[i]; *p; ++p) {
+            if(*p == '(')
+                begin_name = p;
+            else if(*p == '+')
+                begin_offset = p;
+            else if(*p == ')' && begin_offset){
+                end_offset = p;
+                break;
+            }
+        }
+
+        if(begin_name && begin_offset && end_offset
+                &&begin_name < begin_offset)
+        {
+            *begin_name++ = '\0';
+            *begin_offset++ = '\0';
+            *end_offset = '\0';
+
+            // mangled name is now in[begin_name, begin_offset) and caller
+            // offset in [begin_offset, end_offset). now apply
+            // __cxa_demangle():
+
+            int status;
+            char *ret = abi::__cxa_demangle(begin_name,
+                    funcname, &funcnamesize, &status);
+            if(status == 0) {
+                funcname = ret;// use possibly realloc()-ed string
+                printf("%s:%s+%s\n", symbollist[i], funcname, begin_offset);
+            }
+            else{
+                // demangling failed. Output function name as a C function with
+                // no arguments.
+                printf("%s:%s()+%s\n",
+                        symbollist[i], begin_name, begin_offset);
+            }
+        }
+        else
+        {
+            // couldn't parse the line? print the whole line.
+            printf("%s\n",symbollist[i]);
+        }
+    }
+
+    free(funcname);
+    free(symbollist);
+}
+
 
 Core *core;
 int refreshrate;
@@ -48,7 +137,7 @@ void Core::init() {
     if ( d == nullptr )
         std::cout << "Failed to open display!" << std::endl;
 
-    //XSynchronize(d, 1);
+    XSynchronize(d, 1);
 
     root = DefaultRootWindow(d);
     fd.fd = ConnectionNumber(d);
@@ -565,23 +654,24 @@ void Core::handleEvent(XEvent xev){
         }
 
         case CreateNotify: {
-            std::cout << "Create notify" << std::endl;
-            if (xev.xcreatewindow.window == overlay)
+                        if (xev.xcreatewindow.window == overlay)
                 break;
 
             if(xev.xcreatewindow.window == outputwin)
                 break;
 
+            std::cout << "Create notify" << std::endl;
             auto it = findWindow(xev.xcreatewindow.window);
+
+            /* guard against (almost) indiscoverable bugs,
+             * although should not be executed */
             if(it != nullptr) {
                 std::cout << "old window!!!" << std::endl;
-                //WinUtil::finishWindow(it);
                 wins->removeWindow(it);
             }
 
             addWindow(xev.xcreatewindow);
-            //mapWindow(findWindow(xev.xcreatewindow.window));
-            focusWindow(findWindow(xev.xcreatewindow.window));
+            std::cout << "end create notify" << std::endl;
             break;
         }
         case DestroyNotify: {
@@ -603,11 +693,13 @@ void Core::handleEvent(XEvent xev){
         case MapNotify: {
             std::cout << "map notify" << std::endl;
             auto w = findWindow(xev.xmap.window);
-            if(w) mapWindow(w, false);
+            if(w) mapWindow(w, false),
+                  wins->focusWindow(w);
             break;
         }
         case UnmapNotify: {
             auto w = wins->findWindow(xev.xunmap.window);
+            std::cout << "unmap notify" << std::endl;
             if(w == nullptr)
                 break;
             unmapWindow(w);
@@ -631,10 +723,7 @@ void Core::handleEvent(XEvent xev){
             XAllowEvents(d, ReplayPointer, xev.xbutton.time);
             break;
         }
-        case ButtonRelease: // release bindings should be enabled
-                            // only after some press binding has been
-                            // activated => there is no need to check
-                            // for buttons
+        case ButtonRelease:
             for(auto bb : this->buttons)
                 if(checkButRelease(bb.second, xev.xbutton))
                     bb.second->action(new Context(xev));
@@ -695,8 +784,6 @@ void Core::handleEvent(XEvent xev){
                 }
                 else {
                     if(xev.xconfigurerequest.detail == Above) {
-                        //if(w->type == WindowTypeDock)
-                        //    WinUtil::setInputFocusToWindow(w->id);
                         focusWindow(w);
                     }
                 }
@@ -706,7 +793,6 @@ void Core::handleEvent(XEvent xev){
         }
 
         case PropertyNotify: {
-            std::cout << "property notify" << std::endl;
             auto w = findWindow(xev.xproperty.window);
             if(!w) break;
 
@@ -733,7 +819,6 @@ void Core::handleEvent(XEvent xev){
 
             if(xev.xproperty.atom == activeWinAtom)
                 focusWindow(w);
-
             break;
         }
 
@@ -774,20 +859,14 @@ void Core::handleEvent(XEvent xev){
             std::cout << "A client message" << std::endl;
             break;
 
-        case EnterNotify: {
-                              std::cout << "Endter notify" << std::endl;
-            auto w = findWindow(xev.xcrossing.window);
-//            if(w && w->type == WindowTypeDock)
-//                WinUtil::setInputFocusToWindow(w->id);
-            break;
-        }
-        case LeaveNotify:
-        case FocusIn:           // any of these
+        case EnterNotify:
+        case LeaveNotify:       // we ignore
+        case FocusIn:           // all of these
         case MappingNotify:
         case SelectionRequest:
         case SelectionNotify:
         case KeyRelease:
-            std::cout << "ignored" << std::endl;
+            //std::cout << "ignored" << std::endl;
             break;
 
         default:
@@ -799,7 +878,8 @@ void Core::handleEvent(XEvent xev){
                 if(!w) break;
 
                 w->damaged = true;
-                if(!w->visible && !FireWin::allDamaged)
+
+                if(FireWin::allDamaged || !w->visible)
                     break;
 
                 auto damagedArea = getREGIONFromRect(
@@ -859,6 +939,10 @@ void Core::loop(){
             handleEvent(xev);
         }
 
+//        for(auto dmg : damages)
+//            XDamageSubtract(d, dmg, None, None);
+//        damages.clear();
+//
         gettimeofday(&after, 0);
         int diff = (after.tv_sec - before.tv_sec) * 1000000 +
             after.tv_usec - before.tv_usec;
@@ -915,6 +999,8 @@ int Core::onXError(Display *d, XErrorEvent *xev) {
     std::cout << "XError string " << buf << std::endl;
     std::cout << "ResourceID = " << xev->resourceid << std::endl;
     std::cout << "____________________________" << std::endl << std::endl;
+
+    print_trace();
     return 0;
 }
 

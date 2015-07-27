@@ -146,7 +146,9 @@ FireWin::~FireWin() {
     glDeleteTextures(1, &texture);
     glDeleteBuffers(1, &vbo);
     glDeleteVertexArrays(1, &vao);
-    XDamageDestroy(core->d, damagehnd);
+
+    if(damagehnd != None)
+        XDamageDestroy(core->d, damagehnd);
 }
 
 #define Mod(x,m) (((x)%(m)+(m))%(m))
@@ -406,6 +408,40 @@ void FireWin::addDamage() {
     core->damageRegion(region);
 }
 
+void FireWin::getInputFocus() {
+
+//    XGrabServer(core->d);
+//    XWindowAttributes xwa;
+//    if(!XGetWindowAttributes(core->d, id, &xwa)
+//            || xwa.map_state != IsViewable){
+//        XUngrabServer(core->d);
+//        return;
+//    }
+//
+    if(attrib.map_state != IsViewable)
+        return;
+
+    XSetInputFocus(core->d, id, RevertToPointerRoot, CurrentTime);
+
+//    XUngrabServer(core->d);
+    XChangeProperty ( core->d, core->root, activeWinAtom,
+            XA_WINDOW, 32, PropModeReplace,
+            (unsigned char *) &id, 1 );
+
+    XEvent ev;
+    ev.type = ClientMessage;
+    ev.xclient.window       = id;
+    ev.xclient.message_type = wmProtocolsAtom;
+    ev.xclient.format       = 32;
+    ev.xclient.data.l[0]    = wmTakeFocusAtom;
+    ev.xclient.data.l[1]    = CurrentTime;
+    ev.xclient.data.l[2]    = 0;
+    ev.xclient.data.l[3]    = 0;
+    ev.xclient.data.l[4]    = 0;
+
+    XSendEvent ( core->d, id, FALSE, NoEventMask, &ev );
+}
+
 namespace WinUtil {
 #define uchar unsigned char
     int readProp(Window win, Atom prop, int def) {
@@ -573,28 +609,6 @@ namespace WinUtil {
         }
         std::cout << "Returning state" << state << std::endl;
         return state;
-    }
-
-    void setInputFocusToWindow(Window win) {
-
-        XSetInputFocus(core->d, win, RevertToPointerRoot, CurrentTime);
-        XChangeProperty ( core->d, core->root, activeWinAtom,
-                XA_WINDOW, 32, PropModeReplace,
-                ( unsigned char * ) &win, 1 );
-
-        XEvent ev;
-
-        ev.type = ClientMessage;
-        ev.xclient.window       = win;
-        ev.xclient.message_type = wmProtocolsAtom;
-        ev.xclient.format       = 32;
-        ev.xclient.data.l[0]    = wmTakeFocusAtom;
-        ev.xclient.data.l[1]    = CurrentTime;
-        ev.xclient.data.l[2]    = 0;
-        ev.xclient.data.l[3]    = 0;
-        ev.xclient.data.l[4]    = 0;
-
-        XSendEvent ( core->d, win, FALSE, NoEventMask, &ev );
     }
 
     void init() {

@@ -21,25 +21,23 @@ const char *fs = GLSL (
     uniform sampler2D smp;
 
     void main() {
-       outColor = texture(smp, uvpos).zyxw;
+       outColor = vec4(texture(smp, uvpos).zyx, 1);
     });
-
-#define Velocity 0.01
-#define VVelocity 0.01
-#define ZVelocity 0.05
-#define MaxFactor 10
-
 class Cube : public Plugin {
     ButtonBinding activate;
     ButtonBinding deactiv;
     ButtonBinding zoomIn, zoomOut;
 
-
     Hook mouse;
-
     std::vector<GLuint> sides;
     std::vector<GLuint> sideFBuffs;
     int vx, vy;
+
+
+    float Velocity = 0.01;
+    float VVelocity = 0.01;
+    float ZVelocity = 0.05;
+    float MaxFactor = 10;
 
     float angle;      // angle between sides
     float offset;     // horizontal rotation angle
@@ -62,7 +60,16 @@ class Cube : public Plugin {
             owner->compatAll = false;
         }
 
+        void updateConfiguration() {
+            Velocity  = options["velocity" ]->data.fval;
+            VVelocity = options["vvelocity"]->data.fval;
+            ZVelocity = options["zvelocity"]->data.fval;
+        }
+
         void init() {
+            options.insert(newFloatOption("velocity",  0.01));
+            options.insert(newFloatOption("vvelocity", 0.01));
+            options.insert(newFloatOption("zvelocity", 0.05));
 
             auto vso = GLXUtils::compileShader(vs, GL_VERTEX_SHADER);
             auto fso = GLXUtils::compileShader(fs, GL_FRAGMENT_SHADER);
@@ -142,7 +149,7 @@ class Cube : public Plugin {
 
             activate.button = Button1;
             activate.type = BindingTypePress;
-            activate.mod = ControlMask;
+            activate.mod = ControlMask | Mod1Mask;
             activate.active = true;
             activate.action =
                 std::bind(std::mem_fn(&Cube::Initiate), this, _1);
@@ -190,11 +197,10 @@ class Cube : public Plugin {
         }
 
         void Render() {
-            glClearColor(0.4f, 0.4f, 1.0f, 0.0f);
+            glClearColor(1.f, 0.5f, 0.5f, 0.0f);
             glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
             for(int i = 0; i < sides.size(); i++) {
-                std::cout << "FFAS " << i << " " << vy << std::endl;
                 core->getViewportTexture(std::make_tuple(i, vy),
                         sideFBuffs[i], sides[i]);
             }
@@ -205,8 +211,6 @@ class Cube : public Plugin {
 
             glBindVertexArray(vao);
             glBindBuffer(GL_ARRAY_BUFFER, vbo);
-
-            //float off = -3 * M_PI / 6;
 
             glm::mat4 verticalRotation = glm::rotate(glm::mat4(),
                     offsetVert, glm::vec3(1, 0, 0));

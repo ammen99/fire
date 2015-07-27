@@ -112,6 +112,7 @@ class FireWin {
         void move(int x, int y, bool configure = true);
         void resize(int w, int h, bool configure = true);
         void syncAttrib();
+        void getInputFocus();
 
         void render();
         int  setTexture();
@@ -150,7 +151,6 @@ class Core;
 
 namespace WinUtil {
     void init();
-    void setInputFocusToWindow(Window win);
     FireWindow getTransient(Window win);
     void       getWindowName(Window win, char *name);
     FireWindow getClientLeader(Window win);
