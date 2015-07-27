@@ -139,7 +139,6 @@ class Cube : public Plugin {
             zoomIn.button  = Button5;
             zoomOut.type   = zoomIn.type   = BindingTypePress;
             zoomOut.mod    = zoomIn.mod    = AnyModifier;
-            zoomOut.active = zoomIn.active = false;
             zoomOut.action = zoomIn.action =
                 std::bind(std::mem_fn(&Cube::onScrollEvent), this, _1);
 
@@ -150,7 +149,6 @@ class Cube : public Plugin {
             activate.button = Button1;
             activate.type = BindingTypePress;
             activate.mod = ControlMask | Mod1Mask;
-            activate.active = true;
             activate.action =
                 std::bind(std::mem_fn(&Cube::Initiate), this, _1);
             core->addBut(&activate, true);
@@ -158,7 +156,6 @@ class Cube : public Plugin {
             deactiv.button = Button1;
             deactiv.mod    = AnyModifier;
             deactiv.type   = BindingTypeRelease;
-            deactiv.active = false;
             deactiv.action =
                 std::bind(std::mem_fn(&Cube::Terminate), this, _1);
             core->addBut(&deactiv, false);
@@ -177,6 +174,7 @@ class Cube : public Plugin {
             if(!core->setRenderer(renderer)) {
                 owner->ungrab();
                 core->deactivateOwner(owner);
+                return;
             }
 
             GetTuple(vx, vy, core->getWorkspace());
@@ -188,8 +186,9 @@ class Cube : public Plugin {
             px = mx, py = my;
 
             mouse.enable();
-            deactiv.active = true;
-            zoomIn.active = zoomOut.active = true;
+            deactiv.enable();
+            zoomIn.enable();
+            zoomOut.enable();
 
             offset = 0;
             offsetVert = 0;
@@ -241,8 +240,9 @@ class Cube : public Plugin {
             OpenGL::useDefaultProgram();
             core->setDefaultRenderer();
             mouse.disable();
-            deactiv.active = false;
-            zoomIn.active = zoomOut.active = false;
+            deactiv.disable();
+            zoomIn.disable();
+            zoomOut.disable();
             core->deactivateOwner(owner);
 
             auto size = sides.size();

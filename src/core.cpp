@@ -6,96 +6,7 @@
 #include <sstream>
 #include <memory>
 
-#include <signal.h>
-#include <sys/wait.h>
-#include <sys/ipc.h>
-#include <sys/shm.h>
-
-#include <execinfo.h>
-#include <cxxabi.h>
-
-
 bool wmDetected;
-
-#define max_frames 100
-
-void print_trace() {
-    std::cout << "stack trace:\n";
-
-    // storage array for stack trace address data
-    void* addrlist[max_frames + 1];
-
-    // retrieve current stack addresses
-    int addrlen = backtrace(addrlist, sizeof(addrlist) / sizeof(void*));
-
-    if (addrlen == 0) {
-        std::cout << "<empty, possibly corrupt>\n";
-        return;
-    }
-
-    // resolve addresses into strings containing "filename(function+address)",
-    // this array must be free()-ed
-    char** symbollist = backtrace_symbols(addrlist, addrlen);
-
-    //allocate string which will be filled with
-    //the demangled function name
-    size_t funcnamesize = 256;
-    char* funcname = (char*)malloc(funcnamesize);
-
-    // iterate over the returned symbol lines. skip the first, it is the
-    // address of this function.
-    for(int i = 1; i < addrlen; i++) {
-        char *begin_name = 0, *begin_offset = 0, *end_offset = 0;
-
-        // find parentheses and +address offset surrounding the mangled name:
-        // ./module(function+0x15c)[0x8048a6d]
-        for(char* p = symbollist[i]; *p; ++p) {
-            if(*p == '(')
-                begin_name = p;
-            else if(*p == '+')
-                begin_offset = p;
-            else if(*p == ')' && begin_offset){
-                end_offset = p;
-                break;
-            }
-        }
-
-        if(begin_name && begin_offset && end_offset
-                &&begin_name < begin_offset)
-        {
-            *begin_name++ = '\0';
-            *begin_offset++ = '\0';
-            *end_offset = '\0';
-
-            // mangled name is now in[begin_name, begin_offset) and caller
-            // offset in [begin_offset, end_offset). now apply
-            // __cxa_demangle():
-
-            int status;
-            char *ret = abi::__cxa_demangle(begin_name,
-                    funcname, &funcnamesize, &status);
-            if(status == 0) {
-                funcname = ret;// use possibly realloc()-ed string
-                printf("%s:%s+%s\n", symbollist[i], funcname, begin_offset);
-            }
-            else{
-                // demangling failed. Output function name as a C function with
-                // no arguments.
-                printf("%s:%s()+%s\n",
-                        symbollist[i], begin_name, begin_offset);
-            }
-        }
-        else
-        {
-            // couldn't parse the line? print the whole line.
-            printf("%s\n",symbollist[i]);
-        }
-    }
-
-    free(funcname);
-    free(symbollist);
-}
-
 
 Core *core;
 int refreshrate;
@@ -121,17 +32,47 @@ class CorePlugin : public Plugin {
             Fade::duration = options["fadeduration"]->data.ival;
         }
 };
-
-PluginPtr plug;
-
+PluginPtr plug; // used to get core options
 
 Core::Core(int vx, int vy) {
     this->vx = vx;
     this->vy = vy;
 }
 
-void Core::init() {
 
+void Core::enableInputPass(Window win) {
+    XserverRegion region;
+    region = XFixesCreateRegion(d, NULL, 0);
+    XFixesSetWindowShapeRegion(d, win, ShapeBounding, 0, 0, 0);
+    XFixesSetWindowShapeRegion(d, win, ShapeInput, 0, 0, region);
+    XFixesDestroyRegion(d, region);
+}
+
+void Core::addExistingWindows() {
+    Window dummy1, dummy2;
+    uint size;
+    Window  *children;
+
+    XQueryTree(d, root, &dummy1, &dummy2, &children, &size);
+
+    if(size == 0)
+        return;
+
+    for(int i = size - 1; i >= 0; i--)
+        if(children[i] != overlay   &&
+           children[i] != outputwin &&
+           children[i] != s0owner   &&
+           children[i] != root       )
+
+            addWindow(children[i]);
+
+    for(int i = 0; i < size; i++) {
+        auto w = findWindow(children[i]);
+        if(w) mapWindow(w);
+    }
+}
+
+void Core::init() {
     d = XOpenDisplay(NULL);
 
     if ( d == nullptr )
@@ -230,40 +171,7 @@ void Core::init() {
     setDefaultRenderer();
 }
 
-void Core::enableInputPass(Window win) {
-    XserverRegion region;
-    region = XFixesCreateRegion(d, NULL, 0);
-    XFixesSetWindowShapeRegion(d, win, ShapeBounding, 0, 0, 0);
-    XFixesSetWindowShapeRegion(d, win, ShapeInput, 0, 0, region);
-    XFixesDestroyRegion(d, region);
-}
-
-void Core::addExistingWindows() {
-    Window dummy1, dummy2;
-    uint size;
-    Window  *children;
-
-    XQueryTree(d, root, &dummy1, &dummy2, &children, &size);
-
-    if(size == 0)
-        return;
-
-    for(int i = size - 1; i >= 0; i--)
-        if(children[i] != overlay   &&
-           children[i] != outputwin &&
-           children[i] != s0owner   &&
-           children[i] != root       )
-
-            addWindow(children[i]);
-
-    for(int i = 0; i < size; i++) {
-        auto w = findWindow(children[i]);
-        if(w) mapWindow(w);
-    }
-}
-
 Core::~Core(){
-
     for(auto p : plugins) {
         if(p->dynamic)
             dlclose(p->handle),
@@ -287,179 +195,135 @@ void Core::run(char *command) {
     }
 }
 
-#define MAXID (uint)(-1)
-template<class T>
-uint Core::getFreeID(std::unordered_map<uint, T> *map) {
-    for(int i = 0; i < MAXID; i++)
-        if(map->find(i) == map->end())
-            return i;
-
-    return MAXID;
-}
-
-uint Core::addHook(Hook *hook){
-    auto id = getFreeID(&hooks);
-    hooks.insert({id, hook});
-    return id;
-}
-
-void Core::remHook(uint id) {
-    hooks.erase(id);
-}
-
 Context::Context(XEvent ev) : xev(ev){}
 Hook::Hook() : active(false) {}
 
+void Core::addHook(Hook *hook){ if(hook) hooks.push_back(hook); }
+bool Hook::getState() { return this->active; }
+
 void Hook::enable() {
-    if(this->active)
+    if(active)
         return;
-    this->active = true;
+    active = true;
     core->cntHooks++;
 }
 
 void Hook::disable() {
-    if(!this->active)
+    if(!active)
         return;
 
-    this->active = false;
+    active = false;
     core->cntHooks--;
 }
 
-bool Hook::getState() {
-    return this->active;
-}
-uint Core::addKey(KeyBinding *kb, bool grab) {
-    if(!kb)
-        return -1;
+void KeyBinding::enable() {
+    if(active) return;
 
-    auto id = getFreeID(&keys);
-    keys.insert({id, kb});
-
-    if(grab)
-    XGrabKey(d, kb->key, (kb->mod == NoMods ? AnyModifier : kb->mod), root,
+    active = true;
+    XGrabKey(core->d, key, mod, core->root,
             false, GrabModeAsync, GrabModeAsync);
-
-    return id;
 }
 
-void Core::remKey(uint id) {
-    auto it = keys.find(id);
-    if(it == keys.end())
-        return;
+void KeyBinding::disable() {
+    if(!active) return;
 
-    auto kb = it->second;
-    XUngrabKey(d, kb->key, kb->mod, root);
-    keys.erase(it);
+    active = false;
+    XUngrabKey(core->d, key, mod, core->root);
 }
 
-uint Core::addBut(ButtonBinding *bb, bool grab) {
-    if(!bb) {
-        std::cout << "AddBut called with null" << std::endl;
-        return -1;
-    }
+void Core::addKey(KeyBinding *kb, bool grab) {
+    if(!kb) return;
+    keys.push_back(kb);
+    if(grab) kb->enable();
+}
 
-    auto id = getFreeID(&buttons);
-    buttons.insert({id, bb});
 
-    if(grab)
-    XGrabButton(d, bb->button, bb->mod,
-            root, false, ButtonPressMask,
+void ButtonBinding::enable() {
+    if(active) return;
+
+    active = true;
+    XGrabButton(core->d, button, mod,
+            core->root, false, ButtonPressMask,
             GrabModeAsync, GrabModeAsync,
             None, None);
-
-    return id;
 }
 
-void Core::remBut(uint id) {
-    auto it = buttons.find(id);
-    if(it == buttons.end())
+void ButtonBinding::disable() {
+    if(!active) return;
+
+    active = false;
+    XUngrabButton(core->d, button, mod, core->root);
+}
+
+void Core::addBut(ButtonBinding *bb, bool grab) {
+    if(!bb) return;
+
+    buttons.push_back(bb);
+    if(grab) bb->enable();
+}
+
+
+void Core::regOwner(Ownership owner) {
+    owners.insert(owner);
+}
+
+bool Core::activateOwner(Ownership owner) {
+
+    if(!owner) {
+        std::cout << "Error detected ?? calling with nullptr!!1" << std::endl;
+        return false;
+    }
+
+    if(owner->active || owner->special) {
+        owner->active = true;
+        return true;
+    }
+
+    for(auto o : owners)
+        if(o && o->active)
+            if(o->compat.find(owner->name) == o->compat.end()
+                    && !o->compatAll)
+                return false;
+
+    owner->active = true;
+    return true;
+}
+
+bool Core::deactivateOwner(Ownership owner) {
+    owner->ungrab();
+    owner->active = false;
+    return true;
+}
+
+void Core::defaultRenderer() {
+    XIntersectRegion(dmg, output, dmg);
+
+    OpenGL::preStage();
+    wins->renderWindows();
+    OpenGL::endStage();
+
+    if(resetDMG)
+        XDestroyRegion(dmg),
+        dmg = getRegionFromRect(0, 0, 0, 0),
+        FireWin::allDamaged = false;
+}
+
+bool Core::setRenderer(RenderHook rh) {
+    if(render.replaced)
+        return false;
+    render.replaced = true;
+    render.currentRenderer = rh;
+    return true;
+}
+
+void Core::setDefaultRenderer() {
+    if(!render.replaced)
         return;
 
-    auto bb = it->second;
+    render.replaced = false;
 
-    XUngrabButton(d, bb->button, bb->mod, root);
-    buttons.erase(it);
-}
-
-Region Core::getMaximisedRegion() {
-    REGION r;
-    r.rects = &r.extents;
-    r.numRects = r.size = 1;
-    r.extents.x1 = r.extents.y1 = 0;
-    r.extents.x2 = width;
-    r.extents.y2 = height;
-
-    Region ret;
-    ret = XCreateRegion();
-    XUnionRegion(&r, ret, ret);
-    return ret;
-}
-
-REGION Core::getREGIONFromRect(int tlx, int tly, int brx, int bry) {
-    REGION r;
-    r.numRects = r.size = 1;
-    r.rects = new BOX[1];
-    r.extents.x1 = r.rects[0].x1 = tlx;
-    r.extents.y1 = r.rects[0].y1 = tly;
-    r.extents.x2 = r.rects[0].x2 = brx;
-    r.extents.y2 = r.rects[0].y2 = bry;
-    return r;
-}
-
-Region Core::getRegionFromRect(int tlx, int tly, int brx, int bry) {
-    auto r = getREGIONFromRect(tlx, tly, brx, bry);
-    Region ret;
-    ret = XCreateRegion();
-    XUnionRegion(&r, ret, ret);
-    return ret;
-}
-
-void Core::setBackground(const char *path) {
-    this->run(const_cast<char*>(std::string("feh --bg-scale ")
-                .append(path).c_str()));
-
-    auto texture = GLXUtils::loadImage(const_cast<char*>(path));
-
-    uint vao, vbo;
-    OpenGL::generateVAOVBO(0, height, width, -height, vao, vbo);
-
-    backgrounds.clear();
-    backgrounds.resize(vheight);
-    for(int i = 0; i < vheight; i++)
-        backgrounds[i].resize(vwidth);
-
-    for(int i = 0; i < vheight; i++){
-        for(int j = 0; j < vwidth; j++) {
-
-            backgrounds[i][j] = std::make_shared<FireWin>(0, false);
-
-            backgrounds[i][j]->vao = vao;
-            backgrounds[i][j]->vbo = vbo;
-            backgrounds[i][j]->norender = false;
-            backgrounds[i][j]->texture  = texture;
-
-            backgrounds[i][j]->attrib.x = (j - vx) * width;
-            backgrounds[i][j]->attrib.y = (i - vy) * height;
-            backgrounds[i][j]->attrib.width  = width;
-            backgrounds[i][j]->attrib.height = height;
-
-            backgrounds[i][j]->type = WindowTypeDesktop;
-            backgrounds[i][j]->updateVBO();
-            backgrounds[i][j]->transform.color = glm::vec4(1,1,1,1);
-            backgrounds[i][j]->updateRegion();
-            wins->addWindow(backgrounds[i][j]);
-        }
-    }
-}
-
-FireWindow Core::findWindow(Window win) {
-    return wins->findWindow(win);
-}
-
-FireWindow Core::getActiveWindow() {
-    if(!wins->activeWin)
-        return wins->getTopmostToplevel();
-    return wins->activeWin;
+    render.currentRenderer =
+        std::bind(std::mem_fn(&Core::defaultRenderer), this);
 }
 
 void Core::addWindow(XCreateWindowEvent xev) {
@@ -472,12 +336,54 @@ void Core::addWindow(XCreateWindowEvent xev) {
     if(w->type != WindowTypeWidget)
         wins->focusWindow(w);
 }
+
 void Core::addWindow(Window id) {
     XCreateWindowEvent xev;
     xev.window = id;
     xev.parent = 0;
     addWindow(xev);
 }
+
+void Core::focusWindow(FireWindow win) {
+    wins->focusWindow(win);
+}
+
+FireWindow Core::findWindow(Window win) {
+    return wins->findWindow(win);
+}
+
+FireWindow Core::getActiveWindow() {
+    return wins->getTopmostToplevel();
+}
+
+void Core::mapWindow(FireWindow win, bool xmap) {
+    win->norender = false;
+    win->damaged = true;
+    new AnimationHook(new Fade(win), this);
+
+    if(xmap) {
+        XMapWindow(d, win->id);
+        XSync(d, 0);
+    }
+    win->syncAttrib();
+    if(win->attrib.map_state == IsViewable)
+        win->pixmap = XCompositeNameWindowPixmap(d, win->id);
+    else
+        win->pixmap = 0;
+
+    win->addDamage();
+    if(win->transientFor)
+        wins->restackTransients(win->transientFor);
+
+    wins->checkAddClient(win);
+}
+
+void Core::unmapWindow(FireWindow win) {
+    win->attrib.map_state = IsUnmapped;
+    new AnimationHook(new Fade(win, Fade::FadeOut), this);
+    wins->checkRemoveClient(win);
+}
+
 void Core::closeWindow(FireWindow win) {
     if(!win) return;
 
@@ -515,86 +421,13 @@ void Core::closeWindow(FireWindow win) {
     wins->focusWindow(wins->getTopmostToplevel());
 }
 
-void Core::renderAllWindows() {
-    XIntersectRegion(dmg, output, dmg);
-
-    OpenGL::preStage();
-    wins->renderWindows();
-    OpenGL::endStage();
-
-    if(resetDMG)
-        XDestroyRegion(dmg),
-        dmg = getRegionFromRect(0, 0, 0, 0),
-        FireWin::allDamaged = false;
+void Core::removeWindow(FireWindow win) {
+    wins->removeWindow(win);
+    win.reset();
 }
 
 void Core::wait(int timeout) {
     poll(&fd, 1, timeout / 1000); // convert from usec to msec
-}
-
-void Core::mapWindow(FireWindow win, bool xmap) {
-    std::cout << "Map window " << win->id << " " << xmap << std::endl;
-
-    win->norender = false;
-    win->damaged = true;
-    new AnimationHook(new Fade(win), this);
-
-
-    if(xmap) {
-        XMapWindow(d, win->id);
-        XSync(d, 0);
-        win->pixmap = XCompositeNameWindowPixmap(d, win->id);
-    }
-
-    win->pixmap = XCompositeNameWindowPixmap(d, win->id);
-    win->attrib.map_state = IsViewable;
-    win->addDamage();
-
-    win->syncAttrib();
-    if(win->transientFor)
-        wins->restackTransients(win->transientFor);
-
-    wins->checkAddClient(win);
-}
-
-void Core::unmapWindow(FireWindow win) {
-    std::cout << "unmapping window" << win->id;
-    win->attrib.map_state = IsUnmapped;
-    //win->syncAttrib();
-    new AnimationHook(new Fade(win, Fade::FadeOut), this);
-    wins->checkRemoveClient(win);
-}
-
-void Core::regOwner(Ownership owner) {
-    owners.insert(owner);
-}
-
-bool Core::activateOwner(Ownership owner) {
-
-    if(!owner) {
-        std::cout << "Error detected ?? calling with nullptr!!1" << std::endl;
-        return false;
-    }
-
-    if(owner->active || owner->special) {
-        owner->active = true;
-        return true;
-    }
-
-    for(auto o : owners)
-        if(o && o->active)
-            if(o->compat.find(owner->name) == o->compat.end()
-                    && !o->compatAll)
-                return false;
-
-    owner->active = true;
-    return true;
-}
-
-bool Core::deactivateOwner(Ownership owner) {
-    owner->ungrab();
-    owner->active = false;
-    return true;
 }
 
 bool Core::checkKey(KeyBinding *kb, XKeyEvent xkey) {
@@ -648,8 +481,8 @@ void Core::handleEvent(XEvent xev){
         case KeyPress: {
             // check keybindings
             for(auto kb : keys)
-                if(checkKey(kb.second, xev.xkey))
-                   kb.second->action(new Context(xev));
+                if(checkKey(kb, xev.xkey))
+                   kb->action(new Context(xev));
             break;
         }
 
@@ -713,9 +546,9 @@ void Core::handleEvent(XEvent xev){
             std::cout << "button press" << std::endl;
 
             for(auto bb : buttons) {
-                if(checkButPress(bb.second, xev.xbutton)) {
+                if(checkButPress(bb, xev.xbutton)) {
                     std::cout << "CAlling action" << std::endl;
-                    bb.second->action(new Context(xev));
+                    bb->action(new Context(xev));
                     break;
                 }
             }
@@ -725,8 +558,8 @@ void Core::handleEvent(XEvent xev){
         }
         case ButtonRelease:
             for(auto bb : this->buttons)
-                if(checkButRelease(bb.second, xev.xbutton))
-                    bb.second->action(new Context(xev));
+                if(checkButRelease(bb, xev.xbutton))
+                    bb->action(new Context(xev));
 
             XAllowEvents(d, ReplayPointer, xev.xbutton.time);
             break;
@@ -895,27 +728,6 @@ void Core::handleEvent(XEvent xev){
                 std::cout << "Another event(skipped)\n";
     }
 }
-
-bool Core::setRenderer(RenderHook rh) {
-    if(render.replaced)
-        return false;
-    render.replaced = true;
-    render.currentRenderer = rh;
-    return true;
-}
-
-void Core::setDefaultRenderer() {
-    if(!render.replaced)
-        return;
-
-    render.replaced = false;
-
-    render.currentRenderer =
-        std::bind(std::mem_fn(&Core::renderAllWindows), this);
-}
-
-
-
 #define Second 1000000
 #define MaxDelay 1000
 #define MinRR 61
@@ -939,10 +751,6 @@ void Core::loop(){
             handleEvent(xev);
         }
 
-//        for(auto dmg : damages)
-//            XDamageSubtract(d, dmg, None, None);
-//        damages.clear();
-//
         gettimeofday(&after, 0);
         int diff = (after.tv_sec - before.tv_sec) * 1000000 +
             after.tv_usec - before.tv_usec;
@@ -961,8 +769,8 @@ void Core::loop(){
         else {
             if(cntHooks) { // if running hooks, run them
                 for (auto hook : hooks)
-                    if(hook.second->getState())
-                        hook.second->action();
+                    if(hook->getState())
+                        hook->action();
             }
 
             if(FireWin::allDamaged || !XEmptyRegion(dmg))
@@ -1000,7 +808,7 @@ int Core::onXError(Display *d, XErrorEvent *xev) {
     std::cout << "ResourceID = " << xev->resourceid << std::endl;
     std::cout << "____________________________" << std::endl << std::endl;
 
-    print_trace();
+    //print_trace();
     return 0;
 }
 
@@ -1072,8 +880,7 @@ std::vector<FireWindow> Core::getWindowsOnViewport(std::tuple<int, int> vp) {
             return;
 
         if(w->type == WindowTypeWidget ||
-                w->type == WindowTypeDock ||
-                w->type == WindowTypeOther)
+                w->type == WindowTypeDock)
             return;
 
         XIntersectRegion(view, w->region, tmp);
@@ -1149,21 +956,27 @@ void Core::setRedrawEverything(bool val) {
         core->resetDMG = true;
 }
 
-void Core::focusWindow(FireWindow win) {
-    if(!win)
-        return;
-
-    win->addDamage();
-    wins->focusWindow(win);
+REGION Core::getREGIONFromRect(int tlx, int tly, int brx, int bry) {
+    REGION r;
+    r.numRects = r.size = 1;
+    r.rects = new BOX[1];
+    r.extents.x1 = r.rects[0].x1 = tlx;
+    r.extents.y1 = r.rects[0].y1 = tly;
+    r.extents.x2 = r.rects[0].x2 = brx;
+    r.extents.y2 = r.rects[0].y2 = bry;
+    return r;
 }
 
-void Core::removeWindow(FireWindow win) {
-    wins->removeWindow(win);
+Region Core::getRegionFromRect(int tlx, int tly, int brx, int bry) {
+    auto r = getREGIONFromRect(tlx, tly, brx, bry);
+    Region ret;
+    ret = XCreateRegion();
+    XUnionRegion(&r, ret, ret);
+    return ret;
+}
 
-    for(auto data : win->data)
-        delete data.second;
-    win->data.clear();
-    win.reset();
+Region Core::getMaximisedRegion() {
+    return getRegionFromRect(0, 0, width, height);
 }
 
 #define MAX_DAMAGED_RECTS 50
@@ -1173,17 +986,51 @@ void Core::damageRegion(Region r) {
     if(dmg->numRects > MAX_DAMAGED_RECTS)
         FireWin::allDamaged = true;
 }
+
 void Core::damageREGION(REGION r) {
     damageRegion(&r);
 }
 
-template<class T>
-PluginPtr Core::createPlugin() {
-    return std::static_pointer_cast<Plugin>(std::make_shared<T>());
-}
-
 int Core::getRefreshRate() {
     return refreshrate;
+}
+
+void Core::setBackground(const char *path) {
+    this->run(const_cast<char*>(std::string("feh --bg-scale ")
+                .append(path).c_str()));
+
+    auto texture = GLXUtils::loadImage(const_cast<char*>(path));
+
+    uint vao, vbo;
+    OpenGL::generateVAOVBO(0, height, width, -height, vao, vbo);
+
+    backgrounds.clear();
+    backgrounds.resize(vheight);
+    for(int i = 0; i < vheight; i++)
+        backgrounds[i].resize(vwidth);
+
+    for(int i = 0; i < vheight; i++){
+        for(int j = 0; j < vwidth; j++) {
+
+            backgrounds[i][j] = std::make_shared<FireWin>(0, false);
+
+            backgrounds[i][j]->vao = vao;
+            backgrounds[i][j]->vbo = vbo;
+            backgrounds[i][j]->norender = false;
+            backgrounds[i][j]->texture  = texture;
+
+            backgrounds[i][j]->attrib.x = (j - vx) * width;
+            backgrounds[i][j]->attrib.y = (i - vy) * height;
+            backgrounds[i][j]->attrib.width  = width;
+            backgrounds[i][j]->attrib.height = height;
+
+            backgrounds[i][j]->type = WindowTypeDesktop;
+            backgrounds[i][j]->updateVBO();
+            backgrounds[i][j]->transform.color = glm::vec4(1,1,1,1);
+            backgrounds[i][j]->updateRegion();
+            wins->addWindow(backgrounds[i][j]);
+        }
+    }
 }
 
 namespace {
@@ -1232,6 +1079,11 @@ void Core::loadDynamicPlugins() {
                     plugins.push_back(ptr);
         }
     }
+}
+
+template<class T>
+PluginPtr Core::createPlugin() {
+    return std::static_pointer_cast<Plugin>(std::make_shared<T>());
 }
 
 void Core::initDefaultPlugins() {

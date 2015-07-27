@@ -94,29 +94,25 @@ class ATSwitcher : public Plugin {
         initiate.type = BindingTypePress;
         initiate.action =
             std::bind(std::mem_fn(&ATSwitcher::handleKey), this, _1);
-        initiate.active = true;
         core->addKey(&initiate, true);
 
         forward.mod = 0;
         forward.key = XKeysymToKeycode(core->d, XK_Right);
         forward.type = BindingTypePress;
         forward.action = initiate.action;
-        forward.active = false;
-        core->addKey(&forward);
+        core->addKey(&forward, false);
 
         backward.mod = 0;
         backward.key = XKeysymToKeycode(core->d, XK_Left);
         backward.type = BindingTypePress;
         backward.action = initiate.action;
-        backward.active = false;
-        core->addKey(&backward);
+        core->addKey(&backward, false);
 
         terminate.mod = 0;
         terminate.key = XKeysymToKeycode(core->d, XK_Return);
         terminate.type = BindingTypePress;
         terminate.action = initiate.action;
-        terminate.active = false;
-        core->addKey(&terminate);
+        core->addKey(&terminate, false);
 
         rnd.action = std::bind(std::mem_fn(&ATSwitcher::step), this);
         core->addHook(&rnd);
@@ -228,9 +224,7 @@ class ATSwitcher : public Plugin {
                     glm::vec3(1.51f, 1.51f, 1.f));
         }
 
-        backward.active  = true;
-        forward.active   = true;
-        terminate.active = true;
+        backward.enable(); forward.enable(); terminate.enable();
 
         attribs.offset = 0.6f;
         attribs.angle = M_PI / 6.;
@@ -530,9 +524,7 @@ class ATSwitcher : public Plugin {
         owner->ungrab();
 
         active = false;
-        backward.active  = false;
-        forward.active   = false;
-        terminate.active = false;
+        backward.disable(); forward.disable(); terminate.disable();
 
         curstep = 0;
         exit.enable();

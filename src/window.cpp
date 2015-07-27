@@ -147,8 +147,9 @@ FireWin::~FireWin() {
     glDeleteBuffers(1, &vbo);
     glDeleteVertexArrays(1, &vao);
 
-    if(damagehnd != None)
-        XDamageDestroy(core->d, damagehnd);
+    for(auto d : data)
+        delete d.second;
+    data.clear();
 }
 
 #define Mod(x,m) (((x)%(m)+(m))%(m))
@@ -389,7 +390,8 @@ void FireWin::resize(int w, int h, bool configure) {
 
     if(pixmap)
         XFreePixmap(core->d, pixmap);
-    pixmap = XCompositeNameWindowPixmap(core->d, id);
+    if(attrib.map_state == IsViewable)
+        pixmap = XCompositeNameWindowPixmap(core->d, id);
 }
 
 void FireWin::addDamage() {

@@ -53,7 +53,6 @@ class Grid : public Plugin {
             keys[i].key    = codes[i];
             keys[i].mod    = ControlMask | Mod1Mask;
             keys[i].action = std::bind(std::mem_fn(&Grid::handleKey), this, _1);
-            keys[i].active = true;
             keys[i].type   = BindingTypePress;
             core->addKey(&keys[i], true);
         }

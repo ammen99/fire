@@ -25,20 +25,18 @@ class Resize : public Plugin {
 
         using namespace std::placeholders;
 
-        press.active = true;
         press.type   = BindingTypePress;
         press.mod    = Mod4Mask;
         press.button = Button1;
         press.action = std::bind(std::mem_fn(&Resize::Initiate), this, _1);
-        core->addBut(&press);
+        core->addBut(&press, true);
 
 
-        release.active = false;
         release.type   = BindingTypeRelease;
         release.mod    = AnyModifier;
         release.button = Button1;
         release.action = std::bind(std::mem_fn(&Resize::Terminate), this,_1);
-        core->addBut(&release);
+        core->addBut(&release, false);
     }
 
     void Initiate(Context *ctx) {
@@ -60,7 +58,7 @@ class Resize : public Plugin {
         core->focusWindow(w);
         win = w;
         hook.enable();
-        release.active = true;
+        release.enable();
 
         if(w->attrib.width == 0)
             w->attrib.width = 1;
@@ -82,7 +80,7 @@ class Resize : public Plugin {
             return;
 
         hook.disable();
-        release.active = false;
+        release.disable();
 
         win->transform.scalation = glm::mat4();
         win->transform.translation = glm::mat4();

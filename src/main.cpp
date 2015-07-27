@@ -22,7 +22,7 @@ Config *config;
 #define Crash 101
 #define max_frames 100
 
-void print_trace(int nSig) {
+void print_trace() {
     std::cout << "stack trace:\n";
 
     // storage array for stack trace address data
@@ -130,7 +130,7 @@ void signalHandle(int sig) {
             shdata[1] = int(vx);
             shdata[2] = int(vy);
 
-            print_trace(SIGSEGV);
+            print_trace();
             delete core;
             break;
     }

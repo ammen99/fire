@@ -6,16 +6,14 @@
 #include "glx.hpp"
 #include "config.hpp"
 
-#include <queue>
-#include <unordered_set>
-
 class WinStack;
+
+void print_trace();
 
 struct Context{
     XEvent xev;
     Context(XEvent xev);
 };
-
 
 enum BindingType {
     BindingTypePress,
@@ -23,22 +21,24 @@ enum BindingType {
 };
 
 struct Binding{
-    bool active;
+    bool active = false;
     BindingType type;
     uint mod;
     std::function<void(Context*)> action;
-
 };
 
-// keybinding
 struct KeyBinding : Binding {
     KeyCode key;
-};
 
-// button binding
+    void enable();
+    void disable();
+};
 
 struct ButtonBinding : Binding {
     uint button;
+
+    void enable();
+    void disable();
 };
 
 // hooks are done once a redraw cycle
@@ -47,6 +47,7 @@ struct Hook {
         bool active;
     public:
         std::function<void(void)> action;
+
         void enable();
         void disable();
         bool getState();
@@ -87,6 +88,7 @@ struct Fade : public Animation {
     static int duration;
 
     Fade(FireWindow _win, Mode _mode = FadeIn);
+    ~Fade();
     bool Step();
     bool Run();
 };
@@ -105,25 +107,37 @@ class Core {
     friend struct Hook;
 
     private:
-        std::vector<std::vector<FireWindow> > backgrounds;
+        WinStack *wins;
+        pollfd fd;
+        int cntHooks;
+        int damage;
+        Window s0owner;
 
         int mousex, mousey; // pointer x, y
-        int cntHooks;
-
-        int width;
-        int height;
+        int width, height;
         int vwidth, vheight; // viewport size
         int vx, vy;          // viewport position
 
-        std::unordered_map<uint, KeyBinding*> keys;
-        std::unordered_map<uint, ButtonBinding*> buttons;
-        std::unordered_map<uint, Hook*> hooks;
-        std::unordered_set<Ownership> owners;
+        std::vector<std::vector<FireWindow> > backgrounds;
 
         std::vector<PluginPtr> plugins;
+        std::vector<KeyBinding*> keys;
+        std::vector<ButtonBinding*> buttons;
+        std::vector<Hook*> hooks;
+        std::unordered_set<Ownership> owners;
+
+        void handleEvent(XEvent xev);
+        void wait(int timeout);
+        void enableInputPass(Window win);
+        void addExistingWindows(); // adds windows created before
+                                   // we registered for SubstructureRedirect
+                                   //
         void initDefaultPlugins();
-        template<class T>
-        PluginPtr createPlugin();
+        template<class T> PluginPtr createPlugin();
+        PluginPtr loadPluginFromFile(std::string path, void **handle);
+        void loadDynamicPlugins();
+
+        void defaultRenderer();
 
         struct {
             RenderHook currentRenderer;
@@ -136,72 +150,25 @@ class Core {
          * no plugin should change these! */
         Display *d;
         Window root;
-        Window overlay;
         Window outputwin;
-        Window s0owner;
-        int damage;
-
+        Window overlay;
 
         bool terminate = false; // should main loop exit?
         bool mainrestart = false; // should main() restart us?
 
-        bool resetDMG;
-        Region dmg;
-        void damageRegion(Region r);
-        void damageREGION(REGION r);
-
-        float scaleX = 1, scaleY = 1; // used for operations which
-                              // depend on mouse moving
-                              // for ex. when using expo
-
-        void setBackground(const char *path);
-        bool setRenderer(RenderHook rh);
-        void setDefaultRenderer();
-
-        template<class T>
-        uint getFreeID(std::unordered_map<uint, T> *map);
-
-        uint addKey(KeyBinding *kb, bool grab = false);
-        void remKey(uint id);
-
-        uint addBut(ButtonBinding *bb, bool grab = false);
-        void remBut(uint id);
-
-        uint addHook(Hook*);
-        void remHook(uint);
-
-        void regOwner(Ownership owner);
-        bool checkKey(KeyBinding *kb, XKeyEvent xkey);
-        bool checkButPress  (ButtonBinding *bb, XButtonEvent xb);
-        bool checkButRelease(ButtonBinding *bb, XButtonEvent xb);
-        bool activateOwner  (Ownership owner);
-        bool deactivateOwner(Ownership owner);
-
-    private:
-        void handleEvent(XEvent xev);
-        void wait(int timeout);
-        void enableInputPass(Window win);
-        void addExistingWindows(); // adds windows created before
-                                   // we registered for SubstructureRedirect
-        WinStack *wins;
-        pollfd fd;
-    private:
-        PluginPtr loadPluginFromFile(std::string path, void **handle);
-        void loadDynamicPlugins();
-
     public:
+        Core(int vx, int vy);
         ~Core();
-        void loop();
-        Core(int vx, int vy); // initial viewport position
         void init();
+        void loop();
+
+        static int onXError (Display* d, XErrorEvent* xev);
+        static int onOtherWmDetected(Display *d, XErrorEvent *xev);
 
         void run(char *command);
-        void renderAllWindows();
-
-        /* this function renders a viewport and
-         * saves the image in texture which is returned */
-        void getViewportTexture(std::tuple<int, int>, GLuint& fbuff,
-                GLuint& tex);
+        FireWindow findWindow(Window win);
+        FireWindow getActiveWindow();
+        std::function<FireWindow(int,int)> getWindowAtPoint;
 
         void addWindow(XCreateWindowEvent);
         void addWindow(Window);
@@ -212,11 +179,38 @@ class Core {
         void unmapWindow(FireWindow win);
         int getRefreshRate();
 
+        void setBackground(const char *path);
+        bool setRenderer(RenderHook rh);
+        void setDefaultRenderer();
 
-        FireWindow findWindow(Window win);
-        FireWindow getActiveWindow();
-        std::function<FireWindow(int,int)> getWindowAtPoint;
+        void addKey (KeyBinding *kb, bool grab = false);
+        void addBut (ButtonBinding *bb, bool grab = false);
+        void addHook(Hook*);
 
+        void regOwner(Ownership owner);
+        bool checkKey(KeyBinding *kb, XKeyEvent xkey);
+        bool checkButPress  (ButtonBinding *bb, XButtonEvent xb);
+        bool checkButRelease(ButtonBinding *bb, XButtonEvent xb);
+        bool activateOwner  (Ownership owner);
+        bool deactivateOwner(Ownership owner);
+
+        /* this function renders a viewport and
+         * saves the image in texture which is returned */
+        void getViewportTexture(std::tuple<int, int>, GLuint& fbuff,
+                GLuint& tex);
+
+        std::vector<FireWindow> getWindowsOnViewport(std::tuple<int, int>);
+        void switchWorkspace(std::tuple<int, int>);
+
+        std::tuple<int, int> getWorkspace ();
+        std::tuple<int, int> getWorksize  ();
+        std::tuple<int, int> getScreenSize();
+        std::tuple<int, int> getMouseCoord();
+
+        bool resetDMG;
+        Region dmg;
+        void damageRegion(Region r);
+        void damageREGION(REGION r);
         Region getMaximisedRegion();
         Region getRegionFromRect(int tlx, int tly, int brx, int bry);
         REGION getREGIONFromRect(int tlx, int tly, int brx, int bry);
@@ -225,16 +219,10 @@ class Core {
          * as it is extremely bad for performance */
         void setRedrawEverything(bool value);
 
-        std::vector<FireWindow> getWindowsOnViewport(std::tuple<int, int>);
-        void switchWorkspace(std::tuple<int, int>);
-        std::tuple<int, int> getWorkspace ();
-        std::tuple<int, int> getWorksize  ();
-        std::tuple<int, int> getScreenSize();
 
-        std::tuple<int, int> getMouseCoord();
-
-        static int onXError (Display* d, XErrorEvent* xev);
-        static int onOtherWmDetected(Display *d, XErrorEvent *xev);
+        float scaleX = 1, scaleY = 1; // used for operations which
+                              // depend on mouse moving
+                              // for ex. when using expo
 };
 extern Core *core;
 #endif

@@ -234,7 +234,7 @@ FireWindow WinStack::findTopmostStackingWindow(FireWindow win) {
             if(win->id == w->id || win->type == WindowTypeDesktop)
                 return nullptr;
 
-            if(win->shouldBeDrawn() && !isAncestorTo(win, w) &&
+            if(win->isVisible() && !isAncestorTo(win, w) &&
                     w->type != WindowTypeWidget &&
                     w->type != WindowTypeModal &&
                     w->type != WindowTypeDock)
@@ -278,10 +278,12 @@ void WinStack::focusWindow(FireWindow win) {
     if(win->attrib.c_class == InputOnly)
         return;
 
-   if(win->type == WindowTypeWidget && layers[win->layer].size()) {
+    activeWin = win;
+
+    if(win->type == WindowTypeWidget && layers[win->layer].size()) {
         if(win->transientFor)
             restackAbove(win, win->transientFor),
-            win = win->transientFor;
+                win = win->transientFor;
         else
             return;
     }
@@ -294,7 +296,6 @@ void WinStack::focusWindow(FireWindow win) {
         return;
     }
 
-    activeWin = win;
 
     auto w1 = findTopmostStackingWindow(activeWin); // window to restack below
     auto w2 = activeWin; // window to restack above(our window)
@@ -336,12 +337,14 @@ FireWindow WinStack::findWindowAtCursorPosition(int x, int y) {
 }
 
 FireWindow WinStack::getTopmostToplevel() {
-    for(auto wins : layers)
-        for(auto w : wins)
-            if(w->shouldBeDrawn() &&
-               w->type != WindowTypeDesktop &&
-               w->type != WindowTypeWidget)
+    for(auto &wins : layers)
+        for(auto w : wins) {
+            if(w->isVisible() && !w->destroyed &&
+                    w->type != WindowTypeWidget    &&
+                    w->type != WindowTypeDesktop   &&
+                    w->type != WindowTypeDock)
                   return w;
+        }
 
     return nullptr;
 }

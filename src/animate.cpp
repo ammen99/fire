@@ -92,6 +92,7 @@ bool Fade::Step() {
             // just unmap
             win->norender = true,
             XFreePixmap(core->d, win->pixmap);
+            core->focusWindow(core->getActiveWindow());
 
             if(win->destroyed) // window is closed
                 core->removeWindow(win);
@@ -106,3 +107,5 @@ bool Fade::Run() {
     return this->run;
 }
 
+Fade::~Fade() {
+}
