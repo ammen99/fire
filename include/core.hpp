@@ -91,8 +91,11 @@ struct Fade : public Animation {
     bool Run();
 };
 
+/* render hooks are used to replace the renderAllWindows()
+ * when necessary, i.e to render completely custom
+ * image */
 
-class Expo;
+using RenderHook = std::function<void()>;
 
 #define GetTuple(x,y,t) auto x = std::get<0>(t); \
                         auto y = std::get<1>(t)
@@ -121,6 +124,12 @@ class Core {
         void initDefaultPlugins();
         template<class T>
         PluginPtr createPlugin();
+
+        struct {
+            RenderHook currentRenderer;
+            bool replaced = true;
+        } render;
+
     public:
 
         /* warning!!!
@@ -146,6 +155,8 @@ class Core {
                               // for ex. when using expo
 
         void setBackground(const char *path);
+        bool setRenderer(RenderHook rh);
+        void setDefaultRenderer();
 
         template<class T>
         uint getFreeID(std::unordered_map<uint, T> *map);
@@ -186,6 +197,11 @@ class Core {
 
         void run(char *command);
         void renderAllWindows();
+
+        /* this function renders a viewport and
+         * saves the image in texture which is returned */
+        void getViewportTexture(std::tuple<int, int>, GLuint& fbuff,
+                GLuint& tex);
 
         void addWindow(XCreateWindowEvent);
         void addWindow(Window);

@@ -5,7 +5,6 @@
 
 std::unordered_map<Window, FireWindow> windows;
 
-
 using StackIterator = std::list<FireWindow>::iterator;
 WinStack::WinStack() {
     layers.resize(3);

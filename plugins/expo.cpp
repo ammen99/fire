@@ -91,7 +91,6 @@ class Expo : public Plugin {
 
         GetTuple(vx, vy, core->getWorkspace());
         GetTuple(vwidth, vheight, core->getWorksize());
-        GetTuple(width, height, core->getScreenSize());
 
         float midx = vwidth / 2;
         float midy = vheight / 2;
@@ -113,9 +112,6 @@ class Expo : public Plugin {
         offYtarget = offY;
         sclXtarget = scaleX;
         sclYtarget = scaleY;
-
-        output = core->getRegionFromRect(-vx * width, -vy * height,
-                (vwidth  - vx) * width, (vheight - vy) * height);
     }
 
     void finalizeZoom() {

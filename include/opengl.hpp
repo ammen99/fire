@@ -11,9 +11,17 @@ namespace OpenGL {
     void renderTransformedTexture(GLuint text, GLuint vao,
      GLuint vbo, glm::mat4 t);
     void renderTexture(GLuint text, GLuint vao, GLuint vbo);
+
     void preStage();
+    void preStage(GLuint fbuff);
     void endStage();
+
     void generateVAOVBO(int, int, int, int, GLuint&, GLuint&);
     void generateVAOVBO(int, int, GLuint&, GLuint&);
+
+    void prepareFramebuffer(GLuint &fbuff, GLuint &texture);
+    GLuint getTex();
+    /* set program to current program */
+    void useDefaultProgram();
 };
 #endif

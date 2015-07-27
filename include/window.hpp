@@ -101,6 +101,7 @@ class FireWin {
         SharedImage shared;
 
 
+        bool isVisible();
         bool shouldBeDrawn();
         void updateVBO();
         void updateRegion();

@@ -72,6 +72,20 @@ glm::mat4 Transform::compose() {
 Region output;
 bool FireWin::allDamaged = false;
 
+
+/* ensure that new window is on current viewport */
+bool constrainNewWindowPosition(int &x, int &y) {
+    GetTuple(sw, sh, core->getScreenSize());
+    auto nx = (x % sw + sw) % sw;
+    auto ny = (y % sh + sh) % sh;
+
+    if(nx != x || ny != y){
+        x = nx, y = ny;
+        return true;
+    }
+    return false;
+}
+
 FireWin::FireWin(Window id, bool init) {
     this->id = id;
     if(!init) return;
@@ -98,7 +112,7 @@ FireWin::FireWin(Window id, bool init) {
 
     updateRegion();
 
-    if(attrib.c_class ==InputOutput)
+    if(attrib.c_class == InputOutput)
         damagehnd = XDamageCreate(core->d, id, XDamageReportRawRectangles);
     else
         attrib.map_state = IsUnmapped,
@@ -122,8 +136,10 @@ FireWin::FireWin(Window id, bool init) {
         WinUtil::readProp(id, winOpacityAtom, 0xffff) / 0xffff;
 
     glGenTextures(1, &texture);
-
     keepCount = 0;
+
+    int x = attrib.x, y = attrib.y;
+    if(constrainNewWindowPosition(x, y)) move(x, y, true);
 }
 
 FireWin::~FireWin() {
@@ -133,20 +149,18 @@ FireWin::~FireWin() {
     XDamageDestroy(core->d, damagehnd);
 }
 
+#define Mod(x,m) (((x)%(m)+(m))%(m))
+
 
 void FireWin::updateVBO() {
     if(this->disableVBOChange)
         return;
 
     if(type == WindowTypeDesktop)
-        OpenGL::generateVAOVBO(attrib.x,
-            attrib.y + attrib.height,
-            attrib.width, -attrib.height,
-            vao, vbo);
+        OpenGL::generateVAOVBO(attrib.x, attrib.y + attrib.height,
+            attrib.width, -attrib.height, vao, vbo);
     else
-        OpenGL::generateVAOVBO(attrib.x, attrib.y,
-            attrib.width, attrib.height,
-            vao, vbo);
+        OpenGL::generateVAOVBO(attrib.x, attrib.y, attrib.width, attrib.height, vao, vbo);
 }
 
 void FireWin::updateRegion() {
@@ -158,8 +172,6 @@ void FireWin::updateRegion() {
 }
 
 void FireWin::updateState() {
-    std::cout << "updating state" << state << std::endl;
-    std::cout << WindowStateMaxH << " " << WindowStateMaxV << std::endl;
     GetTuple(sw, sh, core->getScreenSize());
     if(state & WindowStateMaxH) {
         std::cout << "maxh" << std::endl;
@@ -205,7 +217,7 @@ void FireWin::syncAttrib() {
     addDamage();
 }
 
-bool FireWin::shouldBeDrawn() {
+bool FireWin::isVisible() {
     if(destroyed && !keepCount)
         return false;
 
@@ -225,9 +237,17 @@ bool FireWin::shouldBeDrawn() {
         norender = true;
         return false;
     }
+    return true;
+}
 
-    if(core->dmg && XRectInRegion(core->dmg,
-       attrib.x, attrib.y, attrib.width, attrib.height) == RectangleOut)
+bool FireWin::shouldBeDrawn() {
+    if(!isVisible())
+        return false;
+
+    auto result = XRectInRegion(core->dmg, attrib.x, attrib.y,
+            attrib.width, attrib.height);
+
+    if(result == RectangleOut)
         return false;
     else
         return true;
@@ -243,15 +263,14 @@ int FireWin::setTexture() {
         return 0;
     }
 
-//    if(!damaged)  {
-//        glBindTexture(GL_TEXTURE_2D, texture);
-//        XUngrabServer(core->d);
-//        return 1;
-//    }
+    if(!damaged)  {
+        glBindTexture(GL_TEXTURE_2D, texture);
+        XUngrabServer(core->d);
+        return 1;
+    }
 
     XWindowAttributes xwa;
     if(!mapTryNum-- && !XGetWindowAttributes(core->d, id, &xwa)) {
-        std::cout << "Fail !!!" << std::endl;
         norender = true;
         XUngrabServer(core->d);
         return 0;
@@ -270,7 +289,6 @@ int FireWin::setTexture() {
 }
 
 void FireWin::render() {
-
     OpenGL::color = transform.color;
     if(type == WindowTypeDesktop){
         OpenGL::renderTransformedTexture(texture, vao, vbo,

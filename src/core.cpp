@@ -115,7 +115,14 @@ void Core::init() {
     config->setOptionsForPlugin(plug);
     plug->updateConfiguration();
 
+    vwidth = plug->options["vwidth"]->data.ival;
+    vheight= plug->options["vheight"]->data.ival;
+
     loadDynamicPlugins();
+
+    WinUtil::init();
+    GLXUtils::initGLX();
+    OpenGL::initOpenGL((*plug->options["shadersrc"]->data.sval).c_str());
 
     for(auto p : plugins) {
         p->owner = std::make_shared<_Ownership>();
@@ -125,18 +132,13 @@ void Core::init() {
         config->setOptionsForPlugin(p);
         p->updateConfiguration();
     }
-    vwidth = plug->options["vwidth"]->data.ival;
-    vheight= plug->options["vheight"]->data.ival;
-
-    WinUtil::init();
-    GLXUtils::initGLX();
-    OpenGL::initOpenGL((*plug->options["shadersrc"]->data.sval).c_str());
 
     dmg = getMaximisedRegion();
     resetDMG = true;
     addExistingWindows();
 
     core->setBackground((*plug->options["background"]->data.sval).c_str());
+    setDefaultRenderer();
 }
 
 void Core::enableInputPass(Window win) {
@@ -262,8 +264,10 @@ void Core::remKey(uint id) {
 }
 
 uint Core::addBut(ButtonBinding *bb, bool grab) {
-    if(!bb)
+    if(!bb) {
+        std::cout << "AddBut called with null" << std::endl;
         return -1;
+    }
 
     auto id = getFreeID(&buttons);
     buttons.insert({id, bb});
@@ -490,8 +494,8 @@ bool Core::activateOwner(Ownership owner) {
 
     for(auto o : owners)
         if(o && o->active)
-            if(o->compat.find(owner->name) ==
-               o->compat.end() && !o->compatAll)
+            if(o->compat.find(owner->name) == o->compat.end()
+                    && !o->compatAll)
                 return false;
 
     owner->active = true;
@@ -518,21 +522,19 @@ bool Core::checkKey(KeyBinding *kb, XKeyEvent xkey) {
 }
 
 bool Core::checkButPress(ButtonBinding *bb, XButtonEvent xb) {
+
     if(!bb->active)
         return false;
 
     if(bb->type != BindingTypePress)
         return false;
 
-    if(!(bb->mod & xb.state) && !(bb->mod == NoMods && xb.state == 0))
+    auto state = xb.state & AllModifiers;
+    if(state != bb->mod && bb->mod != AnyModifier)
         return false;
 
     if(bb->button != xb.button)
         return false;
-
-    if(!bb->action)
-        return false;
-
     return true;
 }
 
@@ -541,6 +543,9 @@ bool Core::checkButRelease(ButtonBinding *bb, XButtonEvent kb) {
         return false;
 
     if(bb->type != BindingTypeRelease)
+        return false;
+
+    if(bb->button != kb.button)
         return false;
 
     return true;
@@ -615,12 +620,13 @@ void Core::handleEvent(XEvent xev){
 
             std::cout << "button press" << std::endl;
 
-            for(auto bb : buttons)
+            for(auto bb : buttons) {
                 if(checkButPress(bb.second, xev.xbutton)) {
                     std::cout << "CAlling action" << std::endl;
                     bb.second->action(new Context(xev));
                     break;
                 }
+            }
 
             XAllowEvents(d, ReplayPointer, xev.xbutton.time);
             break;
@@ -810,6 +816,26 @@ void Core::handleEvent(XEvent xev){
     }
 }
 
+bool Core::setRenderer(RenderHook rh) {
+    if(render.replaced)
+        return false;
+    render.replaced = true;
+    render.currentRenderer = rh;
+    return true;
+}
+
+void Core::setDefaultRenderer() {
+    if(!render.replaced)
+        return;
+
+    render.replaced = false;
+
+    render.currentRenderer =
+        std::bind(std::mem_fn(&Core::renderAllWindows), this);
+}
+
+
+
 #define Second 1000000
 #define MaxDelay 1000
 #define MinRR 61
@@ -856,7 +882,7 @@ void Core::loop(){
             }
 
             if(FireWin::allDamaged || !XEmptyRegion(dmg))
-                renderAllWindows();   // we just redraw
+                render.currentRenderer();
 
             /* optimisation when idle */
             if(!cntHooks && !hadEvents && currentCycle <= Second && resetDMG)
@@ -912,19 +938,22 @@ void Core::switchWorkspace(std::tuple<int, int> nPos) {
     auto nx = std::get<0> (nPos);
     auto ny = std::get<1> (nPos);
 
+    if(nx >= vwidth || ny >= vheight || nx < 0 || ny < 0)
+        return;
+
     auto dx = (vx - nx) * width;
     auto dy = (vy - ny) * height;
     GetTuple(sw, sh, core->getScreenSize());
 
     using namespace std::placeholders;
     auto proc = [dx, dy, sw, sh] (FireWindow w) {
-        if(w->state & WindowStateSticky)
-            return;
+        //if(w->state & WindowStateSticky)
+        //    return;
         w->move(w->attrib.x + dx, w->attrib.y + dy);
 
-        if(w->attrib.x >= sw || w->attrib.y >= sh ||
-                w->attrib.x + w->attrib.width <= 0 ||
-                w->attrib.y + w->attrib.height <= 0)
+        if(w->attrib.x > sw || w->attrib.y > sh ||
+                w->attrib.x + w->attrib.width < 0 ||
+                w->attrib.y + w->attrib.height < 0)
             w->visible = false;
         else
             w->visible = true;
@@ -973,6 +1002,48 @@ std::vector<FireWindow> Core::getWindowsOnViewport(std::tuple<int, int> vp) {
     return ret;
 }
 
+void Core::getViewportTexture(std::tuple<int, int> vp,
+        GLuint &fbuff, GLuint &texture) {
+
+    OpenGL::useDefaultProgram();
+    if(fbuff == -1 || texture == -1)
+        OpenGL::prepareFramebuffer(fbuff, texture);
+    OpenGL::preStage(fbuff);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    GetTuple(x, y, vp);
+    FireWin::allDamaged = true;
+
+    auto view = getRegionFromRect((x - vx) * width, (y - vy) * height,
+                       (x - vx + 1) * width, (y - vy + 1) * height);
+
+    glm::mat4 off = glm::translate(glm::mat4(),
+            glm::vec3(2 * (vx - x), 2 * (y - vy), 0));
+    glm::mat4 save = Transform::gtrs;
+    Transform::gtrs *= off;
+    int num = 0;
+
+    Region tmp = XCreateRegion();
+    std::vector<FireWindow> winsToDraw;
+
+    auto proc = [view, tmp, &num, &winsToDraw](FireWindow win) {
+        if(!win->isVisible() || !win->region)
+            return;
+
+        XIntersectRegion(view, win->region, tmp);
+        if(!XEmptyRegion(tmp))
+            win->transform.stackID = num++,
+            winsToDraw.push_back(win);
+    };
+    wins->forEachWindow(proc);
+
+    auto it = winsToDraw.rbegin();
+    while(it != winsToDraw.rend())
+        (*it++)->render();
+
+    Transform::gtrs = save;
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
 
 namespace {
     int fullRedraw = 0;
@@ -981,6 +1052,9 @@ namespace {
 void Core::setRedrawEverything(bool val) {
     if(val) {
         fullRedraw++;
+
+        output = core->getRegionFromRect(-vx * width, -vy * height,
+                (vwidth  - vx) * width, (vheight - vy) * height);
         FireWin::allDamaged = true;
         core->resetDMG = false;
     }
