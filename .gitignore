@@ -7,3 +7,5 @@ src/2
 *.d
 *.o
 manager
+gui/.cvimrc
+*.pyc

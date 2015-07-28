@@ -22,7 +22,7 @@ Config *config;
 #define Crash 101
 #define max_frames 100
 
-void print_trace(int nSig) {
+void print_trace() {
     std::cout << "stack trace:\n";
 
     // storage array for stack trace address data
@@ -111,6 +111,14 @@ void signalHandle(int sig) {
             core->terminate = true;  // and make core exit
             break;
 
+        case SIGUSR1:
+            std::cout << "SIGUSR1" << std::endl;
+            shdata[0] = 1;
+            if(!core) {
+                std::cout << "in main process" << std::endl;
+            }
+            break;
+
         default: // program crashed, so restart core
             std::cout << "Crash Detected!!!!!!" << std::endl;
             shdata[0] = 1;
@@ -122,7 +130,7 @@ void signalHandle(int sig) {
             shdata[1] = int(vx);
             shdata[2] = int(vy);
 
-            print_trace(SIGSEGV);
+            print_trace();
             delete core;
             break;
     }
@@ -148,6 +156,8 @@ void runOnce(int argc, const char **argv) {
     signal(SIGSEGV, signalHandle);
     signal(SIGFPE, signalHandle);
     signal(SIGILL, signalHandle);
+    signal(SIGUSR1, signalHandle);
+    signal(SIGABRT, signalHandle);
 
     Transform::proj = Transform::view =
     Transform::grot = Transform::gscl =
@@ -174,6 +184,8 @@ int main(int argc, const char **argv ) {
     signal(SIGSEGV, signalHandle);
     signal(SIGFPE, signalHandle);
     signal(SIGILL, signalHandle);
+    signal(SIGUSR1, signalHandle);
+    signal(SIGABRT, signalHandle);
 
     /* get a bit of shared memory
      * it is used to check if fork() wants us to exit
