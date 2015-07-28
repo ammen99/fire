@@ -2,26 +2,26 @@
 #define DRIVER_H
 #include "core.hpp"
 
-class OpenGLWorker {
-    private:
-        static GLuint program;
-        static GLuint mvpID, transformID, normalID;
-        static GLuint depthID, colorID;
-        static glm::mat4 View;
-        static glm::mat4 Proj;
-        static glm::mat4 MVP;
-        static glm::mat3 NM;
-    public:
-        static bool      transformed;
-        static int       depth;
-        static glm::vec4 color;
+namespace OpenGL {
+    extern bool      transformed;
+    extern int       depth;
+    extern glm::vec4 color;
 
-        static void initOpenGL(const char *shaderSrcPath);
-        static void renderTransformedTexture(GLuint text, GLuint vao, GLuint vbo, glm::mat4 t);
-        static void renderTexture(GLuint text, GLuint vao, GLuint vbo);
-        static void rotate(float x, float y, float z, float direction);
-        static void preStage();
-        static void generateVAOVBO(int, int, int, int, GLuint&, GLuint&);
-        static void generateVAOVBO(int, int, GLuint&, GLuint&);
+    void initOpenGL(const char *shaderSrcPath);
+    void renderTransformedTexture(GLuint text, GLuint vao,
+     GLuint vbo, glm::mat4 t);
+    void renderTexture(GLuint text, GLuint vao, GLuint vbo);
+
+    void preStage();
+    void preStage(GLuint fbuff);
+    void endStage();
+
+    void generateVAOVBO(int, int, int, int, GLuint&, GLuint&);
+    void generateVAOVBO(int, int, GLuint&, GLuint&);
+
+    void prepareFramebuffer(GLuint &fbuff, GLuint &texture);
+    GLuint getTex();
+    /* set program to current program */
+    void useDefaultProgram();
 };
 #endif

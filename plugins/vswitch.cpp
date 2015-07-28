@@ -15,8 +15,8 @@ class VSwitch : public Plugin {
     public:
 
     void initOwnership() {
-        this->owner->name = "vswitch";
-        this->owner->compatAll = false;
+        owner->name = "vswitch";
+        owner->compatAll = false;
     }
 
     void updateConfiguration() {
@@ -123,7 +123,6 @@ class VSwitch : public Plugin {
         Transform::gtrs = glm::translate(glm::mat4(), glm::vec3(offx, offy, 0.0));
     }
 
-
     void init() {
         using namespace std::placeholders;
 
@@ -136,7 +135,6 @@ class VSwitch : public Plugin {
 
         for(int i = 0; i < 4; i++) {
             kbs[i].type = BindingTypePress;
-            kbs[i].active = true;
             kbs[i].mod = ControlMask | Mod1Mask;
             kbs[i].key = switchWorkspaceBindings[i];
 

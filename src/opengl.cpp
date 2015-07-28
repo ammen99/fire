@@ -1,23 +1,73 @@
 #include "../include/opengl.hpp"
 
-bool OpenGLWorker::transformed = false;
+namespace {
+    GLuint program;
+    GLuint mvpID;
+    GLuint depthID, colorID, bgraID;
+    glm::mat4 View;
+    glm::mat4 Proj;
+    glm::mat4 MVP;
 
-GLuint OpenGLWorker::program;
-GLuint OpenGLWorker::mvpID;
-GLuint OpenGLWorker::transformID;
-GLuint OpenGLWorker::normalID;
-GLuint OpenGLWorker::depthID;
-GLuint OpenGLWorker::colorID;
+    GLuint framebuffer;
+    GLuint framebufferTexture;
 
-glm::mat4 OpenGLWorker::MVP;
-glm::mat4 OpenGLWorker::View;
-glm::mat4 OpenGLWorker::Proj;
-glm::mat3 OpenGLWorker::NM;
+    GLuint fullVAO, fullVBO;
 
-int   OpenGLWorker::depth;
-glm::vec4 OpenGLWorker::color;
+///* these functions are disabled for now
 
-void OpenGLWorker::generateVAOVBO(int x, int y, int w, int h,
+    const char *getStrSrc(GLenum src) {
+        if(src == GL_DEBUG_SOURCE_API_ARB            )return "API_ARB        ";
+        if(src == GL_DEBUG_SOURCE_WINDOW_SYSTEM_ARB  )return "WINDOW_SYSTEM  ";
+        if(src == GL_DEBUG_SOURCE_SHADER_COMPILER_ARB)return "SHADER_COMPILER";
+        if(src == GL_DEBUG_SOURCE_THIRD_PARTY_ARB    )return "THIRD_PARTYB   ";
+        if(src == GL_DEBUG_SOURCE_APPLICATION_ARB    )return "APPLICATIONB   ";
+        if(src == GL_DEBUG_SOURCE_OTHER_ARB          )return "OTHER_ARB      ";
+        else return "UNKNOWN";
+    }
+
+    const char *getStrType(GLenum type) {
+        if(type==GL_DEBUG_TYPE_ERROR_ARB              )return "ERROR_ARB          ";
+        if(type==GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR_ARB)return "DEPRECATED_BEHAVIOR";
+        if(type==GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR_ARB )return "UNDEFINED_BEHAVIOR ";
+        if(type==GL_DEBUG_TYPE_PORTABILITY_ARB        )return "PORTABILITY_ARB    ";
+        if(type==GL_DEBUG_TYPE_PERFORMANCE_ARB        )return "PERFORMANCE_ARB    ";
+        if(type==GL_DEBUG_TYPE_OTHER_ARB              )return "OTHER_ARB          ";
+        return "UNKNOWN";
+    }
+
+    const char *getStrSeverity(GLenum severity) {
+        if( severity == GL_DEBUG_SEVERITY_HIGH_ARB  )return "HIGH";
+        if( severity == GL_DEBUG_SEVERITY_MEDIUM_ARB)return "MEDIUM";
+        if( severity == GL_DEBUG_SEVERITY_LOW_ARB   )return "LOW";
+        if( severity == GL_DEBUG_SEVERITY_NOTIFICATION) return "NOTIFICATION";
+        return "UNKNOWN";
+    }
+
+    void errorHandler(GLenum src, GLenum type,
+            GLuint id, GLenum severity,
+            GLsizei len, const GLchar *msg,
+            const void *dummy) {
+
+        std::cout << "_______________________________________________\n";
+        std::cout << "OGL debug: \n";
+        std::cout << "Source: " << getStrSrc(src) << std::endl;
+        std::cout << "Type: " << getStrType(type) << std::endl;
+        std::cout << "ID: " << id << std::endl;
+        std::cout << "Severity: " << getStrSeverity(severity) << std::endl;
+        std::cout << "Msg: " << msg << std::endl;;
+        std::cout << "_______________________________________________\n";
+    }
+ //   */
+}
+
+bool OpenGL::transformed = false;
+int  OpenGL::depth;
+glm::vec4 OpenGL::color;
+
+namespace OpenGL {
+
+    GLuint getTex() {return framebufferTexture;}
+void generateVAOVBO(int x, int y, int w, int h,
         GLuint &vao, GLuint &vbo) {
 
     GetTuple(sw, sh, core->getScreenSize());
@@ -66,7 +116,7 @@ void OpenGLWorker::generateVAOVBO(int x, int y, int w, int h,
     glEnableVertexAttribArray (uvPosition);
 }
 
-void OpenGLWorker::generateVAOVBO(int w, int h, GLuint &vao, GLuint &vbo) {
+void generateVAOVBO(int w, int h, GLuint &vao, GLuint &vbo) {
     GetTuple(sw, sh, core->getScreenSize());
 
     int mx = sw / 2;
@@ -76,16 +126,17 @@ void OpenGLWorker::generateVAOVBO(int w, int h, GLuint &vao, GLuint &vbo) {
 }
 
 
-void OpenGLWorker::renderTexture(GLuint tex, GLuint vao, GLuint vbo) {
+void renderTexture(GLuint tex, GLuint vao, GLuint vbo) {
     glBindVertexArray(vao);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, tex);
 
     glPatchParameteri(GL_PATCH_VERTICES, 3);
     glDrawArrays (GL_PATCHES, 0, 6);
 }
 
-void OpenGLWorker::renderTransformedTexture(GLuint tex,
+void renderTransformedTexture(GLuint tex,
         GLuint vao, GLuint vbo,
         glm::mat4 Model) {
     if(transformed)
@@ -98,94 +149,92 @@ void OpenGLWorker::renderTransformedTexture(GLuint tex,
     glUniform4fv(colorID, 1, &color[0]);
 
     renderTexture(tex, vao, vbo);
-
-    MVP = Proj * View;
-    glUniformMatrix4fv(mvpID, 1, GL_FALSE, &MVP[0][0]);
 }
 
-void OpenGLWorker::preStage() {
+void preStage() {
+
+    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
     GetTuple(sw, sh, core->getScreenSize());
+    if(FireWin::allDamaged) {
+        glScissor(0, 0, sw, sh);
+        return;
+    }
 
     XRectangle rect;
     XClipBox(core->dmg, &rect);
 
     int blx = rect.x;
     int bly = sh - (rect.y + rect.height);
-
-    if(!__FireWindow::allDamaged) // do not scissor if damaging everything
-        glScissor(blx, bly, rect.width, rect.height);
-    else
-        glScissor(0, 0, sw, sh);
+    glScissor(blx, bly, rect.width, rect.height);
 }
 
-#define cout std::cout
-
-const char *getStrSrc(GLenum src) {
-    if(src == GL_DEBUG_SOURCE_API_ARB            )return "API_ARB        ";
-    if(src == GL_DEBUG_SOURCE_WINDOW_SYSTEM_ARB  )return "WINDOW_SYSTEM  ";
-    if(src == GL_DEBUG_SOURCE_SHADER_COMPILER_ARB)return "SHADER_COMPILER";
-    if(src == GL_DEBUG_SOURCE_THIRD_PARTY_ARB    )return "THIRD_PARTYB   ";
-    if(src == GL_DEBUG_SOURCE_APPLICATION_ARB    )return "APPLICATIONB   ";
-    if(src == GL_DEBUG_SOURCE_OTHER_ARB          )return "OTHER_ARB      ";
-    else return "UNKNOWN";
+void preStage(GLuint fbuff) {
+    glBindFramebuffer(GL_FRAMEBUFFER, fbuff);
+    GetTuple(sw, sh, core->getScreenSize());
+    glScissor(0, 0, sw, sh);
 }
 
-const char *getStrType(GLenum type) {
-    if(type==GL_DEBUG_TYPE_ERROR_ARB              )return "ERROR_ARB          ";
-    if(type==GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR_ARB)return "DEPRECATED_BEHAVIOR";
-    if(type==GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR_ARB )return "UNDEFINED_BEHAVIOR ";
-    if(type==GL_DEBUG_TYPE_PORTABILITY_ARB        )return "PORTABILITY_ARB    ";
-    if(type==GL_DEBUG_TYPE_PERFORMANCE_ARB        )return "PERFORMANCE_ARB    ";
-    if(type==GL_DEBUG_TYPE_OTHER_ARB              )return "OTHER_ARB          ";
-    return "UNKNOWN";
+void endStage() {
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    auto tmp = glm::mat4();
+    glUniformMatrix4fv(mvpID, 1, GL_FALSE, &tmp[0][0]);
+    glUniform1i(bgraID, 1);
+
+    GetTuple(sw, sh, core->getScreenSize());
+    glScissor(0, 0, sw, sh);
+
+    renderTexture(framebufferTexture, fullVAO, fullVBO);
+    glXSwapBuffers(core->d, core->outputwin);
+
+    glUniform1i(bgraID, 0);
 }
 
-const char *getStrSeverity(GLenum severity) {
-    if( severity == GL_DEBUG_SEVERITY_HIGH_ARB  )return "HIGH";
-    if( severity == GL_DEBUG_SEVERITY_MEDIUM_ARB)return "MEDIUM";
-    if( severity == GL_DEBUG_SEVERITY_LOW_ARB   )return "LOW";
-    if( severity == GL_DEBUG_SEVERITY_NOTIFICATION) return "NOTIFICATION";
-    return "UNKNOWN";
-
-}
-
-
-void errorHandler(GLenum src, GLenum type,
-               GLuint id, GLenum severity,
-               GLsizei len, const GLchar *msg,
-               const void *dummy) {
-
-    cout << "_______________________________________________";
-    cout << "OGL debug: ";
-    cout << "Source: " << getStrSrc(src);
-    cout << "Type: " << getStrType(type);
-    cout << "ID: " << id;
-    cout << "Severity: " << getStrSeverity(severity);
-    cout << "Msg: " << msg;
-    cout << "_______________________________________________";
-}
-
-
-
-void OpenGLWorker::initOpenGL(const char *shaderSrcPath) {
-
-    //glEnable(GL_DEBUG_OUTPUT);
-    //glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-    //glDebugMessageCallback(errorHandler, (void*)0);
-    //
+void prepareFramebuffer(GLuint &fbuff, GLuint &texture) {
     GetTuple(sw, sh, core->getScreenSize());
 
+    glGenFramebuffers(1, &fbuff);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbuff);
+
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, sw, sh,
+            0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+            texture, 0);
+
+    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE){
+        std::cout << "Error in framebuffer !!!" << std::endl;
+    }
+}
+
+void useDefaultProgram() {
+    glUseProgram(program);
     glClearColor (.0f, .0f, .0f, 1.f);
     glClearDepth (1.f);
-//    glEnable     (GL_DEPTH_TEST);
+
     glEnable     (GL_ALPHA_TEST);
     glEnable     (GL_BLEND);
     glBlendFunc  (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-//    glDepthFunc  (GL_LESS);
-    glViewport   (0, 0, sw, sh);
-    glDisable    (GL_CULL_FACE);
     glEnable     (GL_SCISSOR_TEST);
+    glDisable    (GL_DEPTH_TEST);
+}
 
+void initOpenGL(const char *shaderSrcPath) {
+
+//    glEnable(GL_DEBUG_OUTPUT);
+//    glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+    glDebugMessageCallback(errorHandler, (void*)0);
+
+    GetTuple(sw, sh, core->getScreenSize());
     std::string tmp = shaderSrcPath;
 
     GLuint vss =
@@ -223,12 +272,12 @@ void OpenGLWorker::initOpenGL(const char *shaderSrcPath) {
     glAttachShader (program, gss);
     glBindFragDataLocation (program, 0, "outColor");
     glLinkProgram (program);
-    glUseProgram (program);
+    useDefaultProgram();
 
     mvpID = glGetUniformLocation(program, "MVP");
-    normalID = glGetUniformLocation(program, "NormalMatrix");
     depthID = glGetUniformLocation(program, "depth");
     colorID = glGetUniformLocation(program, "color");
+    bgraID = glGetUniformLocation(program, "bgra");
     color = glm::vec4(1.f, 1.f, 1.f, 1.f);
 
     View = glm::lookAt(glm::vec3(0., 0., 1.67),
@@ -237,15 +286,16 @@ void OpenGLWorker::initOpenGL(const char *shaderSrcPath) {
     Proj = glm::perspective(45.f, 1.f, .1f, 100.f);
 
     MVP = glm::mat4();
-    NM = glm::inverse(glm::transpose(glm::mat3(View)));
 
     glUniformMatrix4fv(mvpID, 1, GL_FALSE, &MVP[0][0]);
-    glUniformMatrix3fv(normalID, 1, GL_FALSE, &NM[0][0]);
 
     auto w2ID = glGetUniformLocation(program, "w2");
     auto h2ID = glGetUniformLocation(program, "h2");
 
     glUniform1f(w2ID, sw / 2);
     glUniform1f(h2ID, sh / 2);
-}
+    generateVAOVBO(0, sh, sw, -sh, fullVAO, fullVBO);
 
+    prepareFramebuffer(framebuffer, framebufferTexture);
+}
+}
