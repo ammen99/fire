@@ -96,8 +96,10 @@ struct Fade : public Animation {
 /* render hooks are used to replace the renderAllWindows()
  * when necessary, i.e to render completely custom
  * image */
-
 using RenderHook = std::function<void()>;
+
+using SignalListenerData = std::vector<void*>;
+using SignalListener = std::function<void(SignalListenerData)>;
 
 #define GetTuple(x,y,t) auto x = std::get<0>(t); \
                         auto y = std::get<1>(t)
@@ -125,6 +127,11 @@ class Core {
         std::vector<ButtonBinding*> buttons;
         std::vector<Hook*> hooks;
         std::unordered_set<Ownership> owners;
+
+        std::unordered_map<std::string,
+            std::vector<SignalListener>> signals;
+        void addDefaultSignals();
+
 
         void handleEvent(XEvent xev);
         void wait(int timeout);
@@ -186,6 +193,10 @@ class Core {
         void addKey (KeyBinding *kb, bool grab = false);
         void addBut (ButtonBinding *bb, bool grab = false);
         void addHook(Hook*);
+
+        void addSignal(std::string name);
+        void connectSignal(std::string name, SignalListener callback);
+        void triggerSignal(std::string name, SignalListenerData data);
 
         void regOwner(Ownership owner);
         bool checkKey(KeyBinding *kb, XKeyEvent xkey);

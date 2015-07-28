@@ -39,7 +39,6 @@ Core::Core(int vx, int vy) {
     this->vy = vy;
 }
 
-
 void Core::enableInputPass(Window win) {
     XserverRegion region;
     region = XFixesCreateRegion(d, NULL, 0);
@@ -153,6 +152,7 @@ void Core::init() {
     WinUtil::init();
     GLXUtils::initGLX();
     OpenGL::initOpenGL((*plug->options["shadersrc"]->data.sval).c_str());
+    core->setBackground((*plug->options["background"]->data.sval).c_str());
 
     for(auto p : plugins) {
         p->owner = std::make_shared<_Ownership>();
@@ -165,10 +165,10 @@ void Core::init() {
 
     dmg = getMaximisedRegion();
     resetDMG = true;
-    addExistingWindows();
 
-    core->setBackground((*plug->options["background"]->data.sval).c_str());
+    addExistingWindows();
     setDefaultRenderer();
+    addDefaultSignals();
 }
 
 Core::~Core(){
@@ -326,6 +326,27 @@ void Core::setDefaultRenderer() {
         std::bind(std::mem_fn(&Core::defaultRenderer), this);
 }
 
+void Core::addSignal(std::string name) {
+    if(signals.find(name) == signals.end())
+        signals[name] = std::vector<SignalListener>();
+}
+
+void Core::triggerSignal(std::string name, SignalListenerData data) {
+    if(signals.find(name) != signals.end())
+        for(auto proc : signals[name])
+            proc(data);
+}
+
+void Core::connectSignal(std::string name, SignalListener callback){
+    addSignal(name);
+    signals[name].push_back(callback);
+}
+
+void Core::addDefaultSignals() {
+    addSignal("map-window");
+    addSignal("unmap-window");
+}
+
 void Core::addWindow(XCreateWindowEvent xev) {
     FireWindow w = std::make_shared<FireWin>(xev.window, true);
 
@@ -360,6 +381,10 @@ void Core::mapWindow(FireWindow win, bool xmap) {
     win->norender = false;
     win->damaged = true;
     new AnimationHook(new Fade(win), this);
+
+    SignalListenerData v;
+    v.push_back((void*)&win);
+    triggerSignal("map-window", v);
 
     if(xmap) {
         XMapWindow(d, win->id);
