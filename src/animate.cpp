@@ -1,5 +1,7 @@
 #include "../include/core.hpp"
 
+int Fade::duration;
+
 Animation::~Animation() {}
 
 AnimationHook::AnimationHook(Animation *_anim, Core *c) {
@@ -19,13 +21,12 @@ void AnimationHook::step() {
 
 AnimationHook::~AnimationHook() {}
 
-Fade::Fade (FireWindow _win, Mode _mode, int duration) :
+Fade::Fade (FireWindow _win, Mode _mode) :
     win(_win), mode(_mode) {
         savetr = win->transparent;
         win->transparent = true;
 
-        duration = 150;
-        maxstep = duration * 1000 / core->getRefreshRate();
+        maxstep = getSteps(duration);
         win->keepCount++;
         if(mode == FadeIn)
             this->progress = 0,

@@ -16,7 +16,8 @@
 
 #include <sys/time.h>
 #include <poll.h>
-
+#include <dlfcn.h>
+#include <unistd.h>
 #include <cstdlib>
 #include <sys/ipc.h>
 #include <sys/shm.h>
@@ -28,6 +29,7 @@
 #include <fstream>
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
 
 
 #include <GL/glew.h>
@@ -40,14 +42,7 @@
 #define ILUT_USE_OPENGL
 #include <IL/ilut.h>
 
-
-//#define err LOG(ERROR)
-//#define info LOG(INFO)
-//
-//#define err (cout<<__FILE__<<" "<<__LINE__<<" ")
 #include <fstream>
-#include <unistd.h>
-extern std::fstream err;
 
 #ifdef YCM
 #define private public

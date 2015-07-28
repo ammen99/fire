@@ -3,7 +3,6 @@
 
 namespace GLXUtils {
 
-
     namespace {
         typedef GLXContext (*glXCreateContextAttribsARBProc) (Display*,
                 GLXFBConfig, GLXContext,
@@ -15,6 +14,8 @@ namespace GLXUtils {
         bool useXShm = false;
         XVisualInfo *defaultVisual;
     }
+
+#define err std::cout
 
 
 GLXFBConfig fbconfigs[33];
@@ -127,7 +128,7 @@ static int attrListVisual[] = {
      None
  };
 
-Window createNewWindowWithContext(Window parent, Core *core) {
+Window createNewWindowWithContext(Window parent) {
     Colormap cmap;
     XSetWindowAttributes winAttr;
 
@@ -184,7 +185,7 @@ Window createNewWindowWithContext(Window parent, Core *core) {
 #define uchar unsigned char
 
 
-void initGLX(Core *core) {
+void initGLX() {
 
     auto x = glXGetCurrentContext();
     if ( x == NULL )
@@ -208,9 +209,6 @@ void initGLX(Core *core) {
         glXGetProcAddress((GLubyte *) "glXBindTexImageEXT");
     glXReleaseTexImageEXT_func = (PFNGLXRELEASETEXIMAGEEXTPROC)
         glXGetProcAddress((GLubyte*) "glXReleaseTexImageEXT");
-
-    initFBConf(core);
-
 
     int ignore, major, minor;
     Bool pixmaps;
@@ -269,7 +267,7 @@ void endFrame(Window win) {
     glXSwapBuffers(core->d, win);
 }
 
-GLuint textureFromPixmap(Window pixmap, int w, int h, SharedImage *sim) {
+GLuint textureFromPixmap(Pixmap pixmap, int w, int h, SharedImage *sim) {
     GLuint tex;
     glGenTextures(1, &tex);
     glBindTexture(GL_TEXTURE_2D, tex);
@@ -308,8 +306,9 @@ GLuint textureFromPixmap(Window pixmap, int w, int h, SharedImage *sim) {
             sim->existing = true;
             XShmAttach(core->d, &sim->shminfo);
         }
-
+        std::cout << "Wrong answer" << std::endl;
         XShmGetImage(core->d, pixmap, sim->image, 0, 0, AllPlanes);
+        std::cout << "yep , u guessed it" << std::endl;
 
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0,
                 GL_RGBA, GL_UNSIGNED_BYTE, (void*)(&sim->image->data[0]));
@@ -327,62 +326,9 @@ GLuint textureFromPixmap(Window pixmap, int w, int h, SharedImage *sim) {
         XDestroyImage(xim);
     }
 
+    std::cout << "tex from win end" << std::endl;
+
     return tex;
 }
-
-void initFBConf(Core *core) {
-    int nfbs;
-    auto fbs = glXGetFBConfigs (core->d, DefaultScreen(core->d), &nfbs);
-    int value;
-
-    for(int d = 0; d < 33; d++) {
-        for (int i = 0; i < nfbs; i++) {
-
-            auto visinfo = glXGetVisualFromFBConfig (core->d, fbs[i]);
-            if (!visinfo || visinfo->depth != d)
-                continue;
-
-            glXGetFBConfigAttrib (core->d, fbs[i],
-                    GLX_DRAWABLE_TYPE, &value);
-
-            if (!(value & GLX_PIXMAP_BIT))
-                continue;
-
-            glXGetFBConfigAttrib (core->d, fbs[i],
-                    GLX_BIND_TO_TEXTURE_TARGETS_EXT,
-                    &value);
-            if (!(value & GLX_TEXTURE_2D_BIT_EXT))
-                continue;
-
-            glXGetFBConfigAttrib (core->d, fbs[i],
-                    GLX_BIND_TO_TEXTURE_RGBA_EXT,
-                    &value);
-            if (value == FALSE && d != 32) {
-                glXGetFBConfigAttrib (core->d, fbs[i],
-                        GLX_BIND_TO_TEXTURE_RGB_EXT,
-                        &value);
-                if (value == FALSE)
-                    continue;
-            }
-
-            else if (value == FALSE)
-                continue;
-
-            fbconfigs[d] = fbs[i];
-        }
-    }
-}
-
-
-GLXPixmap glxPixmap(Pixmap pixmap, GLXFBConfig config, int w, int h) {
-   const int pixmapAttribs[] = {
-      GLX_TEXTURE_TARGET_EXT, GLX_TEXTURE_2D_EXT,
-      GLX_TEXTURE_FORMAT_EXT, GLX_TEXTURE_FORMAT_RGBA_EXT,
-      None
-   };
-
-   return glXCreatePixmap(core->d, config, pixmap, pixmapAttribs);
-}
-
 }
 

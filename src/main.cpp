@@ -17,54 +17,41 @@ constexpr int shmkey = 1010101234;
 constexpr int shmsize = 8;
 int shmid;
 
-class Refresh { // keybinding to restart window manager
-    KeyBinding ref;
-    public:
-        Refresh() {
-            ref.key = XKeysymToKeycode(core->d, XK_r);
-            ref.type = BindingTypePress;
-            ref.active = true;
-            ref.mod = ControlMask | Mod1Mask;
-            ref.action = [] (Context *ctx) {
-                core->terminate = true;
-                shdata[0] = 1;
-            };
-            core->addKey(&ref, true);
-        }
-};
+Config *config;
+
 #define Crash 101
 #define max_frames 100
 
 void print_trace(int nSig) {
     std::cout << "stack trace:\n";
 
-    //storage array for stack trace address data
-    void* addrlist[max_frames+1];
+    // storage array for stack trace address data
+    void* addrlist[max_frames + 1];
 
     // retrieve current stack addresses
     int addrlen = backtrace(addrlist, sizeof(addrlist) / sizeof(void*));
 
     if (addrlen == 0) {
-        std::cout << "  <empty, possibly corrupt>\n";
+        std::cout << "<empty, possibly corrupt>\n";
         return;
     }
 
-    //resolve addresses into strings containing "filename(function+address)",
-    //this array must be free()-ed
-    char** symbollist=backtrace_symbols(addrlist, addrlen);
+    // resolve addresses into strings containing "filename(function+address)",
+    // this array must be free()-ed
+    char** symbollist = backtrace_symbols(addrlist, addrlen);
 
     //allocate string which will be filled with
     //the demangled function name
     size_t funcnamesize = 256;
-    char* funcname=(char*)malloc(funcnamesize);
+    char* funcname = (char*)malloc(funcnamesize);
 
-    //iterate over the returned symbol lines.skip the first, it is the
-    //address of this function.
-    for(int i = 1;i < addrlen; i++) {
-        char*begin_name=0,*begin_offset=0,*end_offset=0;
+    // iterate over the returned symbol lines. skip the first, it is the
+    // address of this function.
+    for(int i = 1; i < addrlen; i++) {
+        char *begin_name = 0, *begin_offset = 0, *end_offset = 0;
 
-        //findparenthesesand+addressoffsetsurroundingthemangledname:
-        //./module(function+0x15c)[0x8048a6d]
+        // find parentheses and +address offset surrounding the mangled name:
+        // ./module(function+0x15c)[0x8048a6d]
         for(char* p = symbollist[i]; *p; ++p) {
             if(*p == '(')
                 begin_name = p;
@@ -83,28 +70,27 @@ void print_trace(int nSig) {
             *begin_offset++ = '\0';
             *end_offset = '\0';
 
-            //manglednameisnowin[begin_name,begin_offset)andcaller
-            //offsetin[begin_offset,end_offset).nowapply
-            //__cxa_demangle():
+            // mangled name is now in[begin_name, begin_offset) and caller
+            // offset in [begin_offset, end_offset). now apply
+            // __cxa_demangle():
 
             int status;
-            char*ret=abi::__cxa_demangle(begin_name,
-                    funcname,&funcnamesize,&status);
-            if(status==0){
-                funcname=ret;//usepossiblyrealloc()-edstring
-                printf("%s:%s+%s\n",
-                        symbollist[i],funcname,begin_offset);
+            char *ret = abi::__cxa_demangle(begin_name,
+                    funcname, &funcnamesize, &status);
+            if(status == 0) {
+                funcname = ret;// use possibly realloc()-ed string
+                printf("%s:%s+%s\n", symbollist[i], funcname, begin_offset);
             }
             else{
-                //demanglingfailed.OutputfunctionnameasaCfunctionwith
-                //noarguments.
+                // demangling failed. Output function name as a C function with
+                // no arguments.
                 printf("%s:%s()+%s\n",
-                        symbollist[i],begin_name,begin_offset);
+                        symbollist[i], begin_name, begin_offset);
             }
         }
         else
         {
-            //couldn'tparsetheline?printthewholeline.
+            // couldn't parse the line? print the whole line.
             printf("%s\n",symbollist[i]);
         }
     }
@@ -126,7 +112,7 @@ void signalHandle(int sig) {
             break;
 
         default: // program crashed, so restart core
-            err << "Crash Detected!!!!!!" << std::endl;
+            std::cout << "Crash Detected!!!!!!" << std::endl;
             shdata[0] = 1;
 
             // try to fully recover, i.e do not lose windows
@@ -137,14 +123,22 @@ void signalHandle(int sig) {
             shdata[2] = int(vy);
 
             print_trace(SIGSEGV);
+            delete core;
             break;
     }
 }
 
-void runOnce() { // simulates launching a new program
+/* simulates launchig a new program */
+void runOnce(int argc, const char **argv) {
 
-    std::cout << "runonce" << std::endl;
-                 // get the shared memory from the main process
+    if(argc < 2){
+        std::cout << "No configuration file!" <<
+            " Using default settings" << std::endl;
+        config = new Config();
+    }
+    else
+        config = new Config(argv[1]);
+
     shmid = shmget(shmkey, shmsize, 0666);
     auto dataid = shmat(shmid, 0, 0);
     shdata = (char*)dataid;
@@ -161,12 +155,7 @@ void runOnce() { // simulates launching a new program
 
     std::cout << "set up everything" << std::endl;
     core = new Core(shdata[1], shdata[2]);
-    std::cout << "Did init of core" << std::endl;
-    core->setBackground("/home/ilex/Desktop/maxresdefault.jpg");
-    std::cout << "set background" << std::endl;
-    new Refresh();
-
-    std::cout << "hier" << std::endl;
+    core->init();
     core->loop();
     std::cout << "after loop" << std::endl;
 
@@ -174,13 +163,13 @@ void runOnce() { // simulates launching a new program
         shdata[0] = 1;
 
     GetTuple(vx, vy, core->getWorkspace());
+    delete core;
 
     shdata[1] = int(vx);
     shdata[2] = int(vy);
 }
 
 int main(int argc, const char **argv ) {
-
     signal(SIGINT, signalHandle);
     signal(SIGSEGV, signalHandle);
     signal(SIGFPE, signalHandle);
@@ -210,7 +199,7 @@ int main(int argc, const char **argv ) {
 
         auto pid = fork();
         if(pid == 0) {
-            runOnce();   // run Core()
+            runOnce(argc, argv);   // run Core()
             std::exit(0);// and exit
         }
         int status = 0;
