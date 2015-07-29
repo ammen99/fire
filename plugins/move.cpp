@@ -7,6 +7,10 @@ class Move : public Plugin {
         ButtonBinding release;
         Hook hook;
 
+        SignalListener sigScl;
+
+        int scX = 1, scY = 1;
+
     public:
         void initOwnership() {
             owner->name = "move";
@@ -14,11 +18,13 @@ class Move : public Plugin {
         }
 
         void init() {
-            win = nullptr;
             hook.action = std::bind(std::mem_fn(&Move::Intermediate), this);
             core->addHook(&hook);
 
             using namespace std::placeholders;
+            sigScl.action = std::bind(std::mem_fn(&Move::onScaleChanged), this, _1);
+            core->connectSignal("screen-scale-changed", &sigScl);
+
 
             press.type   = BindingTypePress;
             press.mod    = Mod1Mask;
@@ -64,8 +70,8 @@ class Move : public Plugin {
             auto xev = ctx->xev.xbutton;
             win->transform.translation = glm::mat4();
 
-            int dx = (xev.x_root - sx) * core->scaleX;
-            int dy = (xev.y_root - sy) * core->scaleY;
+            int dx = (xev.x_root - sx) * scX;
+            int dy = (xev.y_root - sy) * scY;
 
             int nx = win->attrib.x + dx;
             int ny = win->attrib.y + dy;
@@ -86,6 +92,11 @@ class Move : public Plugin {
                             float(cmx - sx) / float(w / 2.0),
                             float(sy - cmy) / float(h / 2.0),
                             0.f));
+        }
+
+        void onScaleChanged(SignalListenerData data) {
+            scX = *(int*)data[0];
+            scY = *(int*)data[1];
         }
 };
 

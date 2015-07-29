@@ -202,11 +202,6 @@ class Core {
          * but do not forget to turn it off
          * as it is extremely bad for performance */
         void setRedrawEverything(bool value);
-
-
-        float scaleX = 1, scaleY = 1; // used for operations which
-                              // depend on mouse moving
-                              // for ex. when using expo
 };
 extern Core *core;
 #endif

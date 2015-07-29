@@ -6,6 +6,9 @@ class Resize : public Plugin {
         int cx, cy; // coordinates of the center of the window
         FireWindow win; // window we're operating on
 
+        int scX = 1, scY = 1;
+        SignalListener sigScl;
+
     private:
         ButtonBinding press;
         ButtonBinding release;
@@ -18,13 +21,13 @@ class Resize : public Plugin {
     }
 
     void init() {
-        win = nullptr;
+
+        using namespace std::placeholders;
+        sigScl.action = std::bind(std::mem_fn(&Resize::onScaleChanged), this, _1);
+        core->connectSignal("screen-scale-changed", &sigScl);
 
         hook.action = std::bind(std::mem_fn(&Resize::Intermediate), this);
         core->addHook(&hook);
-
-        using namespace std::placeholders;
-
         press.type   = BindingTypePress;
         press.mod    = Mod4Mask;
         press.button = Button1;
@@ -87,8 +90,8 @@ class Resize : public Plugin {
 
         GetTuple(cmx, cmy, core->getMouseCoord());
 
-        int dw = (cmx - sx) * core->scaleX;
-        int dh = (cmy - sy) * core->scaleY;
+        int dw = (cmx - sx) * scX;
+        int dh = (cmy - sy) * scY;
 
         int nw = win->attrib.width  + dw;
         int nh = win->attrib.height + dh;
@@ -128,6 +131,11 @@ class Resize : public Plugin {
 
         win->transform.scalation =
             glm::scale(glm::mat4(), glm::vec3(kW, kH, 1.f));
+    }
+
+    void onScaleChanged(SignalListenerData data) {
+        scX = *(int*)data[0];
+        scY = *(int*)data[1];
     }
 };
 
