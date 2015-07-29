@@ -176,8 +176,6 @@ class ATSwitcher : public Plugin {
 
         windows.clear();
         windows = core->getWindowsOnViewport(core->getWorkspace());
-        std::cout << "Switcher initiated with " << windows.size() <<
-            " windows" << std::endl;
 
         if(windows.size() == 1) {
             core->deactivateOwner(owner);
@@ -198,8 +196,6 @@ class ATSwitcher : public Plugin {
         }
 
         for(auto w : windows) {
-
-            std::cout << "Switcher got winID = " << w->id << std::endl;
             WinAttrib wia;
             wia.win = w;
 

@@ -362,7 +362,6 @@ void Core::addSignal(std::string name) {
 }
 
 void Core::triggerSignal(std::string name, SignalListenerData data) {
-    std::cout << "Triggering " << name << std::endl;
     if(signals.find(name) != signals.end())
         for(auto proc : signals[name])
             proc->action(data);
@@ -816,9 +815,7 @@ void Core::loop(){
     bool hadEvents = false;
 
     XEvent xev;
-
     while(!terminate) {
-
         /* handle current events */
         while(XPending(d)) {
             XNextEvent(d, &xev);
@@ -842,6 +839,7 @@ void Core::loop(){
 
         }
         else {
+
             if(cntHooks) { // if running hooks, run them
                 for (auto hook : hooks)
                     if(hook->getState())
@@ -1017,14 +1015,16 @@ namespace {
 
 void Core::setRedrawEverything(bool val) {
     if(val) {
+        std::cout << "here" << std::endl;
         fullRedraw++;
 
-        output = core->getRegionFromRect(-vx * width, -vy * height,
+        output = getRegionFromRect(-vx * width, -vy * height,
                 (vwidth  - vx) * width, (vheight - vy) * height);
         FireWin::allDamaged = true;
         core->resetDMG = false;
     }
     else if(--fullRedraw == 0)
+        output = getMaximisedRegion(),
         FireWin::allDamaged = false,
         core->resetDMG = true;
 }

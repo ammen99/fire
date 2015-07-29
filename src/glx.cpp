@@ -310,8 +310,6 @@ GLuint textureFromPixmap(Pixmap pixmap, int w, int h, SharedImage *sim) {
     glGenTextures(1, &tex);
     glBindTexture(GL_TEXTURE_2D, tex);
 
-    std::cout << "setting tex parema" << std::endl;
-
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 

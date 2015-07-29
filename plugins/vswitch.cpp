@@ -20,16 +20,14 @@ class VSwitch : public Plugin {
     }
 
     void updateConfiguration() {
-        vstep = options["duration"]->data.ival / (1000 / core->getRefreshRate());
+        vstep = getSteps(options["duration"]->data.ival);
     }
+
     void beginSwitch() {
         auto tup = dirs.front();
         dirs.pop();
 
-        int ddx = std::get<0> (tup);
-        int ddy = std::get<1> (tup);
-
-
+        GetTuple(ddx, ddy, tup);
         GetTuple(vx, vy, core->getWorkspace());
         GetTuple(vw, vh, core->getWorksize());
         GetTuple(sw, sh, core->getScreenSize());
@@ -56,55 +54,54 @@ class VSwitch : public Plugin {
         int brx2 = tlx2 + sw;
         int bry2 = tly2 + sh;
 
+        core->setRedrawEverything(true);
         output = core->getRegionFromRect(std::min(tlx1, tlx2),
                 std::min(tly1, tly2),
                 std::max(brx1, brx2),
                 std::max(bry1, bry2));
 
-        core->setRedrawEverything(true);
         core->activateOwner(owner);
         stepNum = 0;
     }
 
 #define MAXDIRS 6
-    void moveWorkspace(int ddx, int ddy) {
+    void insertNextDirection(int ddx, int ddy) {
         if(!hook.getState())
             hook.enable(),
-                dirs.push(std::make_tuple(ddx, ddy)),
-                beginSwitch();
-        else
-            if(dirs.size() < MAXDIRS)
-                dirs.push(std::make_tuple(ddx, ddy));
+            dirs.push(std::make_tuple(ddx, ddy)),
+            beginSwitch();
+        else if(dirs.size() < MAXDIRS)
+            dirs.push(std::make_tuple(ddx, ddy));
     }
 
-    void handleSwitchWorkspace(Context *ctx) {
+    void handleKey(Context *ctx) {
         if(!ctx)
             return;
 
         auto xev = ctx->xev.xkey;
 
         if(xev.keycode == switchWorkspaceBindings[0])
-            moveWorkspace(1,  0);
+            insertNextDirection(1,  0);
         if(xev.keycode == switchWorkspaceBindings[1])
-            moveWorkspace(-1, 0);
+            insertNextDirection(-1, 0);
         if(xev.keycode == switchWorkspaceBindings[2])
-            moveWorkspace(0, -1);
+            insertNextDirection(0, -1);
         if(xev.keycode == switchWorkspaceBindings[3])
-            moveWorkspace(0,  1);
+            insertNextDirection(0,  1);
     }
 
-    void moveStep() {
+    void Step() {
         GetTuple(w, h, core->getScreenSize());
 
         if(stepNum == vstep){
             Transform::gtrs = glm::mat4();
             core->switchWorkspace(std::make_tuple(nx, ny));
-            output = core->getMaximisedRegion();
+            core->setRedrawEverything(false);
 
             if(dirs.size() == 0) {
+                std::cout << "disabling bewegung" << std::endl;
                 hook.disable();
                 core->deactivateOwner(owner);
-                core->setRedrawEverything(false);
             }
             else
                 beginSwitch();
@@ -137,15 +134,11 @@ class VSwitch : public Plugin {
             kbs[i].type = BindingTypePress;
             kbs[i].mod = ControlMask | Mod1Mask;
             kbs[i].key = switchWorkspaceBindings[i];
-
-            kbs[i].action =
-                std::bind(std::mem_fn(&VSwitch::handleSwitchWorkspace),
-                        this, _1);
-
+            kbs[i].action = std::bind(std::mem_fn(&VSwitch::handleKey), this, _1);
             core->addKey(&kbs[i], true);
         }
 
-        hook.action = std::bind(std::mem_fn(&VSwitch::moveStep), this);
+        hook.action = std::bind(std::mem_fn(&VSwitch::Step), this);
         core->addHook(&hook);
     }
 };
