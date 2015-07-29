@@ -3,6 +3,7 @@
 in vec2 uvpos;
 layout(location = 0) out vec4 outColor;
 
+
 uniform sampler2D smp;
 uniform int       depth;
 uniform vec4      color;

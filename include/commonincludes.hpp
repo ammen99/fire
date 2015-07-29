@@ -30,6 +30,7 @@
 #include <vector>
 #include <unordered_map>
 #include <unordered_set>
+#include <queue>
 
 
 #include <GL/glew.h>
@@ -48,8 +49,8 @@
 #define private public
 #endif
 
-#define AllModifiers ControlMask | Mod1Mask | Mod2Mask | Mod3Mask | Mod4Mask
-#define NoMods (1<<31)
+#define AllModifiers (ControlMask | ShiftMask | Mod1Mask \
+        | Mod2Mask | Mod3Mask | Mod4Mask)
 
 #endif
 

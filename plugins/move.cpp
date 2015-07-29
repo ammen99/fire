@@ -20,19 +20,17 @@ class Move : public Plugin {
 
             using namespace std::placeholders;
 
-            press.active = true;
             press.type   = BindingTypePress;
             press.mod    = Mod1Mask;
             press.button = Button1;
             press.action = std::bind(std::mem_fn(&Move::Initiate), this, _1);
-            core->addBut(&press);
+            core->addBut(&press, true);
 
-            release.active = false;
             release.type   = BindingTypeRelease;
             release.mod    = AnyModifier;
             release.button = Button1;
             release.action = std::bind(std::mem_fn(&Move::Terminate), this, _1);
-            core->addBut(&release);
+            core->addBut(&release, false);
         }
 
         void Initiate(Context *ctx) {
@@ -51,7 +49,7 @@ class Move : public Plugin {
 
             core->focusWindow(w);
             hook.enable();
-            release.active = true;
+            release.enable();
 
             this->sx = xev.x_root;
             this->sy = xev.y_root;
@@ -59,17 +57,11 @@ class Move : public Plugin {
         }
 
         void Terminate(Context *ctx) {
-
-            if(!ctx)
-                return;
-
             hook.disable();
-            release.active = false;
+            release.disable();
             core->deactivateOwner(owner);
 
-
             auto xev = ctx->xev.xbutton;
-
             win->transform.translation = glm::mat4();
 
             int dx = (xev.x_root - sx) * core->scaleX;
@@ -78,11 +70,11 @@ class Move : public Plugin {
             int nx = win->attrib.x + dx;
             int ny = win->attrib.y + dy;
 
-            WinUtil::moveWindow(win, nx, ny);
+            win->move(nx, ny);
             core->setRedrawEverything(false);
 
             core->focusWindow(win);
-            core->damageWindow(win);
+            win->addDamage();
         }
 
         void Intermediate() {

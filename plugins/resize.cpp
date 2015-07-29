@@ -25,20 +25,18 @@ class Resize : public Plugin {
 
         using namespace std::placeholders;
 
-        press.active = true;
         press.type   = BindingTypePress;
         press.mod    = Mod4Mask;
         press.button = Button1;
         press.action = std::bind(std::mem_fn(&Resize::Initiate), this, _1);
-        core->addBut(&press);
+        core->addBut(&press, true);
 
 
-        release.active = false;
         release.type   = BindingTypeRelease;
         release.mod    = AnyModifier;
         release.button = Button1;
         release.action = std::bind(std::mem_fn(&Resize::Terminate), this,_1);
-        core->addBut(&release);
+        core->addBut(&release, false);
     }
 
     void Initiate(Context *ctx) {
@@ -60,7 +58,7 @@ class Resize : public Plugin {
         core->focusWindow(w);
         win = w;
         hook.enable();
-        release.active = true;
+        release.enable();
 
         if(w->attrib.width == 0)
             w->attrib.width = 1;
@@ -82,7 +80,7 @@ class Resize : public Plugin {
             return;
 
         hook.disable();
-        release.active = false;
+        release.disable();
 
         win->transform.scalation = glm::mat4();
         win->transform.translation = glm::mat4();
@@ -94,16 +92,14 @@ class Resize : public Plugin {
 
         int nw = win->attrib.width  + dw;
         int nh = win->attrib.height + dh;
-        WinUtil::resizeWindow(win, nw, nh);
+        win->resize(nw, nh);
 
         core->setRedrawEverything(false);
-        core->damageWindow(win);
+        win->addDamage();
         core->deactivateOwner(owner);
     }
 
     void Intermediate() {
-
-
         GetTuple(cmx, cmy, core->getMouseCoord());
         int dw = cmx - sx;
         int dh = cmy - sy;
@@ -113,7 +109,6 @@ class Resize : public Plugin {
 
         float kW = float(nw) / float(win->attrib.width );
         float kH = float(nh) / float(win->attrib.height);
-
 
         GetTuple(sw, sh, core->getScreenSize());
 

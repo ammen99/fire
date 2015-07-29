@@ -30,29 +30,24 @@ class Expo : public Plugin {
         using namespace std::placeholders;
         toggle.key = XKeysymToKeycode(core->d, XK_e);
         toggle.mod = Mod4Mask;
-        toggle.active = true;
-        toggle.action =
-            std::bind(std::mem_fn(&Expo::Toggle), this, _1);
-
+        toggle.action = std::bind(std::mem_fn(&Expo::Toggle), this, _1);
         core->addKey(&toggle, true);
 
         active = false;
 
-        release.active = false;
         release.action =
             std::bind(std::mem_fn(&Expo::buttonRelease), this, _1);
         release.type = BindingTypeRelease;
         release.mod = AnyModifier;
         release.button = Button1;
-        core->addBut(&release);
+        core->addBut(&release, false);
 
-        press.active = false;
         press.action =
             std::bind(std::mem_fn(&Expo::buttonPress), this, _1);
         press.type = BindingTypePress;
         press.mod = Mod4Mask;
         press.button = Button1;
-        core->addBut(&press);
+        core->addBut(&press, false);
 
         hook.action = std::bind(std::mem_fn(&Expo::zoom), this);
         core->addHook(&hook);
@@ -91,7 +86,6 @@ class Expo : public Plugin {
 
         GetTuple(vx, vy, core->getWorkspace());
         GetTuple(vwidth, vheight, core->getWorksize());
-        GetTuple(width, height, core->getScreenSize());
 
         float midx = vwidth / 2;
         float midy = vheight / 2;
@@ -113,9 +107,6 @@ class Expo : public Plugin {
         offYtarget = offY;
         sclXtarget = scaleX;
         sclYtarget = scaleY;
-
-        output = core->getRegionFromRect(-vx * width, -vy * height,
-                (vwidth  - vx) * width, (vheight - vy) * height);
     }
 
     void finalizeZoom() {
@@ -129,15 +120,13 @@ class Expo : public Plugin {
         using namespace std::placeholders;
 
         if(!active) {
-            active = !active;
-
-            press.active = true;
-            release.active = true;
-
-            if(!core->activateOwner(owner))
+           if(!core->activateOwner(owner))
                 return;
 
+            press.enable();
+            release.enable();
             owner->grab();
+            active = !active;
 
             save = core->getWindowAtPoint;
             core->getWindowAtPoint =
@@ -156,8 +145,8 @@ class Expo : public Plugin {
         }else {
             active = !active;
 
-            press.active = false;
-            release.active = false;
+            press.disable();
+            release.disable();
 
             core->deactivateOwner(owner);
 

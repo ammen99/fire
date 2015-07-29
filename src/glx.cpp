@@ -63,13 +63,30 @@ GLuint loadImage (char* path) {
             ilGetInteger (IL_IMAGE_WIDTH),
             ilGetInteger (IL_IMAGE_HEIGHT),
             0,
-//            ilGetInteger(IL_IMAGE_FORMAT)
             GL_RGB,
             GL_UNSIGNED_BYTE,
             ilGetData() );
     return textureID;
 }
 
+XVisualInfo *getVisualInfoForWindow(Window win) {
+    XVisualInfo *xvi, dummy;
+    XWindowAttributes xwa;
+    auto stat = XGetWindowAttributes(core->d, win, &xwa);
+    if ( stat == 0 ){
+            std::cout << "attempting to get visual info failed!"
+                << win << std::endl;
+            return nullptr;
+        }
+
+    dummy.visualid = XVisualIDFromVisual(xwa.visual);
+
+    int dumm;
+    xvi = XGetVisualInfo(core->d, VisualIDMask, &dummy, &dumm);
+    if(dumm == 0 || !xvi)
+        std::cout << "Cannot get default visual!\n";
+    return xvi;
+}
 
 void createNewContext(Window win) {
     int dummy;
@@ -80,7 +97,7 @@ void createNewContext(Window win) {
         printf ( "Couldn't get FBConfigs list!\n" ),
                std::exit (-1);
 
-    auto xvi = WinUtil::getVisualInfoForWindow(win);
+    auto xvi = getVisualInfoForWindow(win);
     int i = 0;
     for (; i < dummy; i++ ) {
         auto id = glXGetVisualFromFBConfig(core->d, fbconfig[i]);
@@ -109,7 +126,7 @@ void createNewContext(Window win) {
 
 }
 void createDefaultContext(Window win) {
-    auto xvi = WinUtil::getVisualInfoForWindow(win);
+    auto xvi = getVisualInfoForWindow(win);
     GLXContext ctx = glXCreateContext(core->d, xvi, NULL, 0);
     glXMakeCurrent(core->d, win, ctx);
     XFree(xvi);
@@ -259,7 +276,6 @@ GLuint compileShader(const char *src, GLuint type) {
     if ( s == GL_FALSE ) {
         std::stringstream srcStream, errorStream;
         std::string line;
-
         err << "shader compilation failed!" << std::endl;;
         err << "src: *****************************" << std::endl;
         srcStream << src;
@@ -289,18 +305,6 @@ GLuint loadShader(const char *path, GLuint type) {
     return compileShader(str.c_str(), type);
 }
 
-//<<<<<<< Updated upstream
-//=======
-//
-//void endFrame(Window win) {
-//    uint sync;
-//    glXGetVideoSyncSGI_func(&sync);
-//    glXWaitVideoSyncSGI_func(2, (sync + 1) % 2, &sync);
-//    glXSwapBuffers(core->d, win);
-//    //glClear(GL_COLOR_BUFFER_BIT);
-//}
-//
-//>>>>>>> Stashed changes
 GLuint textureFromPixmap(Pixmap pixmap, int w, int h, SharedImage *sim) {
     GLuint tex;
     glGenTextures(1, &tex);

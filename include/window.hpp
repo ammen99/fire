@@ -9,6 +9,18 @@ enum WindowType {
     WindowTypeOther
 };
 
+enum WindowState {
+    WindowStateBase         = 0,
+    WindowStateSticky       = 1,
+    WindowStateHidden       = 2,
+    WindowStateSkipTaskbar  = 4,
+    WindowStateFullscreen   = 8,
+    WindowStateMaxH         = 16,
+    WindowStateMaxV         = 32,
+    WindowStateAbove        = 64,
+    WindowStateBelow        = 128,
+};
+
 class Transform {
     public: // applied to all windows
         static glm::mat4 proj;
@@ -37,8 +49,23 @@ struct SharedImage {
     bool existing = false;
 };
 
-class __FireWindow {
+enum Layer {LayerAbove = 0, LayerNormal = 1, LayerBelow = 2};
+
+struct WindowData {
+};
+
+#define GetData(type, win, name) ((type*)(win->data[(name)]))
+#define ExistsData(win, name) ((win)->data.find((name)) != (win)->data.end())
+#define AllocData(type, win, name) (win)->data[(name)] = new type()
+
+class FireWin {
     public:
+
+        FireWin(Window id, bool init = true);
+        ~FireWin();
+        /* this can be used by plugins to store
+         * specific for the plugin data */
+        std::unordered_map<std::string, WindowData*> data;
 
         static bool allDamaged;
         Window id;
@@ -48,6 +75,7 @@ class __FireWindow {
         bool destroyed = false; // is window dead?
         bool transparent = false; // is the window transparent
         bool damaged = true;
+        bool visible = true;
 
         int mapTryNum = 5; // how many times have we tried to map this window?
         int keepCount = 0; // used to determine whether to destroy window
@@ -57,25 +85,42 @@ class __FireWindow {
         GLuint vbo = -1;
         GLuint vao = -1;
 
-        Damage damage;
+        Damage damagehnd;
 
-        std::shared_ptr<__FireWindow> transientFor; // transientFor
-        std::shared_ptr<__FireWindow> leader;
+        std::shared_ptr<FireWin> transientFor; // transientFor
+        std::shared_ptr<FireWin> leader;
+        Layer layer;
 
         char *name;
         WindowType type;
+        uint state = WindowStateBase;
         XWindowAttributes attrib;
         Region region = nullptr;
 
         Pixmap pixmap = 0;
         SharedImage shared;
 
+
+        bool isVisible();
         bool shouldBeDrawn();
         void updateVBO();
         void updateRegion();
+        void updateState();
+
+        void addDamage();
+
+        void move(int x, int y, bool configure = true);
+        void resize(int w, int h, bool configure = true);
+        void syncAttrib();
+        void getInputFocus();
+
+        void render();
+        int  setTexture();
+        void init();
+        void fini();
 };
 
-typedef std::shared_ptr<__FireWindow> FireWindow;
+typedef std::shared_ptr<FireWin> FireWindow;
 
 extern Atom winTypeAtom, winTypeDesktopAtom, winTypeDockAtom,
        winTypeToolbarAtom, winTypeMenuAtom, winTypeUtilAtom,
@@ -83,35 +128,34 @@ extern Atom winTypeAtom, winTypeDesktopAtom, winTypeDockAtom,
        winTypeDropdownMenuAtom, winTypePopupMenuAtom, winTypeDndAtom,
        winTypeTooltipAtom, winTypeNotificationAtom, winTypeComboAtom;
 
+
+extern Atom winStateAtom, winStateModalAtom, winStateStickyAtom,
+       winStateMaximizedVertAtom, winStateMaximizedHorzAtom,
+       winStateShadedAtom, winStateSkipTaskbarAtom,
+       winStateSkipPagerAtom, winStateHiddenAtom,
+       winStateFullscreenAtom, winStateAboveAtom,
+       winStateBelowAtom, winStateDemandsAttentionAtom,
+       winStateDisplayModalAtom;
+
+
 extern Atom activeWinAtom;
+extern Atom winActiveAtom;
 extern Atom wmTakeFocusAtom;
 extern Atom wmProtocolsAtom;
 extern Atom wmClientLeaderAtom;
 extern Atom wmNameAtom;
 extern Atom winOpacityAtom;
+extern Atom clientListAtom;
 
 class Core;
 
 namespace WinUtil {
     void init();
+    FireWindow getTransient(Window win);
+    void       getWindowName(Window win, char *name);
+    FireWindow getClientLeader(Window win);
 
-    void renderWindow(FireWindow win);
-    int setWindowTexture(FireWindow win);
-    void initWindow(FireWindow win);
-    void finishWindow(FireWindow win);
-
-    void setInputFocusToWindow(Window win);
-
-    void moveWindow(FireWindow win, int x, int y, bool configure = true);
-    void resizeWindow(FireWindow win, int w, int h, bool configure = true);
-    void syncWindowAttrib(FireWindow win);
-
-    XVisualInfo *getVisualInfoForWindow(Window win);
-
-    FireWindow getTransient(FireWindow win);
-    FireWindow getClientLeader(FireWindow win);
-
-    void getWindowName(FireWindow win, char *name);
-    WindowType getWindowType(FireWindow win);
-    int readProp(Window win, Atom prop, int def);
+    int         readProp(Window win, Atom prop, int def);
+    WindowType  getWindowType (Window win);
+    uint        getWindowState(Window win);
 };

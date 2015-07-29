@@ -2,21 +2,18 @@
 
 namespace {
     GLuint program;
-    GLuint mvpID, normalID;
+    GLuint mvpID;
     GLuint depthID, colorID, bgraID;
     glm::mat4 View;
     glm::mat4 Proj;
     glm::mat4 MVP;
-    glm::mat3 NM;
 
     GLuint framebuffer;
     GLuint framebufferTexture;
-    GLuint depthbuffer;
 
     GLuint fullVAO, fullVBO;
 
 /* these functions are disabled for now
-#define cout std::cout
 
     const char *getStrSrc(GLenum src) {
         if(src == GL_DEBUG_SOURCE_API_ARB            )return "API_ARB        ";
@@ -51,14 +48,14 @@ namespace {
             GLsizei len, const GLchar *msg,
             const void *dummy) {
 
-        cout << "_______________________________________________";
-        cout << "OGL debug: ";
-        cout << "Source: " << getStrSrc(src);
-        cout << "Type: " << getStrType(type);
-        cout << "ID: " << id;
-        cout << "Severity: " << getStrSeverity(severity);
-        cout << "Msg: " << msg;
-        cout << "_______________________________________________";
+        std::cout << "_______________________________________________\n";
+        std::cout << "OGL debug: \n";
+        std::cout << "Source: " << getStrSrc(src) << std::endl;
+        std::cout << "Type: " << getStrType(type) << std::endl;
+        std::cout << "ID: " << id << std::endl;
+        std::cout << "Severity: " << getStrSeverity(severity) << std::endl;
+        std::cout << "Msg: " << msg << std::endl;;
+        std::cout << "_______________________________________________\n";
     }
     */
 }
@@ -68,6 +65,8 @@ int  OpenGL::depth;
 glm::vec4 OpenGL::color;
 
 namespace OpenGL {
+
+    GLuint getTex() {return framebufferTexture;}
 void generateVAOVBO(int x, int y, int w, int h,
         GLuint &vao, GLuint &vbo) {
 
@@ -155,23 +154,24 @@ void renderTransformedTexture(GLuint tex,
 void preStage() {
 
     glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-
     GetTuple(sw, sh, core->getScreenSize());
+    if(FireWin::allDamaged) {
+        glScissor(0, 0, sw, sh);
+        return;
+    }
 
     XRectangle rect;
     XClipBox(core->dmg, &rect);
 
     int blx = rect.x;
     int bly = sh - (rect.y + rect.height);
+    glScissor(blx, bly, rect.width, rect.height);
+}
 
-    int x = blx, y = bly, w = rect.width, h = rect.height;
-
-    if(__FireWindow::allDamaged)
-        x = y = 0, w = sw, h = sh;
-
-    glScissor(x, y, w, h);
-//    glAddSwapHintRectWIN(x, y, w, h);
-
+void preStage(GLuint fbuff) {
+    glBindFramebuffer(GL_FRAMEBUFFER, fbuff);
+    GetTuple(sw, sh, core->getScreenSize());
+    glScissor(0, 0, sw, sh);
 }
 
 void endStage() {
@@ -198,25 +198,51 @@ void endStage() {
     glUniform1i(bgraID, 0);
 }
 
-void initOpenGL(const char *shaderSrcPath) {
-
-    //glEnable(GL_DEBUG_OUTPUT);
-    //glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-    //glDebugMessageCallback(errorHandler, (void*)0);
-
+void prepareFramebuffer(GLuint &fbuff, GLuint &texture) {
     GetTuple(sw, sh, core->getScreenSize());
 
-    glClearColor (.0f, .0f, .0f, 0.f);
-    //glClearDepth (1.f);
-//    glEnable     (GL_DEPTH_TEST);
+    glGenFramebuffers(1, &fbuff);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbuff);
+
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, sw, sh,
+            0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+            texture, 0);
+
+    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE){
+        std::cout << "Error in framebuffer !!!" << std::endl;
+    }
+}
+
+void useDefaultProgram() {
+    glUseProgram(program);
+    glClearColor (.0f, .0f, .0f, 1.f);
+    glClearDepth (1.f);
+
     glEnable     (GL_ALPHA_TEST);
     glEnable     (GL_BLEND);
     glBlendFunc  (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-//    glDepthFunc  (GL_LESS);
-    glViewport   (0, 0, sw, sh);
-//    glDisable    (GL_CULL_FACE);
     glEnable     (GL_SCISSOR_TEST);
-//
+    glDisable    (GL_DEPTH_TEST);
+}
+
+void initOpenGL(const char *shaderSrcPath) {
+
+//    glEnable(GL_DEBUG_OUTPUT);
+//    glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+//    glDebugMessageCallback(errorHandler, (void*)0);
+
+    GetTuple(sw, sh, core->getScreenSize());
     std::string tmp = shaderSrcPath;
 
     GLuint vss =
@@ -236,14 +262,12 @@ void initOpenGL(const char *shaderSrcPath) {
 
     glBindFragDataLocation (program, 0, "outColor");
     glLinkProgram (program);
-    glUseProgram (program);
+    useDefaultProgram();
 
     mvpID = glGetUniformLocation(program, "MVP");
-    normalID = glGetUniformLocation(program, "NormalMatrix");
     depthID = glGetUniformLocation(program, "depth");
     colorID = glGetUniformLocation(program, "color");
     bgraID = glGetUniformLocation(program, "bgra");
-    color = glm::vec4(1.f, 1.f, 1.f, 1.f);
 
     View = glm::lookAt(glm::vec3(0., 0., 1.67),
                        glm::vec3(0., 0., 0.),
@@ -251,10 +275,8 @@ void initOpenGL(const char *shaderSrcPath) {
     Proj = glm::perspective(45.f, 1.f, .1f, 100.f);
 
     MVP = glm::mat4();
-    NM = glm::inverse(glm::transpose(glm::mat3(View)));
 
     glUniformMatrix4fv(mvpID, 1, GL_FALSE, &MVP[0][0]);
-    glUniformMatrix3fv(normalID, 1, GL_FALSE, &NM[0][0]);
 
     auto w2ID = glGetUniformLocation(program, "w2");
     auto h2ID = glGetUniformLocation(program, "h2");
@@ -262,35 +284,8 @@ void initOpenGL(const char *shaderSrcPath) {
     glUniform1f(w2ID, sw / 2);
     glUniform1f(h2ID, sh / 2);
 
-    glGenFramebuffers(1, &framebuffer);
-    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-
-    glGenTextures(1, &framebufferTexture);
-    glBindTexture(GL_TEXTURE_2D, framebufferTexture);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, sw, sh, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-
-
-    glGenRenderbuffers(1, &depthbuffer);
-    glBindRenderbuffer(GL_RENDERBUFFER, depthbuffer);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, sw, sh);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
-            GL_RENDERBUFFER, depthbuffer);
-
-    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, framebufferTexture, 0);
-
-    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE){
-        std::cout << "Error in framebuffer !!!" << std::endl;
-    }
-
     generateVAOVBO(0, sh, sw, -sh, fullVAO, fullVBO);
 
-   // glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    prepareFramebuffer(framebuffer, framebufferTexture);
 }
 }
