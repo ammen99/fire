@@ -23,13 +23,10 @@ enum WindowState {
 
 class Transform {
     public: // applied to all windows
-        static glm::mat4 proj;
-        static glm::mat4 view;
         static glm::mat4 grot;
         static glm::mat4 gscl;
         static glm::mat4 gtrs;
     public:
-        float stackID; // used to move the window forward if front
         glm::mat4 rotation;
         glm::mat4 scalation;
         glm::mat4 translation;

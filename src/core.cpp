@@ -989,18 +989,16 @@ void Core::getViewportTexture(std::tuple<int, int> vp,
             glm::vec3(2 * (vx - x), 2 * (y - vy), 0));
     glm::mat4 save = Transform::gtrs;
     Transform::gtrs *= off;
-    int num = 0;
 
     Region tmp = XCreateRegion();
     std::vector<FireWindow> winsToDraw;
 
-    auto proc = [view, tmp, &num, &winsToDraw](FireWindow win) {
+    auto proc = [view, tmp, &winsToDraw](FireWindow win) {
         if(!win->isVisible() || !win->region)
             return;
 
         XIntersectRegion(view, win->region, tmp);
         if(!XEmptyRegion(tmp))
-            win->transform.stackID = num++,
             winsToDraw.push_back(win);
     };
     wins->forEachWindow(proc);

@@ -159,7 +159,6 @@ void runOnce(int argc, const char **argv) {
     signal(SIGUSR1, signalHandle);
     signal(SIGABRT, signalHandle);
 
-    Transform::proj = Transform::view =
     Transform::grot = Transform::gscl =
     Transform::gtrs = glm::mat4();
 

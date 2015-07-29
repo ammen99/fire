@@ -26,8 +26,6 @@ Atom wmNameAtom;
 Atom winOpacityAtom;
 Atom clientListAtom;
 
-glm::mat4 Transform::proj;
-glm::mat4 Transform::view;
 glm::mat4 Transform::grot;
 glm::mat4 Transform::gscl;
 glm::mat4 Transform::gtrs;
@@ -53,21 +51,10 @@ Transform::Transform() {
     this->translation = glm::mat4();
     this->rotation = glm::mat4();
     this->scalation = glm::mat4();
-    this->stackID = 0.f;
 }
 
 glm::mat4 Transform::compose() {
-    float c = -1;
-    if(OpenGL::transformed)
-        c = 1;
-
-    c = 1;
-    auto trans =
-        glm::translate(translation,
-                glm::vec3(0.f, 0.f, c * stackID * 1e-2));
-
-    return proj * view * (gtrs * trans) *
-        (grot * rotation) * (gscl * scalation);
+    return (gtrs*translation)*(grot*rotation)*(gscl*scalation);
 }
 
 Region output;

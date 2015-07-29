@@ -67,7 +67,6 @@ FireWindow WinStack::findWindow(Window win) {
 }
 
 void WinStack::renderWindows() {
-    int num = 0;
 
     if(FireWin::allDamaged) {
         XDestroyRegion(core->dmg);
@@ -78,7 +77,6 @@ void WinStack::renderWindows() {
             while(it != layers[layer].rend()) {
                 auto w = *it;
                 if(w && w->shouldBeDrawn())
-                    w->transform.stackID = num--,
                     w->render();
 
                 ++it;
@@ -97,8 +95,6 @@ void WinStack::renderWindows() {
     for(auto wins : layers) {
         for(auto w : wins) {
             if(w && w->shouldBeDrawn()) {
-
-                w->transform.stackID = num--;
                 if(w->transparent || w->attrib.depth == 32)
                     w->transparent = true;
                 else
