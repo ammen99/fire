@@ -63,9 +63,9 @@ void Core::addExistingWindows() {
 
             addWindow(children[i]);
 
-    for(int i = 0; i < size; i++) {
+    for(int i = size - 1; i >= 0; i--) {
         auto w = findWindow(children[i]);
-        if(w) mapWindow(w);
+        if(w) mapWindow(w, false);
     }
 }
 
@@ -416,9 +416,6 @@ FireWindow Core::getActiveWindow() {
 }
 
 void Core::mapWindow(FireWindow win, bool xmap) {
-    win->norender = false;
-    win->damaged = true;
-
     if(xmap)
         XMapWindow(d, win->id),
         XSync(d, 0);

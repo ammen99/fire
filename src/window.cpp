@@ -208,8 +208,11 @@ void FireWin::syncAttrib() {
     attrib.map_state = xwa.map_state;
     attrib.c_class   = xwa.c_class;
 
-    if(!mask)
-        return;
+    if(attrib.map_state == IsViewable &&
+            attrib.c_class != InputOnly)
+        this->norender = false;
+
+    if(!mask) return;
 
     attrib = xwa;
 
@@ -227,19 +230,11 @@ bool FireWin::isVisible() {
     if(!visible && !allDamaged)
         return false;
 
-    if(state & WindowStateHidden)
-        return false;
-
-    if(norender)
+    if(norender || (state & WindowStateHidden))
         return false;
 
     if(attrib.c_class == InputOnly)
         return false;
-
-    if(attrib.width < 11 && attrib.height < 11) {
-        norender = true;
-        return false;
-    }
     return true;
 }
 
@@ -398,6 +393,7 @@ void FireWin::addDamage() {
     if(norender)
         return;
 
+    damaged = true;
     if(!region) {
         XserverRegion reg =
         XFixesCreateRegionFromWindow(core->d, id, WindowRegionBounding);
@@ -524,7 +520,7 @@ namespace WinUtil {
                 std::memcpy (&a, data, sizeof (Atom));
             XFree((void*) data);
         }
-        else return WindowTypeOther;
+        else return WindowTypeUnknown;
 
         if (a) {
             if (a == winTypeNormalAtom)
@@ -556,7 +552,7 @@ namespace WinUtil {
             else if (a == winTypeDndAtom)
                 return WindowTypeWidget;
         }
-        return WindowTypeOther;
+        return WindowTypeUnknown;
     }
 
     WindowState getStateMask(Atom state) {

@@ -6,7 +6,7 @@ enum WindowType {
     WindowTypeModal,
     WindowTypeDock,
     WindowTypeDesktop,
-    WindowTypeOther
+    WindowTypeUnknown
 };
 
 enum WindowState {
