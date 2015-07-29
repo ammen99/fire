@@ -131,8 +131,6 @@ void renderTexture(GLuint tex, GLuint vao, GLuint vbo) {
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, tex);
-
-    //glPatchParameteri(GL_PATCH_VERTICES, 3);
     glDrawArrays (GL_TRIANGLES, 0, 6);
 }
 
@@ -181,14 +179,17 @@ void endStage() {
     glUniformMatrix4fv(mvpID, 1, GL_FALSE, &tmp[0][0]);
     glUniform1i(bgraID, 1);
 
+    OpenGL::color = glm::vec4(1, 1, 1, 1);
+    glUniform4fv(colorID, 1, &color[0]);
+
     GetTuple(sw, sh, core->getScreenSize());
     glScissor(0, 0, sw, sh);
 
 
-    //glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glFinish();
     renderTexture(framebufferTexture, fullVAO, fullVBO);
-    glFlush();
-    //glFinish();
+    glFinish();
 
     uint sync;
     GLXUtils::glXGetVideoSyncSGI_func(&sync);

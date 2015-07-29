@@ -258,23 +258,16 @@ bool WinStack::isTransientInGroup(FireWindow transient, FireWindow parent) {
 
 void WinStack::restackTransients(FireWindow win) {
 
-    std::cout << "restack transients true" << std::endl;
     if(win == nullptr)
         return;
-
-    std::cout << "wrrrr" << std::endl;
 
     std::vector<FireWindow> winsToRestack;
     for(auto w : layers[win->layer])
         if(isAncestorTo(win, w) || isTransientInGroup(w, win))
             winsToRestack.push_back(w);
 
-    std::cout << "ttrrrrr" << std::endl;
-
     for(auto w : winsToRestack)
         restackAbove(w, win, false);
-
-    std::cout << "restack Transients end" << std::endl;
 }
 
 void WinStack::focusWindow(FireWindow win) {
