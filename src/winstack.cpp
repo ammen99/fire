@@ -206,10 +206,9 @@ void WinStack::restackAbove(FireWindow above, FireWindow below, bool rstTransien
 
     auto pos = getIteratorPositionForWindow(below);
     auto val = getIteratorPositionForWindow(above);
-    // TODO : check if really necessary
 
     if(pos == layers[below->layer].end() ||
-       val == layers[above->layer].end()) // we should not touch
+       val == layers[above->layer].end())      // we should not touch
         return;                                // windows we do not own
 
     auto type = getStackType(above, below);
@@ -224,6 +223,9 @@ void WinStack::restackAbove(FireWindow above, FireWindow below, bool rstTransien
         restackTransients(above);
         restackTransients(below);
     }
+
+    above->addDamage();
+    below->addDamage();
 }
 
 /* returns the topmost window that we can restack above */

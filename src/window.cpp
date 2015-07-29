@@ -73,19 +73,6 @@ Region output;
 bool FireWin::allDamaged = false;
 
 
-/* ensure that new window is on current viewport */
-bool constrainNewWindowPosition(int &x, int &y) {
-    GetTuple(sw, sh, core->getScreenSize());
-    auto nx = (x % sw + sw) % sw;
-    auto ny = (y % sh + sh) % sh;
-
-    if(nx != x || ny != y){
-        x = nx, y = ny;
-        return true;
-    }
-    return false;
-}
-
 FireWin::FireWin(Window id, bool init) {
     this->id = id;
     if(!init) return;
@@ -137,9 +124,6 @@ FireWin::FireWin(Window id, bool init) {
 
     glGenTextures(1, &texture);
     keepCount = 0;
-
-    int x = attrib.x, y = attrib.y;
-    if(constrainNewWindowPosition(x, y)) move(x, y, true);
 }
 
 FireWin::~FireWin() {
@@ -265,13 +249,6 @@ int FireWin::setTexture() {
         glBindTexture(GL_TEXTURE_2D, texture);
         XUngrabServer(core->d);
         return 1;
-    }
-
-    XWindowAttributes xwa;
-    if(!mapTryNum-- && !XGetWindowAttributes(core->d, id, &xwa)) {
-        norender = true;
-        XUngrabServer(core->d);
-        return 0;
     }
 
     glDeleteTextures(1, &texture);
@@ -441,6 +418,20 @@ void FireWin::getInputFocus() {
 }
 
 namespace WinUtil {
+
+    /* ensure that new window is on current viewport */
+    bool constrainNewWindowPosition(int &x, int &y) {
+        GetTuple(sw, sh, core->getScreenSize());
+        auto nx = (x % sw + sw) % sw;
+        auto ny = (y % sh + sh) % sh;
+
+        if(nx != x || ny != y){
+            x = nx, y = ny;
+            return true;
+        }
+        return false;
+    }
+
 #define uchar unsigned char
     int readProp(Window win, Atom prop, int def) {
         Atom      actual;

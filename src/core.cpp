@@ -420,6 +420,14 @@ void Core::mapWindow(FireWindow win, bool xmap) {
         XMapWindow(d, win->id),
         XSync(d, 0);
 
+    if(win->initialMapping){
+        win->initialMapping = false;
+
+        int x = win->attrib.x, y = win->attrib.y;
+        if(WinUtil::constrainNewWindowPosition(x, y))
+            win->move(x, y, true);
+    }
+
     win->syncAttrib();
     win->addDamage();
 
