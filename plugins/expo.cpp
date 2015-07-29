@@ -1,5 +1,12 @@
 #include "../include/core.hpp"
 
+void triggerScaleChange(int scX, int scY) {
+        SignalListenerData sigData;
+        sigData.push_back(&scX);
+        sigData.push_back(&scY);
+        core->triggerSignal("screen-scale-changed", sigData);
+}
+
 class Expo : public Plugin {
     private:
         KeyBinding toggle;
@@ -26,6 +33,7 @@ class Expo : public Plugin {
 
     void init() {
         options.insert(newIntOption("duration", 1000));
+        core->addSignal("screen-scale-changed");
 
         using namespace std::placeholders;
         toggle.key = XKeysymToKeycode(core->d, XK_e);
@@ -100,8 +108,8 @@ class Expo : public Plugin {
 
         float scaleX = 1.f / float(vwidth);
         float scaleY = 1.f / float(vheight);
-        core->scaleX = vwidth;
-        core->scaleY = vheight;
+
+        triggerScaleChange(vwidth, vheight);
 
         offXtarget = offX;
         offYtarget = offY;
@@ -149,9 +157,7 @@ class Expo : public Plugin {
             release.disable();
 
             core->deactivateOwner(owner);
-
-            core->scaleX = 1;
-            core->scaleY = 1;
+            triggerScaleChange(1, 1);
 
             hook.enable();
             stepNum = expostep;

@@ -6,7 +6,7 @@ enum WindowType {
     WindowTypeModal,
     WindowTypeDock,
     WindowTypeDesktop,
-    WindowTypeOther
+    WindowTypeUnknown
 };
 
 enum WindowState {
@@ -71,13 +71,13 @@ class FireWin {
         Window id;
         GLuint texture; // image on screen
 
-        bool norender = false; // should we draw window?
-        bool destroyed = false; // is window dead?
-        bool transparent = false; // is the window transparent
-        bool damaged = true;
-        bool visible = true;
+        bool norender = false;       // should we draw window?
+        bool destroyed = false;      // is window destroyed?
+        bool transparent = false;    // is the window transparent?
+        bool damaged = true;         // refresh window contents?
+        bool visible = true;         // is window visible on screen?
+        bool initialMapping = false; // is window already mapped?
 
-        int mapTryNum = 5; // how many times have we tried to map this window?
         int keepCount = 0; // used to determine whether to destroy window
         Transform transform;
 
@@ -158,4 +158,5 @@ namespace WinUtil {
     int         readProp(Window win, Atom prop, int def);
     WindowType  getWindowType (Window win);
     uint        getWindowState(Window win);
+    bool        constrainNewWindowPosition(int &x, int &y);
 };

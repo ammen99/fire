@@ -24,6 +24,7 @@ struct Binding{
     bool active = false;
     BindingType type;
     uint mod;
+    uint id;
     std::function<void(Context*)> action;
 };
 
@@ -46,6 +47,7 @@ struct Hook {
     private:
         bool active;
     public:
+        uint id;
         std::function<void(void)> action;
 
         void enable();
@@ -54,50 +56,17 @@ struct Hook {
         Hook();
 };
 
-struct Animation {
-    virtual bool Run();
-    virtual bool Step() = 0; // return true if continue, false otherwise
-    virtual ~Animation();
-};
-
-struct AnimationHook {
-    private:
-        Animation *anim;
-        Hook hook;
-        void step();
-
-    public:
-        AnimationHook(Animation*, Core*); // anim is destroyed at the end
-                                          // so should not be used anymore
-                                          // in caller
-        ~AnimationHook();
-};
-
-struct Fade : public Animation {
-
-    enum Mode { FadeIn = 1, FadeOut = -1 };
-    FireWindow win;
-    Mode mode;
-    int progress = 0;
-    int maxstep = 0;
-    int target = 0;
-    bool run = true;
-    bool restoretr = true;
-    bool savetr; // used to restore transparency
-
-    static int duration;
-
-    Fade(FireWindow _win, Mode _mode = FadeIn);
-    ~Fade();
-    bool Step();
-    bool Run();
-};
-
 /* render hooks are used to replace the renderAllWindows()
  * when necessary, i.e to render completely custom
  * image */
-
 using RenderHook = std::function<void()>;
+
+using SignalListenerData = std::vector<void*>;
+
+struct SignalListener {
+    std::function<void(SignalListenerData)> action;
+    uint id;
+};
 
 #define GetTuple(x,y,t) auto x = std::get<0>(t); \
                         auto y = std::get<1>(t)
@@ -120,11 +89,18 @@ class Core {
 
         std::vector<std::vector<FireWindow> > backgrounds;
 
+        uint nextID = 0;
+
         std::vector<PluginPtr> plugins;
         std::vector<KeyBinding*> keys;
         std::vector<ButtonBinding*> buttons;
         std::vector<Hook*> hooks;
         std::unordered_set<Ownership> owners;
+
+        std::unordered_map<std::string,
+            std::vector<SignalListener*>> signals;
+        void addDefaultSignals();
+
 
         void handleEvent(XEvent xev);
         void wait(int timeout);
@@ -184,8 +160,16 @@ class Core {
         void setDefaultRenderer();
 
         void addKey (KeyBinding *kb, bool grab = false);
+        void remKey (uint key);
         void addBut (ButtonBinding *bb, bool grab = false);
+        void remBut (uint key);
         void addHook(Hook*);
+        void remHook(uint key);
+
+        void addSignal(std::string name);
+        void connectSignal(std::string name, SignalListener *callback);
+        void disconnectSignal(std::string name, uint id);
+        void triggerSignal(std::string name, SignalListenerData data);
 
         void regOwner(Ownership owner);
         bool checkKey(KeyBinding *kb, XKeyEvent xkey);
@@ -218,11 +202,6 @@ class Core {
          * but do not forget to turn it off
          * as it is extremely bad for performance */
         void setRedrawEverything(bool value);
-
-
-        float scaleX = 1, scaleY = 1; // used for operations which
-                              // depend on mouse moving
-                              // for ex. when using expo
 };
 extern Core *core;
 #endif
