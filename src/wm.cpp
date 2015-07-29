@@ -46,7 +46,6 @@ void Close::init() {
     close->action = [](Context *ctx) {
         auto w = core->getActiveWindow();
         core->closeWindow(w);
-        new AnimationHook(new Fade(w, Fade::FadeOut), core);
     };
     core->addKey(close, true);
 }
@@ -62,5 +61,5 @@ void Focus::init() {
         auto w = core->getWindowAtPoint(xev.x_root, xev.y_root);
         if(w) core->focusWindow(w);
     };
-    core->addBut(&focus, true);
+    core->addBut(&focus, false);
 }

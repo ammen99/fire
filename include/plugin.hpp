@@ -86,21 +86,29 @@ std::pair<std::string, Data*> newStringOption(std::string name,
 
 class Plugin {
     public:
+        std::unordered_map<std::string, Data*> options;
+
+        /* initOwnership() should set all values in own */
+        virtual void initOwnership();
+
         /* each plugin should allocate all options and set their
          * type and def value in init().
          * After that they are automatically read
          * and if not available, the data becomes def */
-
-        std::unordered_map<std::string, Data*> options;
-        /* initOwnership() should set all values in own */
-        virtual void initOwnership();
-        virtual void updateConfiguration();
         virtual void init() = 0;
+
+        /* used to obtain already read options */
+        virtual void updateConfiguration();
+
+        /* the fini() method should remove all hooks/buttons/keys
+         * and of course prepare the plugin for deletion, i.e
+         * fini() must act like destuctor */
+        virtual void fini();
         Ownership owner;
 
-        bool dynamic = false; // dynamically loaded
-        void *handle; // handle to plugin's .so file,
-                      // in case the plugin is dynamically loaded
+        /* plugin must not touch these! */
+        bool dynamic = false;
+        void *handle;
 };
 
 using PluginPtr = std::shared_ptr<Plugin>;
