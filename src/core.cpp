@@ -712,9 +712,6 @@ void Core::handleEvent(XEvent xev){
             if(xev.xproperty.atom == wmClientLeaderAtom)
                 w->leader = WinUtil::getClientLeader(w->id),
                 wins->restackTransients(w);
-
-            if(xev.xproperty.atom == activeWinAtom)
-                focusWindow(w);
             break;
         }
 
@@ -731,7 +728,7 @@ void Core::handleEvent(XEvent xev){
             w->resize(xev.xconfigure.width, xev.xconfigure.height, false);
             w->move(xev.xconfigure.x, xev.xconfigure.y, false);
 
-            wins->restackAbove(findWindow(xev.xconfigure.above), w);
+            wins->restackAbove(w, findWindow(xev.xconfigure.above));
             break;
         }
 

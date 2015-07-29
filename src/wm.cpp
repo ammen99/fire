@@ -55,6 +55,7 @@ void Focus::init() {
     focus.type = BindingTypePress;
     focus.button = Button1;
     focus.mod = 0;
+    focus.active = true;
 
     focus.action = [] (Context *ctx){
         auto xev = ctx->xev.xbutton;
