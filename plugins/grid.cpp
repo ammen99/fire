@@ -4,8 +4,6 @@
 #define GetProgress(start,end,curstep,steps) (((end)*(curstep)+(start) \
                                             *((steps)-(curstep)))/(steps))
 
-// TODO: allow grid plugin to use FireWin::data
-
 struct GridWindow {
     FireWindow win;
     XWindowAttributes size;

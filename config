@@ -1,15 +1,31 @@
 [core]
-rrate = 61
-vwidth = 3
-vheight = 3
 background = /tarball/backgrounds/last.jpg
-shadersrc = /home/ilex/work/cwork/fire/shaders
 fadeduration = 150
 pluginpath = /home/ilex/work/cwork/fire/plugins
-plugins = move resize vswitch grid expo switcher
+plugins = animate cube move resize vswitch grid expo switcher
+rrate = 60
+shadersrc = /home/ilex/work/cwork/fire/shaders
+vheight = 3
+vwidth = 3
 
-[wsswitch]
-duration = 250
+[cube]
+velocity = 0.01
+vvelocity = 0.01
+zvelocity = 0.03
 
 [expo]
 duration = 300
+
+[grid]
+duration = 150
+
+[switcher]
+duration = 100
+init = 100
+
+[vswitch]
+duration = 250
+
+[animate]
+duration = 150
+

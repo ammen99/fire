@@ -47,6 +47,7 @@ void Plugin::initOwnership() {
 }
 
 void Plugin::updateConfiguration() {}
+void Plugin::fini() {}
 
 std::pair<std::string, Data*> newIntOption(std::string name,
                                            int defaultVal) {

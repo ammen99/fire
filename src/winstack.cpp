@@ -199,32 +199,33 @@ FireWindow WinStack::getAncestor(FireWindow win) {
         return nullptr;
 }
 
-void WinStack::restackAbove(FireWindow above, FireWindow below, bool x) {
+void WinStack::restackAbove(FireWindow above, FireWindow below, bool rstTransients) {
 
     if(above == nullptr || below == nullptr)
         return;
 
     auto pos = getIteratorPositionForWindow(below);
     auto val = getIteratorPositionForWindow(above);
-    // TODO : check if really necessary
 
     if(pos == layers[below->layer].end() ||
-       val == layers[above->layer].end()) // we should not touch
+       val == layers[above->layer].end())      // we should not touch
         return;                                // windows we do not own
 
-    auto t = getStackType(above, below);
-    if(t == StackTypeAncestor || t == StackTypeNoStacking ||
-            isAncestorTo(above, below) ||
-            below->type == WindowTypeWidget) // we should not restack
-        return;                              // a widget below
+    auto type = getStackType(above, below);
+    if(type == StackTypeAncestor ||
+       type == StackTypeNoStacking)
+        return;
 
     layers[above->layer].erase(val);
     layers[below->layer].insert(pos, above);
 
-    if(!isAncestorTo(below, above) && x) {
+    if(!isAncestorTo(below, above) && rstTransients) {
         restackTransients(above);
         restackTransients(below);
     }
+
+    above->addDamage();
+    below->addDamage();
 }
 
 /* returns the topmost window that we can restack above */
@@ -269,10 +270,7 @@ void WinStack::restackTransients(FireWindow win) {
 }
 
 void WinStack::focusWindow(FireWindow win) {
-    if(win == nullptr)
-        return;
-
-    if(win->type == WindowTypeDesktop)
+    if(win == nullptr || win->type == WindowTypeDesktop)
         return;
 
     if(win->attrib.c_class == InputOnly)
@@ -280,12 +278,11 @@ void WinStack::focusWindow(FireWindow win) {
 
     activeWin = win;
 
-    if(win->type == WindowTypeWidget && layers[win->layer].size()) {
+    if(win->type == WindowTypeWidget) {
         if(win->transientFor)
             restackAbove(win, win->transientFor),
-                win = win->transientFor;
-        else
-            return;
+            win = win->transientFor;
+        else return;
     }
 
     if(win->type == WindowTypeModal) {
@@ -297,28 +294,29 @@ void WinStack::focusWindow(FireWindow win) {
     }
 
 
-    auto w1 = findTopmostStackingWindow(activeWin); // window to restack below
-    auto w2 = activeWin; // window to restack above(our window)
-
-    if(!w2) return;
+    /* window to be placed below the window being focused */
+    auto below = findTopmostStackingWindow(activeWin);
 
     /* if we are already at the top of the stack
-     * then just focus the window */
-    if(w1 == nullptr || w1->type == WindowTypeDock){
-        w2->getInputFocus();
+     * just focus the window */
+    if(!below || below->id == activeWin->id){
+        /* ensure visibility */
+        if(layers[activeWin->layer].size() > 1)
+            restackAbove(activeWin, layers[activeWin->layer].front());
+        activeWin->getInputFocus();
         return;
     }
 
-    restackAbove(w2, w1);
+    restackAbove(activeWin, below);
 
     XWindowChanges xwc;
     xwc.stack_mode = Above;
-    xwc.sibling = w1->id;
+    xwc.sibling = below->id;
     XConfigureWindow(core->d, activeWin->id, CWSibling|CWStackMode, &xwc);
 
     activeWin->getInputFocus();
-    w1->addDamage();
-    w2->addDamage();
+    below->addDamage();
+    activeWin->addDamage();
 }
 
 FireWindow WinStack::findWindowAtCursorPosition(int x, int y) {

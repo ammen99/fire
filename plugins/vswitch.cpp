@@ -100,11 +100,11 @@ class VSwitch : public Plugin {
             Transform::gtrs = glm::mat4();
             core->switchWorkspace(std::make_tuple(nx, ny));
             output = core->getMaximisedRegion();
+            core->setRedrawEverything(false);
 
             if(dirs.size() == 0) {
                 hook.disable();
                 core->deactivateOwner(owner);
-                core->setRedrawEverything(false);
             }
             else
                 beginSwitch();

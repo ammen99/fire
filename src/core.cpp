@@ -17,7 +17,6 @@ class CorePlugin : public Plugin {
             options.insert(newIntOption("rrate", 100));
             options.insert(newIntOption("vwidth", 3));
             options.insert(newIntOption("vheight", 3));
-            options.insert(newIntOption("fadeduration", 150));
             options.insert(newStringOption("background", ""));
             options.insert(newStringOption("shadersrc", ""));
             options.insert(newStringOption("pluginpath", ""));
@@ -29,7 +28,6 @@ class CorePlugin : public Plugin {
         }
         void updateConfiguration() {
             refreshrate = options["rrate"]->data.ival;
-            Fade::duration = options["fadeduration"]->data.ival;
         }
 };
 PluginPtr plug; // used to get core options
@@ -38,7 +36,6 @@ Core::Core(int vx, int vy) {
     this->vx = vx;
     this->vy = vy;
 }
-
 
 void Core::enableInputPass(Window win) {
     XserverRegion region;
@@ -66,9 +63,9 @@ void Core::addExistingWindows() {
 
             addWindow(children[i]);
 
-    for(int i = 0; i < size; i++) {
+    for(int i = size - 1; i >= 0; i--) {
         auto w = findWindow(children[i]);
-        if(w) mapWindow(w);
+        if(w) mapWindow(w, false);
     }
 }
 
@@ -153,6 +150,7 @@ void Core::init() {
     WinUtil::init();
     GLXUtils::initGLX();
     OpenGL::initOpenGL((*plug->options["shadersrc"]->data.sval).c_str());
+    core->setBackground((*plug->options["background"]->data.sval).c_str());
 
     for(auto p : plugins) {
         p->owner = std::make_shared<_Ownership>();
@@ -165,16 +163,17 @@ void Core::init() {
 
     dmg = getMaximisedRegion();
     resetDMG = true;
-    addExistingWindows();
 
-    core->setBackground((*plug->options["background"]->data.sval).c_str());
+    addExistingWindows();
     setDefaultRenderer();
+    addDefaultSignals();
 }
 
 Core::~Core(){
     for(auto p : plugins) {
+        p->fini();
         if(p->dynamic)
-            dlclose(p->handle),
+            dlclose(p->handle);
         p.reset();
     }
 
@@ -198,7 +197,25 @@ void Core::run(char *command) {
 Context::Context(XEvent ev) : xev(ev){}
 Hook::Hook() : active(false) {}
 
-void Core::addHook(Hook *hook){ if(hook) hooks.push_back(hook); }
+void Core::addHook(Hook *hook){
+    if(hook)
+        hook->id = nextID++,
+        hooks.push_back(hook);
+}
+
+void Core::remHook(uint key) {
+    std::remove_if(hooks.begin(), hooks.end(), [key] (Hook *hook) {
+                if(hook) {
+                    if(hook->id == key) {
+                        hook->disable();
+                        return true;
+                    }
+                }
+                return true;
+            });
+}
+
+
 bool Hook::getState() { return this->active; }
 
 void Hook::enable() {
@@ -237,6 +254,12 @@ void Core::addKey(KeyBinding *kb, bool grab) {
     if(grab) kb->enable();
 }
 
+void Core::remKey(uint key) {
+    std::remove_if(keys.begin(), keys.end(), [key] (KeyBinding *kb) {
+                if(kb) return kb->id == key;
+                else return true;
+            });
+}
 
 void ButtonBinding::enable() {
     if(active) return;
@@ -262,6 +285,12 @@ void Core::addBut(ButtonBinding *bb, bool grab) {
     if(grab) bb->enable();
 }
 
+void Core::remBut(uint key) {
+    std::remove_if(buttons.begin(), buttons.end(), [key] (ButtonBinding *bb) {
+                if(bb) return bb->id == key;
+                else return true;
+            });
+}
 
 void Core::regOwner(Ownership owner) {
     owners.insert(owner);
@@ -326,6 +355,36 @@ void Core::setDefaultRenderer() {
         std::bind(std::mem_fn(&Core::defaultRenderer), this);
 }
 
+void Core::addSignal(std::string name) {
+    if(signals.find(name) == signals.end())
+        signals[name] = std::vector<SignalListener*>();
+}
+
+void Core::triggerSignal(std::string name, SignalListenerData data) {
+    std::cout << "Triggering " << name << std::endl;
+    if(signals.find(name) != signals.end())
+        for(auto proc : signals[name])
+            proc->action(data);
+}
+
+void Core::connectSignal(std::string name, SignalListener *callback){
+    addSignal(name);
+    callback->id = nextID++;
+    signals[name].push_back(callback);
+}
+
+void Core::disconnectSignal(std::string name, uint id) {
+    std::remove_if(signals[name].begin(), signals[name].end(),
+            [id](SignalListener *sigl){
+            return sigl->id == id;
+            });
+}
+
+void Core::addDefaultSignals() {
+    addSignal("map-window");
+    addSignal("unmap-window");
+}
+
 void Core::addWindow(XCreateWindowEvent xev) {
     FireWindow w = std::make_shared<FireWin>(xev.window, true);
 
@@ -357,30 +416,42 @@ FireWindow Core::getActiveWindow() {
 }
 
 void Core::mapWindow(FireWindow win, bool xmap) {
-    win->norender = false;
-    win->damaged = true;
-    new AnimationHook(new Fade(win), this);
-
-    if(xmap) {
-        XMapWindow(d, win->id);
+    if(xmap)
+        XMapWindow(d, win->id),
         XSync(d, 0);
+
+    if(win->initialMapping){
+        win->initialMapping = false;
+
+        int x = win->attrib.x, y = win->attrib.y;
+        if(WinUtil::constrainNewWindowPosition(x, y))
+            win->move(x, y, true);
     }
+
     win->syncAttrib();
+    win->addDamage();
+
     if(win->attrib.map_state == IsViewable)
         win->pixmap = XCompositeNameWindowPixmap(d, win->id);
     else
         win->pixmap = 0;
 
-    win->addDamage();
     if(win->transientFor)
         wins->restackTransients(win->transientFor);
-
     wins->checkAddClient(win);
+
+    SignalListenerData v;
+    v.push_back((void*)&win);
+    triggerSignal("map-window", v);
 }
 
 void Core::unmapWindow(FireWindow win) {
     win->attrib.map_state = IsUnmapped;
-    new AnimationHook(new Fade(win, Fade::FadeOut), this);
+
+    SignalListenerData v;
+    v.push_back((void*)&win);
+    triggerSignal("unmap-window", v);
+
     wins->checkRemoveClient(win);
 }
 
@@ -649,9 +720,6 @@ void Core::handleEvent(XEvent xev){
             if(xev.xproperty.atom == wmClientLeaderAtom)
                 w->leader = WinUtil::getClientLeader(w->id),
                 wins->restackTransients(w);
-
-            if(xev.xproperty.atom == activeWinAtom)
-                focusWindow(w);
             break;
         }
 
@@ -668,7 +736,7 @@ void Core::handleEvent(XEvent xev){
             w->resize(xev.xconfigure.width, xev.xconfigure.height, false);
             w->move(xev.xconfigure.x, xev.xconfigure.y, false);
 
-            wins->restackAbove(findWindow(xev.xconfigure.above), w);
+            wins->restackAbove(w, findWindow(xev.xconfigure.above));
             break;
         }
 
@@ -733,6 +801,11 @@ void Core::handleEvent(XEvent xev){
 #define MinRR 61
 
 void Core::loop(){
+
+    if(nextID == (uint)(-1)) {
+        mainrestart = true, terminate = true;
+        return;
+    }
 
     int currentCycle = Second / plug->options["rrate"]->data.ival;
     int baseCycle = currentCycle;

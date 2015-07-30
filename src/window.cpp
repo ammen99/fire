@@ -73,19 +73,6 @@ Region output;
 bool FireWin::allDamaged = false;
 
 
-/* ensure that new window is on current viewport */
-bool constrainNewWindowPosition(int &x, int &y) {
-    GetTuple(sw, sh, core->getScreenSize());
-    auto nx = (x % sw + sw) % sw;
-    auto ny = (y % sh + sh) % sh;
-
-    if(nx != x || ny != y){
-        x = nx, y = ny;
-        return true;
-    }
-    return false;
-}
-
 FireWin::FireWin(Window id, bool init) {
     this->id = id;
     if(!init) return;
@@ -137,9 +124,6 @@ FireWin::FireWin(Window id, bool init) {
 
     glGenTextures(1, &texture);
     keepCount = 0;
-
-    int x = attrib.x, y = attrib.y;
-    if(constrainNewWindowPosition(x, y)) move(x, y, true);
 }
 
 FireWin::~FireWin() {
@@ -208,8 +192,11 @@ void FireWin::syncAttrib() {
     attrib.map_state = xwa.map_state;
     attrib.c_class   = xwa.c_class;
 
-    if(!mask)
-        return;
+    if(attrib.map_state == IsViewable &&
+            attrib.c_class != InputOnly)
+        this->norender = false;
+
+    if(!mask) return;
 
     attrib = xwa;
 
@@ -227,19 +214,11 @@ bool FireWin::isVisible() {
     if(!visible && !allDamaged)
         return false;
 
-    if(state & WindowStateHidden)
-        return false;
-
-    if(norender)
+    if(norender || (state & WindowStateHidden))
         return false;
 
     if(attrib.c_class == InputOnly)
         return false;
-
-    if(attrib.width < 11 && attrib.height < 11) {
-        norender = true;
-        return false;
-    }
     return true;
 }
 
@@ -270,13 +249,6 @@ int FireWin::setTexture() {
         glBindTexture(GL_TEXTURE_2D, texture);
         XUngrabServer(core->d);
         return 1;
-    }
-
-    XWindowAttributes xwa;
-    if(!mapTryNum-- && !XGetWindowAttributes(core->d, id, &xwa)) {
-        norender = true;
-        XUngrabServer(core->d);
-        return 0;
     }
 
     glDeleteTextures(1, &texture);
@@ -398,6 +370,7 @@ void FireWin::addDamage() {
     if(norender)
         return;
 
+    damaged = true;
     if(!region) {
         XserverRegion reg =
         XFixesCreateRegionFromWindow(core->d, id, WindowRegionBounding);
@@ -445,6 +418,20 @@ void FireWin::getInputFocus() {
 }
 
 namespace WinUtil {
+
+    /* ensure that new window is on current viewport */
+    bool constrainNewWindowPosition(int &x, int &y) {
+        GetTuple(sw, sh, core->getScreenSize());
+        auto nx = (x % sw + sw) % sw;
+        auto ny = (y % sh + sh) % sh;
+
+        if(nx != x || ny != y){
+            x = nx, y = ny;
+            return true;
+        }
+        return false;
+    }
+
 #define uchar unsigned char
     int readProp(Window win, Atom prop, int def) {
         Atom      actual;
@@ -524,7 +511,7 @@ namespace WinUtil {
                 std::memcpy (&a, data, sizeof (Atom));
             XFree((void*) data);
         }
-        else return WindowTypeOther;
+        else return WindowTypeUnknown;
 
         if (a) {
             if (a == winTypeNormalAtom)
@@ -556,7 +543,7 @@ namespace WinUtil {
             else if (a == winTypeDndAtom)
                 return WindowTypeWidget;
         }
-        return WindowTypeOther;
+        return WindowTypeUnknown;
     }
 
     WindowState getStateMask(Atom state) {
