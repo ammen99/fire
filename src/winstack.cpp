@@ -158,7 +158,7 @@ StackType WinStack::getStackType(FireWindow win1, FireWindow win2) {
     if(isAncestorTo(win2, win1))
         return StackTypeChild;
 
-    if(win1->layer <= win2->layer)
+    if(win1->layer == win2->layer)
         return StackTypeSibling;
 
     return StackTypeNoStacking;
