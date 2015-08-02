@@ -8,8 +8,6 @@ namespace GLXUtils {
     void initGLX();
 
     void destroyContext(Window win);
-    void createNewContext(Window win);
-    void createDefaultContext(Window win);
     Window createNewWindowWithContext(Window parent);
 
     GLuint loadImage(char *path);

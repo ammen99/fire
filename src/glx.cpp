@@ -15,10 +15,26 @@ namespace GLXUtils {
         XVisualInfo *defaultVisual;
     }
 
-#define err std::cout
-
-
-GLXFBConfig fbconfigs[33];
+    static int attrListDbl[] = {
+        GLX_DOUBLEBUFFER, True,
+        GLX_RED_SIZE, 8,
+        GLX_GREEN_SIZE, 8,
+        GLX_BLUE_SIZE, 8,
+        GLX_DEPTH_SIZE, 8,
+        GLX_STENCIL_SIZE, 8,
+        GLX_ALPHA_SIZE, 8,
+        None
+    };
+    static int attrListVisual[] = {
+        GLX_RGBA, GLX_DOUBLEBUFFER,
+        GLX_RED_SIZE, 8,
+        GLX_BLUE_SIZE, 8,
+        GLX_GREEN_SIZE, 8,
+        GLX_DEPTH_SIZE, 8,
+        GLX_STENCIL_SIZE, 8,
+        GLX_ALPHA_SIZE, 8,
+        None
+    };
 
 GLuint loadImage (char* path) {
     GLuint textureID;
@@ -27,7 +43,7 @@ GLuint loadImage (char* path) {
     ilGenImages ( 1, &imageID );
     ilBindImage ( imageID );
     if ( !ilLoadImage ( path ) ) {
-        err << "Can't open image " << path;
+        std::cout << "Can't open image " << path;
         std::exit ( 1 );
     }
 
@@ -37,15 +53,13 @@ GLuint loadImage (char* path) {
         iluFlipImage();
 
     if ( !ilConvertImage (IL_BGR, IL_UNSIGNED_BYTE))
-        err << "Can't convert image!", std::exit ( 1 );
+        std::cout << "Can't convert image!", std::exit ( 1 );
 
     glGenTextures ( 1, &textureID );
-    printf ( "texture id : %d \n", textureID );
     glBindTexture ( GL_TEXTURE_2D, textureID );
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
@@ -60,90 +74,6 @@ GLuint loadImage (char* path) {
     return textureID;
 }
 
-XVisualInfo *getVisualInfoForWindow(Window win) {
-    XVisualInfo *xvi, dummy;
-    XWindowAttributes xwa;
-    auto stat = XGetWindowAttributes(core->d, win, &xwa);
-    if ( stat == 0 ){
-            std::cout << "attempting to get visual info failed!"
-                << win << std::endl;
-            return nullptr;
-        }
-
-    dummy.visualid = XVisualIDFromVisual(xwa.visual);
-
-    int dumm;
-    xvi = XGetVisualInfo(core->d, VisualIDMask, &dummy, &dumm);
-    if(dumm == 0 || !xvi)
-        std::cout << "Cannot get default visual!\n";
-    return xvi;
-}
-
-void createNewContext(Window win) {
-    int dummy;
-    GLXFBConfig *fbconfig = glXGetFBConfigs(core->d,
-            DefaultScreen(core->d), &dummy);
-
-    if ( fbconfig == NULL )
-        printf ( "Couldn't get FBConfigs list!\n" ),
-               std::exit (-1);
-
-    auto xvi = getVisualInfoForWindow(win);
-    int i = 0;
-    for (; i < dummy; i++ ) {
-        auto id = glXGetVisualFromFBConfig(core->d, fbconfig[i]);
-        if ( xvi->visualid == id->visualid )
-            break;
-    }
-
-    if ( i == dummy ) {
-        err << "failed to get FBConfig for opengl 3+ context!";
-        std::exit(-1);
-    }
-
-
-    int ogl33[] = {
-        GLX_CONTEXT_MAJOR_VERSION_ARB, 4,
-        GLX_CONTEXT_MINOR_VERSION_ARB, 4,
-        GLX_CONTEXT_FLAGS_ARB, GLX_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB, None
-    };
-    glXCreateContextAttribsARBProc glXCreateContextAttribsARB =
-        (glXCreateContextAttribsARBProc) glXGetProcAddressARB(
-                (const GLubyte *) "glXCreateContextAttribsARB" );
-    GLXContext context = glXCreateContextAttribsARB (core->d,
-            fbconfig[i], NULL, true, ogl33 );
-
-    glXMakeCurrent ( core->d, win, context );
-
-}
-void createDefaultContext(Window win) {
-    auto xvi = getVisualInfoForWindow(win);
-    GLXContext ctx = glXCreateContext(core->d, xvi, NULL, 0);
-    glXMakeCurrent(core->d, win, ctx);
-    XFree(xvi);
-}
-
-
-static int attrListDbl[] = {
-     GLX_DOUBLEBUFFER, True,
-     GLX_RED_SIZE, 8,
-     GLX_GREEN_SIZE, 8,
-     GLX_BLUE_SIZE, 8,
-     GLX_DEPTH_SIZE, 8,
-     GLX_STENCIL_SIZE, 8,
-     GLX_ALPHA_SIZE, 8,
-     None
- };
-static int attrListVisual[] = {
-     GLX_RGBA, GLX_DOUBLEBUFFER,
-     GLX_RED_SIZE, 8,
-     GLX_BLUE_SIZE, 8,
-     GLX_GREEN_SIZE, 8,
-     GLX_DEPTH_SIZE, 8,
-     GLX_STENCIL_SIZE, 8,
-     GLX_ALPHA_SIZE, 8,
-     None
- };
 
 Window createNewWindowWithContext(Window parent) {
     Colormap cmap;
@@ -152,7 +82,7 @@ Window createNewWindowWithContext(Window parent) {
     defaultVisual = glXChooseVisual ( core->d,
             DefaultScreen(core->d), attrListVisual );
     if ( defaultVisual == NULL )
-        err << "Couldn't get visual!", std::exit (1);
+        std::cout << "Couldn't get visual!", std::exit (1);
 
     cmap = XCreateColormap ( core->d, core->root,
             defaultVisual->visual, AllocNone );
@@ -179,11 +109,11 @@ Window createNewWindowWithContext(Window parent) {
             DefaultScreen(core->d), attrListDbl, &dummy );
 
     if ( fbconfig == NULL )
-        err << "Couldn't get FBConfig!", std::exit (1);
+        std::cout << "Couldn't get FBConfig!", std::exit (1);
 
-    int ogl44[]= {
+    int openGLVersion[]= {
         GLX_CONTEXT_MAJOR_VERSION_ARB, 4,
-        GLX_CONTEXT_MINOR_VERSION_ARB, 4,
+        GLX_CONTEXT_MINOR_VERSION_ARB, 0,
         GLX_CONTEXT_FLAGS_ARB, GLX_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB, None
     };
 
@@ -191,8 +121,8 @@ Window createNewWindowWithContext(Window parent) {
         (glXCreateContextAttribsARBProc) glXGetProcAddressARB(
                 (const GLubyte *) "glXCreateContextAttribsARB" );
 
-    GLXContext context = glXCreateContextAttribsARB ( core->d,
-            fbconfig[0], NULL, true, ogl44 );
+    GLXContext context = glXCreateContextAttribsARB (core->d,
+            fbconfig[0], NULL, true, openGLVersion);
 
     glXMakeCurrent ( core->d, window, context );
     return window;
@@ -206,14 +136,14 @@ void initGLX() {
 
     auto x = glXGetCurrentContext();
     if ( x == NULL )
-        err << "current context is NULL!!!" << std::endl,
+        std::cout << "current context is NULL!!!" << std::endl,
             std::exit(-1);
 
     glewExperimental = GL_TRUE;
     auto res = glewInit();
     glGetError(); // workaround for glew getting Invalid Enum
     if ( res != GLEW_OK ) {
-        err << "failed to init glew" << std::endl;
+        std::cout << "failed to init glew" << std::endl;
         std::exit(-1);
     }
 
@@ -250,16 +180,16 @@ GLuint compileShader(const char *src, GLuint type) {
     if ( s == GL_FALSE ) {
         std::stringstream srcStream, errorStream;
         std::string line;
-        err << "shader compilation failed!" << std::endl;;
-        err << "src: *****************************" << std::endl;
+        std::cout << "shader compilation failed!" << std::endl;;
+        std::cout << "src: *****************************" << std::endl;
         srcStream << src;
         while(std::getline(srcStream, line))
-            err << line << std::endl;
-        err << "**********************************" << std::endl;
+            std::cout << line << std::endl;
+        std::cout << "**********************************" << std::endl;
         errorStream << b1;
         while(std::getline(errorStream, line))
-            err << line << std::endl;
-        err << "**********************************" << std::endl;
+            std::cout << line << std::endl;
+        std::cout << "**********************************" << std::endl;
         return -1;
     }
     return shader;
@@ -269,7 +199,7 @@ GLuint loadShader(const char *path, GLuint type) {
 
     std::fstream file(path);
     if(!file.is_open())
-        err << "Cannot open shader file. Aborting", std::exit(1);
+        std::cout << "Cannot open shader file. Aborting", std::exit(1);
 
     std::string str, line;
 
@@ -286,7 +216,6 @@ GLuint textureFromPixmap(Pixmap pixmap, int w, int h, SharedImage *sim) {
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 

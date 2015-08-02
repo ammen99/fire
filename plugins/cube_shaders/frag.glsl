@@ -1,4 +1,4 @@
-#version 440
+#version 400
 
 in vec2 guv;
 in vec3 colorFactor;
