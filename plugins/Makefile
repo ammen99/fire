@@ -6,7 +6,7 @@ endef
 
 CC=g++
 CFLAGS=-c -fPIC -std=c++11 -g -MP -MMD
-LDFLAGS=-Wl,-soname,move.so -shared -fPIC
+LDFLAGS=-shared -fPIC
 
 SOURCES=$(wildcard *.cpp)
 OBJECTS=$(SOURCES:.cpp=.o)

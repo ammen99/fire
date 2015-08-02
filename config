@@ -1,6 +1,5 @@
 [core]
 background = /tarball/backgrounds/last.jpg
-fadeduration = 150
 pluginpath = /home/ilex/work/cwork/fire/plugins
 plugins = animate cube move resize vswitch grid expo switcher
 rrate = 60
@@ -12,6 +11,7 @@ vwidth = 3
 velocity = 0.01
 vvelocity = 0.01
 zvelocity = 0.03
+deform = 2
 
 [expo]
 duration = 300

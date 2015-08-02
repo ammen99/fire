@@ -1,28 +1,6 @@
 #include "../include/core.hpp"
 #include "../include/opengl.hpp"
-#define GLSL(x) "#version 440\n" # x
 
-const char *vs = GLSL (
-    in vec3 pos;
-    in vec2 uvPos;
-
-    out vec2 uvpos;
-    uniform mat4 MVP;
-
-    void main() {
-       gl_Position = MVP * vec4 (pos, 1.0);
-       uvpos = uvPos;
-    });
-
-const char *fs = GLSL (
-    in vec2 uvpos;
-    out vec4 outColor;
-
-    uniform sampler2D smp;
-
-    void main() {
-       outColor = vec4(texture(smp, uvpos).zyx, 1);
-    });
 class Cube : public Plugin {
     ButtonBinding activate;
     ButtonBinding deactiv;
@@ -50,9 +28,12 @@ class Cube : public Plugin {
 
     GLuint program;
     GLuint vao, vbo;
-    GLuint mvpID;
 
-    glm::mat4 vp, model;
+    GLuint vpID;
+    GLuint initialModel;
+    GLuint nmID;
+
+    glm::mat4 vp, model, view;
     float coeff;
     public:
         void initOwnership() {
@@ -64,27 +45,71 @@ class Cube : public Plugin {
             Velocity  = options["velocity" ]->data.fval;
             VVelocity = options["vvelocity"]->data.fval;
             ZVelocity = options["zvelocity"]->data.fval;
+
+            int val = options["deform"]->data.ival;
+            glUseProgram(program);
+            GLuint defID = glGetUniformLocation(program, "deform");
+            glUniform1i(defID, val);
+
+            val = options["light"]->data.ival ? 1 : 0;
+            GLuint lightID = glGetUniformLocation(program, "light");
+            glUniform1i(lightID, val);
+
+            OpenGL::useDefaultProgram();
         }
 
         void init() {
             options.insert(newFloatOption("velocity",  0.01));
             options.insert(newFloatOption("vvelocity", 0.01));
             options.insert(newFloatOption("zvelocity", 0.05));
+            options.insert(newIntOption  ("deform",    0));
+            options.insert(newIntOption  ("light",     false));
 
-            auto vso = GLXUtils::compileShader(vs, GL_VERTEX_SHADER);
-            auto fso = GLXUtils::compileShader(fs, GL_FRAGMENT_SHADER);
+            auto shaderSrcPath =
+                "/home/ilex/work/cwork/fire/plugins/cube_shaders/";
+            GLuint vss =
+                GLXUtils::loadShader(std::string(shaderSrcPath)
+                        .append("/vertex.glsl").c_str(),
+                        GL_VERTEX_SHADER);
+
+            GLuint fss =
+                GLXUtils::loadShader(std::string(shaderSrcPath)
+                        .append("/frag.glsl").c_str(),
+                        GL_FRAGMENT_SHADER);
+
+            GLuint tcs =
+                GLXUtils::loadShader(std::string(shaderSrcPath)
+                        .append("/tcs.glsl").c_str(),
+                        GL_TESS_CONTROL_SHADER);
+
+            GLuint tes =
+                GLXUtils::loadShader(std::string(shaderSrcPath)
+                        .append("/tes.glsl").c_str(),
+                        GL_TESS_EVALUATION_SHADER);
+
+            GLuint gss =
+                GLXUtils::loadShader(std::string(shaderSrcPath)
+                        .append("/geom.glsl").c_str(),
+                        GL_GEOMETRY_SHADER);
+
 
             program = glCreateProgram();
-            glAttachShader(program, vso);
-            glAttachShader(program, fso);
-            glBindFragDataLocation(program, 0, "outColor");
-            glLinkProgram(program);
+
+            glAttachShader (program, vss);
+            glAttachShader (program, fss);
+            glAttachShader (program, tcs);
+            glAttachShader (program, tes);
+            glAttachShader (program, gss);
+            glBindFragDataLocation (program, 0, "outColor");
+            glLinkProgram (program);
             glUseProgram(program);
 
-            mvpID = glGetUniformLocation(program, "MVP");
+            vpID = glGetUniformLocation(program, "VP");
+            initialModel = glGetUniformLocation(program, "initialModel");
+            nmID = glGetUniformLocation(program, "NM");
             auto proj = glm::perspective(45.0f, 1.f, 0.1f, 100.f);
 
-            auto view = glm::lookAt(glm::vec3(0., 2., 2),
+            view = glm::lookAt(glm::vec3(0., 2., 2),
                     glm::vec3(0., 0., 0.),
                     glm::vec3(0., 1., 0.));
 
@@ -105,8 +130,8 @@ class Cube : public Plugin {
             glBufferData (GL_ARRAY_BUFFER, sizeof (vertices),
                     vertices, GL_STATIC_DRAW );
 
-            GLint position = glGetAttribLocation (program, "pos");
-            GLint uvPosition = glGetAttribLocation (program, "uvPos");
+            GLint position = glGetAttribLocation (program, "position");
+            GLint uvPosition = glGetAttribLocation (program, "uvPosition");
 
             glVertexAttribPointer (position, 3,
                     GL_FLOAT, GL_FALSE,
@@ -217,7 +242,9 @@ class Cube : public Plugin {
                     glm::vec3(1. / zoomFactor, 1. / zoomFactor,
                         1. / zoomFactor));
 
-            glm::mat4 added = vp * scale * verticalRotation;
+            glm::mat4 addedS = scale * verticalRotation;
+            glm::mat4 vpUpload = vp * addedS;
+            glUniformMatrix4fv(vpID, 1, GL_FALSE, &vpUpload[0][0]);
 
             for(int i = 0; i < sides.size(); i++) {
                 int index = (vx + i) % sides.size();
@@ -226,12 +253,16 @@ class Cube : public Plugin {
 
                 model = glm::rotate(glm::mat4(),
                         float(i) * angle + offset, glm::vec3(0, 1, 0));
-                model = added * glm::translate(model,
-                        glm::vec3(0, 0, coeff));
+                model = glm::translate(model, glm::vec3(0, 0, coeff));
 
-                glUniformMatrix4fv(mvpID, 1, GL_FALSE, &model[0][0]);
+                auto nm =
+                    glm::inverse(glm::transpose(glm::mat3(view *  addedS)));
 
-                glDrawArrays(GL_TRIANGLES, 0, 6);
+                glUniformMatrix4fv(initialModel, 1, GL_FALSE, &model[0][0]);
+                glUniformMatrix3fv(nmID, 1, GL_FALSE, &nm[0][0]);
+
+                glPatchParameteri(GL_PATCH_VERTICES, 3);
+                glDrawArrays (GL_PATCHES, 0, 6);
             }
             glXSwapBuffers(core->d, core->outputwin);
         }

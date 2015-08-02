@@ -158,6 +158,7 @@ void runOnce(int argc, const char **argv) {
     signal(SIGILL, signalHandle);
     signal(SIGUSR1, signalHandle);
     signal(SIGABRT, signalHandle);
+    signal(SIGTRAP, signalHandle);
 
     Transform::proj = Transform::view =
     Transform::grot = Transform::gscl =
@@ -184,6 +185,7 @@ int main(int argc, const char **argv ) {
     signal(SIGILL, signalHandle);
     signal(SIGUSR1, signalHandle);
     signal(SIGABRT, signalHandle);
+    signal(SIGTRAP, signalHandle);
 
     /* get a bit of shared memory
      * it is used to check if fork() wants us to exit
