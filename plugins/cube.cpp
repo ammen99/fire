@@ -31,8 +31,9 @@ class Cube : public Plugin {
 
     GLuint vpID;
     GLuint initialModel;
+    GLuint nmID;
 
-    glm::mat4 vp, model;
+    glm::mat4 vp, model, view;
     float coeff;
     public:
         void initOwnership() {
@@ -49,6 +50,11 @@ class Cube : public Plugin {
             glUseProgram(program);
             GLuint defID = glGetUniformLocation(program, "deform");
             glUniform1i(defID, val);
+
+            val = options["light"]->data.ival ? 1 : 0;
+            GLuint lightID = glGetUniformLocation(program, "light");
+            glUniform1i(lightID, val);
+
             OpenGL::useDefaultProgram();
         }
 
@@ -57,7 +63,7 @@ class Cube : public Plugin {
             options.insert(newFloatOption("vvelocity", 0.01));
             options.insert(newFloatOption("zvelocity", 0.05));
             options.insert(newIntOption  ("deform",    0));
-
+            options.insert(newIntOption  ("light",     false));
 
             auto shaderSrcPath =
                 "/home/ilex/work/cwork/fire/plugins/cube_shaders/";
@@ -100,9 +106,10 @@ class Cube : public Plugin {
 
             vpID = glGetUniformLocation(program, "VP");
             initialModel = glGetUniformLocation(program, "initialModel");
+            nmID = glGetUniformLocation(program, "NM");
             auto proj = glm::perspective(45.0f, 1.f, 0.1f, 100.f);
 
-            auto view = glm::lookAt(glm::vec3(0., 2., 2),
+            view = glm::lookAt(glm::vec3(0., 2., 2),
                     glm::vec3(0., 0., 0.),
                     glm::vec3(0., 1., 0.));
 
@@ -235,7 +242,9 @@ class Cube : public Plugin {
                     glm::vec3(1. / zoomFactor, 1. / zoomFactor,
                         1. / zoomFactor));
 
-            glm::mat4 added = vp * scale * verticalRotation;
+            glm::mat4 addedS = scale * verticalRotation;
+            glm::mat4 vpUpload = vp * addedS;
+            glUniformMatrix4fv(vpID, 1, GL_FALSE, &vpUpload[0][0]);
 
             for(int i = 0; i < sides.size(); i++) {
                 int index = (vx + i) % sides.size();
@@ -246,8 +255,12 @@ class Cube : public Plugin {
                         float(i) * angle + offset, glm::vec3(0, 1, 0));
                 model = glm::translate(model, glm::vec3(0, 0, coeff));
 
+                auto nm =
+                    glm::inverse(glm::transpose(glm::mat3(view *  addedS)));
+
                 glUniformMatrix4fv(initialModel, 1, GL_FALSE, &model[0][0]);
-                glUniformMatrix4fv(vpID, 1, GL_FALSE, &added[0][0]);
+                glUniformMatrix3fv(nmID, 1, GL_FALSE, &nm[0][0]);
+
                 glPatchParameteri(GL_PATCH_VERTICES, 3);
                 glDrawArrays (GL_PATCHES, 0, 6);
             }

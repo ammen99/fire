@@ -27,8 +27,9 @@ vec3 interpolate3D(vec3 v0, vec3 v1, vec3 v2) {
 vec3 tp;
 void main() {
     tesuv = interpolate2D(uv[0], uv[1], uv[2]);
-    tePosition = interpolate3D(tcPosition[0], tcPosition[1], tcPosition[2]);
-    tp = (initialModel * vec4(tePosition, 1.0)).xyz;
+
+    tp = interpolate3D(tcPosition[0], tcPosition[1], tcPosition[2]);
+    tp = (initialModel * vec4(tp, 1.0)).xyz;
 
     if(deform > 0) {
         float r = 0.5;
@@ -40,5 +41,7 @@ void main() {
             scale = d / r;
         tp = vec3(tp[0] * scale, tp[1], tp[2] * scale);
     }
+
+    tePosition = tp;
     gl_Position = VP * vec4 (tp, 1.0);
 }
