@@ -9,10 +9,10 @@ CFLAGS=-c -fPIC -std=c++11 -g -MP -MMD
 LDFLAGS=-shared -fPIC
 
 SOURCES=$(wildcard *.cpp)
+SOURCES+=./cube/cube.cpp
 OBJECTS=$(SOURCES:.cpp=.o)
 SOFILES=$(SOURCES:.cpp=.so)
 DEPS=$(OBJECTS:.o=.d)
-
 
 all: $(SOFILES)
 	$(call colorecho, "Plugins ready")

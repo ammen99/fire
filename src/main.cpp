@@ -137,15 +137,18 @@ void signalHandle(int sig) {
 }
 
 /* simulates launchig a new program */
-void runOnce(int argc, const char **argv) {
+void runOnce(std::string configPath, int glVersionMajor,
+        int glVersionMinor) {
 
-    if(argc < 2){
+    if(configPath == ""){
         std::cout << "No configuration file!" <<
             " Using default settings" << std::endl;
         config = new Config();
     }
-    else
-        config = new Config(argv[1]);
+    else config = new Config(configPath);
+
+    OpenGL::VersionMajor = glVersionMajor;
+    OpenGL::VersionMinor = glVersionMinor;
 
     shmid = shmget(shmkey, shmsize, 0666);
     auto dataid = shmat(shmid, 0, 0);
@@ -160,7 +163,6 @@ void runOnce(int argc, const char **argv) {
     signal(SIGABRT, signalHandle);
     signal(SIGTRAP, signalHandle);
 
-    Transform::proj = Transform::view =
     Transform::grot = Transform::gscl =
     Transform::gtrs = glm::mat4();
 
@@ -178,7 +180,54 @@ void runOnce(int argc, const char **argv) {
     shdata[2] = int(vy);
 }
 
-int main(int argc, const char **argv ) {
+int main(int argc, char * const* argv ) {
+    /* parse options */
+
+    extern char *optarg;
+    extern int   optind;
+
+    int c;
+    std::string config = "";
+    int glVersionMajor = 3, glVersionMinor = 3;
+    while((c = getopt(argc, argv, "c:j:m:")) != -1) {
+        switch(c) {
+            case 'c':
+                config = optarg;
+                break;
+            case 'j': {
+                auto v = optarg[0];
+                if(!std::isdigit(v)) {
+                    std::cout << "OpenGL major version is wrong!\n";
+                    break;
+                }
+
+                glVersionMajor = v - '0';
+                if(glVersionMajor < 3) {
+                    std::cout << "Program requires at least OpenGL3.3!\n";
+                    std::exit(-1);
+                }
+                break;
+            }
+            case 'm': {
+                auto v = optarg[0];
+                if(!std::isdigit(v)) {
+                    std::cout << "OpenGL minor version is wrong!\n";
+                    break;
+                }
+
+                glVersionMinor = v - '0';
+                if(glVersionMajor == 3 && glVersionMinor < 3) {
+                    std::cout << "Program requires at least OpenGL3.3!\n";
+                    std::exit(-1);
+                }
+                break;
+            }
+            default :
+                std::cout << "Unrecognized option " << optarg << std::endl;
+        }
+    }
+
+
     signal(SIGINT, signalHandle);
     signal(SIGSEGV, signalHandle);
     signal(SIGFPE, signalHandle);
@@ -204,17 +253,19 @@ int main(int argc, const char **argv ) {
 
     int times = 0;
     while(shdata[0]) {
+        std::cout << "In cycle" << std::endl;
         if(times++) // print a message if there has been crash
                     // but note that it could have just been a refresh
             std::cout << "Crash detected or just refresh" << std::endl;
 
         auto pid = fork();
         if(pid == 0) {
-            runOnce(argc, argv);   // run Core()
+            runOnce(config, glVersionMajor, glVersionMinor);   // run Core()
             std::exit(0);// and exit
         }
         int status = 0;
         waitpid(pid, &status, 0); // wait for fork() to finish
+        std::cout << "end cycle" << std::endl;
     }
 
     shmdt(dataid);

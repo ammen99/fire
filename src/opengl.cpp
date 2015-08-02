@@ -13,7 +13,7 @@ namespace {
 
     GLuint fullVAO, fullVBO;
 
-///* these functions are disabled for now
+    /* these functions are disabled for now
 
     const char *getStrSrc(GLenum src) {
         if(src == GL_DEBUG_SOURCE_API_ARB            )return "API_ARB        ";
@@ -57,7 +57,7 @@ namespace {
         std::cout << "Msg: " << msg << std::endl;;
         std::cout << "_______________________________________________\n";
     }
- //   */
+    */
 }
 
 bool OpenGL::transformed = false;
@@ -65,8 +65,10 @@ int  OpenGL::depth;
 glm::vec4 OpenGL::color;
 
 namespace OpenGL {
+    int VersionMinor, VersionMajor;
 
     GLuint getTex() {return framebufferTexture;}
+
 void generateVAOVBO(int x, int y, int w, int h,
         GLuint &vao, GLuint &vbo) {
 
@@ -131,9 +133,7 @@ void renderTexture(GLuint tex, GLuint vao, GLuint vbo) {
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, tex);
-
-    glPatchParameteri(GL_PATCH_VERTICES, 3);
-    glDrawArrays (GL_PATCHES, 0, 6);
+    glDrawArrays (GL_TRIANGLES, 0, 6);
 }
 
 void renderTransformedTexture(GLuint tex,
@@ -181,12 +181,23 @@ void endStage() {
     glUniformMatrix4fv(mvpID, 1, GL_FALSE, &tmp[0][0]);
     glUniform1i(bgraID, 1);
 
+    OpenGL::color = glm::vec4(1, 1, 1, 1);
+    glUniform4fv(colorID, 1, &color[0]);
+
     GetTuple(sw, sh, core->getScreenSize());
     glScissor(0, 0, sw, sh);
 
-    renderTexture(framebufferTexture, fullVAO, fullVBO);
-    glXSwapBuffers(core->d, core->outputwin);
 
+    glClear(GL_COLOR_BUFFER_BIT);
+    glFinish();
+    renderTexture(framebufferTexture, fullVAO, fullVBO);
+    glFinish();
+
+    uint sync;
+    GLXUtils::glXGetVideoSyncSGI_func(&sync);
+    GLXUtils::glXWaitVideoSyncSGI_func(2, (sync + 1) % 2, &sync);
+
+    glXSwapBuffers(core->d, core->outputwin);
     glUniform1i(bgraID, 0);
 }
 
@@ -232,7 +243,7 @@ void initOpenGL(const char *shaderSrcPath) {
 
 //    glEnable(GL_DEBUG_OUTPUT);
 //    glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-    glDebugMessageCallback(errorHandler, (void*)0);
+//    glDebugMessageCallback(errorHandler, (void*)0);
 
     GetTuple(sw, sh, core->getScreenSize());
     std::string tmp = shaderSrcPath;
@@ -247,29 +258,11 @@ void initOpenGL(const char *shaderSrcPath) {
                 .append("/frag.glsl").c_str(),
                 GL_FRAGMENT_SHADER);
 
-    GLuint tcs =
-        GLXUtils::loadShader(std::string(shaderSrcPath)
-                .append("/tcs.glsl").c_str(),
-                GL_TESS_CONTROL_SHADER);
-
-    GLuint tes =
-        GLXUtils::loadShader(std::string(shaderSrcPath)
-                .append("/tes.glsl").c_str(),
-                GL_TESS_EVALUATION_SHADER);
-
-    GLuint gss =
-        GLXUtils::loadShader(std::string(shaderSrcPath)
-                .append("/geom.glsl").c_str(),
-                GL_GEOMETRY_SHADER);
-
-
     program = glCreateProgram();
 
     glAttachShader (program, vss);
     glAttachShader (program, fss);
-    glAttachShader (program, tcs);
-    glAttachShader (program, tes);
-    glAttachShader (program, gss);
+
     glBindFragDataLocation (program, 0, "outColor");
     glLinkProgram (program);
     useDefaultProgram();
@@ -278,7 +271,6 @@ void initOpenGL(const char *shaderSrcPath) {
     depthID = glGetUniformLocation(program, "depth");
     colorID = glGetUniformLocation(program, "color");
     bgraID = glGetUniformLocation(program, "bgra");
-    color = glm::vec4(1.f, 1.f, 1.f, 1.f);
 
     View = glm::lookAt(glm::vec3(0., 0., 1.67),
                        glm::vec3(0., 0., 0.),
@@ -294,6 +286,7 @@ void initOpenGL(const char *shaderSrcPath) {
 
     glUniform1f(w2ID, sw / 2);
     glUniform1f(h2ID, sh / 2);
+
     generateVAOVBO(0, sh, sw, -sh, fullVAO, fullVBO);
 
     prepareFramebuffer(framebuffer, framebufferTexture);

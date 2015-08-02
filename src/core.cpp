@@ -133,6 +133,7 @@ void Core::init() {
 
     run(const_cast<char*>("setxkbmap -model pc104 -layout us,bg -variant ,phonetic -option grp:alt_shift_toggle"));
 
+
     initDefaultPlugins();
 
     /* load core options */
@@ -361,7 +362,6 @@ void Core::addSignal(std::string name) {
 }
 
 void Core::triggerSignal(std::string name, SignalListenerData data) {
-    std::cout << "Triggering " << name << std::endl;
     if(signals.find(name) != signals.end())
         for(auto proc : signals[name])
             proc->action(data);
@@ -815,9 +815,7 @@ void Core::loop(){
     bool hadEvents = false;
 
     XEvent xev;
-
     while(!terminate) {
-
         /* handle current events */
         while(XPending(d)) {
             XNextEvent(d, &xev);
@@ -838,8 +836,10 @@ void Core::loop(){
                 continue;
             }
             fd.revents = 0;
+
         }
         else {
+
             if(cntHooks) { // if running hooks, run them
                 for (auto hook : hooks)
                     if(hook->getState())
@@ -987,18 +987,16 @@ void Core::getViewportTexture(std::tuple<int, int> vp,
             glm::vec3(2 * (vx - x), 2 * (y - vy), 0));
     glm::mat4 save = Transform::gtrs;
     Transform::gtrs *= off;
-    int num = 0;
 
     Region tmp = XCreateRegion();
     std::vector<FireWindow> winsToDraw;
 
-    auto proc = [view, tmp, &num, &winsToDraw](FireWindow win) {
+    auto proc = [view, tmp, &winsToDraw](FireWindow win) {
         if(!win->isVisible() || !win->region)
             return;
 
         XIntersectRegion(view, win->region, tmp);
         if(!XEmptyRegion(tmp))
-            win->transform.stackID = num++,
             winsToDraw.push_back(win);
     };
     wins->forEachWindow(proc);
@@ -1017,14 +1015,16 @@ namespace {
 
 void Core::setRedrawEverything(bool val) {
     if(val) {
+        std::cout << "here" << std::endl;
         fullRedraw++;
 
-        output = core->getRegionFromRect(-vx * width, -vy * height,
+        output = getRegionFromRect(-vx * width, -vy * height,
                 (vwidth  - vx) * width, (vheight - vy) * height);
         FireWin::allDamaged = true;
         core->resetDMG = false;
     }
     else if(--fullRedraw == 0)
+        output = getMaximisedRegion(),
         FireWin::allDamaged = false,
         core->resetDMG = true;
 }

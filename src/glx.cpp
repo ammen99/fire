@@ -1,7 +1,13 @@
 #include "../include/core.hpp"
+#include "../include/opengl.hpp"
 #include <X11/extensions/Xrender.h>
 
 namespace GLXUtils {
+
+
+    PFNGLXWAITVIDEOSYNCSGIPROC glXWaitVideoSyncSGI_func = NULL;
+    PFNGLXGETVIDEOSYNCSGIPROC glXGetVideoSyncSGI_func = NULL;
+
 
     namespace {
         typedef GLXContext (*glXCreateContextAttribsARBProc) (Display*,
@@ -10,7 +16,6 @@ namespace GLXUtils {
 
         PFNGLXBINDTEXIMAGEEXTPROC glXBindTexImageEXT_func = NULL;
         PFNGLXRELEASETEXIMAGEEXTPROC glXReleaseTexImageEXT_func = NULL;
-
         bool useXShm = false;
         XVisualInfo *defaultVisual;
     }
@@ -74,7 +79,6 @@ GLuint loadImage (char* path) {
     return textureID;
 }
 
-
 Window createNewWindowWithContext(Window parent) {
     Colormap cmap;
     XSetWindowAttributes winAttr;
@@ -112,8 +116,8 @@ Window createNewWindowWithContext(Window parent) {
         std::cout << "Couldn't get FBConfig!", std::exit (1);
 
     int openGLVersion[]= {
-        GLX_CONTEXT_MAJOR_VERSION_ARB, 4,
-        GLX_CONTEXT_MINOR_VERSION_ARB, 0,
+        GLX_CONTEXT_MAJOR_VERSION_ARB, OpenGL::VersionMajor,
+        GLX_CONTEXT_MINOR_VERSION_ARB, OpenGL::VersionMinor,
         GLX_CONTEXT_FLAGS_ARB, GLX_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB, None
     };
 
@@ -156,6 +160,12 @@ void initGLX() {
         glXGetProcAddress((GLubyte *) "glXBindTexImageEXT");
     glXReleaseTexImageEXT_func = (PFNGLXRELEASETEXIMAGEEXTPROC)
         glXGetProcAddress((GLubyte*) "glXReleaseTexImageEXT");
+
+    glXWaitVideoSyncSGI_func = (PFNGLXWAITVIDEOSYNCSGIPROC)
+        glXGetProcAddress((GLubyte *) "glXWaitVideoSyncSGI");
+
+    glXGetVideoSyncSGI_func = (PFNGLXGETVIDEOSYNCSGIPROC)
+        glXGetProcAddress((GLubyte *) "glXGetVideoSyncSGI");
 
     int ignore, major, minor;
     Bool pixmaps;

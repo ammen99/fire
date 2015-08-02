@@ -7,6 +7,8 @@ namespace OpenGL {
     extern int       depth;
     extern glm::vec4 color;
 
+    extern int VersionMinor, VersionMajor;
+
     void initOpenGL(const char *shaderSrcPath);
     void renderTransformedTexture(GLuint text, GLuint vao,
      GLuint vbo, glm::mat4 t);

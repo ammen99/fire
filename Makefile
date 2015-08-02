@@ -12,6 +12,8 @@ all:
 	@make -j4 -C $(SRC)
 	$(call colorecho, "Compiling plugins...")
 	@make -j4 -C $(PLUGINS)
+	@#TODO: fix building of plugins
+	@cp $(PLUGINS)/cube/cube.so $(PLUGINS)/
 	$(call colorecho, "Build finished")
 
 rebuild: clean all
