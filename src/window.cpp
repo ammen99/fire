@@ -147,6 +147,7 @@ void FireWin::updateRegion() {
 }
 
 void FireWin::updateState() {
+    std::cout << "UPdate state " << id << std::endl;
     GetTuple(sw, sh, core->getScreenSize());
     if(state & WindowStateMaxH) {
         std::cout << "maxh" << std::endl;
@@ -161,6 +162,7 @@ void FireWin::updateState() {
     }
 
     if(state & WindowStateFullscreen){
+        std::cout  << "fullscreen" << std::endl;
         resize(sw, sh, true);
         move(0, 0, true);
     }
@@ -274,7 +276,6 @@ void FireWin::render() {
 }
 
 void FireWin::move(int x, int y, bool configure) {
-
     bool existPreviousRegion = !(region == nullptr);
 
     Region prevRegion = nullptr;
@@ -347,11 +348,19 @@ void FireWin::resize(int w, int h, bool configure) {
         shared.existing = false;
         shared.init = true;
     }
-
     if(pixmap)
         XFreePixmap(core->d, pixmap);
     if(attrib.map_state == IsViewable)
         pixmap = XCompositeNameWindowPixmap(core->d, id);
+}
+
+void FireWin::moveResize(int x, int y, int w, int h) {
+    /* dirty hack for windows which *want* to be resized
+     * even when maximized(for ex. terminator)
+     * and don't show up properly if don't get configured */
+    move(x, y);
+    resize(w, h);
+    updateState();
 }
 
 void FireWin::addDamage() {
@@ -373,20 +382,10 @@ void FireWin::addDamage() {
 
 void FireWin::getInputFocus() {
 
-//    XGrabServer(core->d);
-//    XWindowAttributes xwa;
-//    if(!XGetWindowAttributes(core->d, id, &xwa)
-//            || xwa.map_state != IsViewable){
-//        XUngrabServer(core->d);
-//        return;
-//    }
-//
     if(attrib.map_state != IsViewable)
         return;
 
     XSetInputFocus(core->d, id, RevertToPointerRoot, CurrentTime);
-
-//    XUngrabServer(core->d);
     XChangeProperty ( core->d, core->root, activeWinAtom,
             XA_WINDOW, 32, PropModeReplace,
             (unsigned char *) &id, 1 );

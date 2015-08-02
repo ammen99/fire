@@ -95,6 +95,7 @@ class Resize : public Plugin {
 
         int nw = win->attrib.width  + dw;
         int nh = win->attrib.height + dh;
+
         win->resize(nw, nh);
 
         core->setRedrawEverything(false);

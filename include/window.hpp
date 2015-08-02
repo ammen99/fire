@@ -21,6 +21,8 @@ enum WindowState {
     WindowStateBelow        = 128,
 };
 
+#define SizeStates (WindowStateMaxH|WindowStateMaxV|WindowStateFullscreen)
+
 class Transform {
     public: // applied to all windows
         static glm::mat4 grot;
@@ -108,6 +110,11 @@ class FireWin {
 
         void move(int x, int y, bool configure = true);
         void resize(int w, int h, bool configure = true);
+
+        /* special function to deal with ConfigureRequest
+         * it needs special handling */
+        void moveResize(int x, int y, int w, int h);
+
         void syncAttrib();
         void getInputFocus();
 

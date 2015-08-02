@@ -470,7 +470,7 @@ void Core::closeWindow(FireWindow win) {
             if(atoms[i] == wmdelete)
                 send = true;
 
-        if ( send ) {
+        if(send) {
             XEvent xev;
 
             xev.type         = ClientMessage;
@@ -483,9 +483,9 @@ void Core::closeWindow(FireWindow win) {
             xev.xclient.data.l[3]    = 0;
             xev.xclient.data.l[4]    = 0;
 
-            XSendEvent ( d, win->id, FALSE, NoEventMask, &xev );
+            XSendEvent (d, win->id, FALSE, NoEventMask, &xev);
         } else
-            XKillClient ( d, win->id );
+            XKillClient (d, win->id);
     } else
         XKillClient(d, win->id);
 
@@ -641,7 +641,7 @@ void Core::handleEvent(XEvent xev){
             break;
 
         case ConfigureRequest: {
-            std::cout << "Configure request" << std::endl;
+            std::cout << "Configure request " << xev.xconfigurerequest.window << std::endl;
             auto w = findWindow(xev.xconfigurerequest.window);
             if(!w) { // from compiz window manager
                 XWindowChanges xwc;
@@ -666,15 +666,14 @@ void Core::handleEvent(XEvent xev){
 
             if(xev.xconfigurerequest.value_mask & CWWidth)
                 width = xev.xconfigurerequest.width;
-            if(xev.xconfigurerequest.value_mask & CWHeight)
-                height = xev.xconfigurerequest.height;
             if(xev.xconfigurerequest.value_mask & CWX)
                 x = xev.xconfigurerequest.x;
+            if(xev.xconfigurerequest.value_mask & CWHeight)
+                height = xev.xconfigurerequest.height;
             if(xev.xconfigurerequest.value_mask & CWY)
                 y = xev.xconfigurerequest.y;
 
-            w->move(x, y);
-            w->resize(width, height);
+            w->moveResize(x, y, width, height);
 
             if(xev.xconfigurerequest.value_mask & CWStackMode) {
                 if(xev.xconfigurerequest.above) {
@@ -724,7 +723,6 @@ void Core::handleEvent(XEvent xev){
         }
 
         case ConfigureNotify: {
-            std::cout << "configure notify" << std::endl;
             if(xev.xconfigure.window == root) {
                 terminate = true, mainrestart = true;
                 break;
@@ -732,10 +730,12 @@ void Core::handleEvent(XEvent xev){
 
             auto w = findWindow(xev.xconfigure.window);
             if(!w) break;
-
-            w->resize(xev.xconfigure.width, xev.xconfigure.height, false);
-            w->move(xev.xconfigure.x, xev.xconfigure.y, false);
-
+            if(xev.xconfigure.width != w->attrib.width ||
+                    xev.xconfigure.height != w->attrib.height)
+                w->resize(xev.xconfigure.width, xev.xconfigure.height, false);
+            if(xev.xconfigure.x != w->attrib.x ||
+                    xev.xconfigure.y != w->attrib.y)
+                w->move(xev.xconfigure.x, xev.xconfigure.y, false);
             wins->restackAbove(w, findWindow(xev.xconfigure.above));
             break;
         }
