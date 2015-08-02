@@ -1,4 +1,5 @@
 #include "../include/config.hpp"
+#include "../include/core.hpp"
 
 #define copyInto(x,y) std::memcpy(&(y), &x, sizeof((y)))
 
@@ -32,8 +33,78 @@ namespace {
         theMachine >> tmp;
         return tmp;
     }
-}
 
+    uint getModFromStr(std::string value) {
+        if(value == "Control")
+            return ControlMask;
+        if(value == "Alt")
+            return Mod1Mask;
+        if(value == "Win")
+            return Mod4Mask;
+        if(value == "Shift")
+            return ShiftMask;
+
+        std::cout << "Debug: modval not recognized" << std::endl;
+        return 0;
+    }
+    uint getModsFromString(std::string value) {
+        std::string cmod;
+        uint mods = 0;
+        for(auto c : value) {
+            if(c == '<')
+                cmod = "";
+            else if(c == '>')
+                mods |= getModFromStr(cmod);
+            else
+                cmod += c;
+        }
+        return mods;
+    }
+
+    template<> Color  readValue<Color>(std::string value) {
+        Color c;
+        std::stringstream str;
+        str << value;
+        str >> c.r >> c.g >> c.b;
+        /* values are saved as ints, not floats */
+        c.r /= 255.f, c.g /= 255.f, c.b /= 255.f;
+        return c;
+    }
+    template<>Key readValue<Key>(std::string value) {
+        Key key;
+        key.mod = getModsFromString(value);
+        int i = 0;
+        for(i = value.length() - 1; i >= 0; i--) {
+            if(value[i] == '>') break;
+        }
+        ++i;
+        std::string keystr = value.substr(i, value.size() - i);
+        KeySym ks = XStringToKeysym(keystr.c_str());
+        key.key = XKeysymToKeycode(core->d, ks);
+        return key;
+    }
+
+    int Buttons [] = {Button1, Button2, Button3, Button4, Button5};
+
+    template<>Button readValue<Button>(std::string value) {
+        Button but;
+        but.mod = getModsFromString(value);
+        int i = 0;
+        for(i = value.length() - 1; i >= 0; i--) {
+            if(value[i] == '>') break;
+        }
+        i++;
+        std::string tmp = value.substr(i, value.size() - i);
+        tmp = trim(tmp); tmp = tmp.substr(1, tmp.size() - 1);
+        if(!std::isdigit(tmp[0])){
+            std::cout << "Error by reading button binding!" << std::endl;
+            but.button = 0;
+            return but;
+        }
+        but.button = Buttons[tmp[0] - '0'];
+        return but;
+    }
+}
 Config::Config(std::string path) {
     this->path = path;
     stream.open(path, std::ios::in | std::ios::out);
@@ -108,6 +179,18 @@ void Config::setOptionsForPlugin(PluginPtr p) {
                 break;
             case DataTypeString:
                 p->options[oname]->data.sval = new std::string(it->second);
+                break;
+            case DataTypeColor:
+                p->options[oname]->data.color =
+                    new Color(readValue<Color>(it->second));
+                break;
+            case DataTypeKey:
+                p->options[oname]->data.key =
+                    new Key(readValue<Key>(it->second));
+                break;
+            case DataTypeButton:
+                p->options[oname]->data.but =
+                    new Button(readValue<Button>(it->second));
                 break;
         }
     }

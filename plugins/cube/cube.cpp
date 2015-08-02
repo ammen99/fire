@@ -229,7 +229,7 @@ class Cube : public Plugin {
         }
 
         void Render() {
-            glClearColor(1.f, 0.5f, 0.5f, 0.0f);
+            glClearColor(1, 0.4, 0.4, 0.0f);
             glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
             for(int i = 0; i < sides.size(); i++) {

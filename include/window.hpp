@@ -163,4 +163,4 @@ namespace WinUtil {
     WindowType  getWindowType (Window win);
     uint        getWindowState(Window win);
     bool        constrainNewWindowPosition(int &x, int &y);
-};
+}

@@ -26,7 +26,6 @@ class Expo : public Plugin {
         bool active;
         std::function<FireWindow(int, int)> save; // used to restore
     public:
-
     void updateConfiguration() {
         expostep = getSteps(options["duration"]->data.ival);
     }

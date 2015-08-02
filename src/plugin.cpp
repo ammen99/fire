@@ -49,34 +49,49 @@ void Plugin::initOwnership() {
 void Plugin::updateConfiguration() {}
 void Plugin::fini() {}
 
-std::pair<std::string, Data*> newIntOption(std::string name,
-                                           int defaultVal) {
+DataPair newIntOption(std::string name, int defaultVal) {
     auto pair = std::make_pair(name, new Data());
     pair.second->type = DataTypeInt;
     pair.second->def.ival = defaultVal;
     return pair;
 }
 
-std::pair<std::string, Data*> newFloatOption(std::string name,
-                                             float defaultVal) {
+DataPair newFloatOption(std::string name, float defaultVal) {
     auto pair = std::make_pair(name, new Data());
     pair.second->type = DataTypeFloat;
     pair.second->def.fval = defaultVal;
     return pair;
 }
 
-std::pair<std::string, Data*> newBoolOption(std::string name,
-                                            bool defaultVal) {
+DataPair newBoolOption(std::string name, bool defaultVal) {
     auto pair = std::make_pair(name, new Data());
     pair.second->type = DataTypeBool;
     pair.second->def.bval = defaultVal;
     return pair;
 }
 
-std::pair<std::string, Data*> newStringOption(std::string name,
-                                              std::string defaultVal) {
+DataPair newStringOption(std::string name, std::string defaultVal) {
     auto pair = std::make_pair(name, new Data());
     pair.second->type = DataTypeString;
     pair.second->def.sval = new std::string(defaultVal);
+    return pair;
+}
+
+DataPair newColorOption(std::string name, Color defaultVal) {
+    auto pair = std::make_pair(name, new Data());
+    pair.second->type = DataTypeColor;
+    pair.second->def.color = new Color(defaultVal);
+    return pair;
+}
+DataPair newKeyOption(std::string name, Key defaultVal) {
+    auto pair = std::make_pair(name, new Data());
+    pair.second->type = DataTypeKey;
+    pair.second->def.key = new Key(defaultVal);
+    return pair;
+}
+DataPair newButtonOption(std::string name, Button defaultVal) {
+    auto pair = std::make_pair(name, new Data());
+    pair.second->type = DataTypeButton;
+    pair.second->def.but = new Button(defaultVal);
     return pair;
 }
