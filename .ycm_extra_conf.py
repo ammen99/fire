@@ -7,12 +7,6 @@ flags = [
 '-x',
 'c++',
 '-DYCM',
-'-isystem/tarball/compiz-1.0.0/compiz-1.0.0/include',
-'-isystem/usr/bin/../lib64/gcc/x86_64-unknown-linux-gnu/4.9.1/../../../../include/c++/4.9.1',
-'-isystem/usr/bin/../lib64/gcc/x86_64-unknown-linux-gnu/4.9.1/../../../../include/c++/4.9.1/x86_64-unknown-linux-gnu',
-'-isystem/usr/bin/../lib64/gcc/x86_64-unknown-linux-gnu/4.9.1/../../../../include/c++/4.9.1/backward',
-'-isystem/usr/local/include',
-'-isystem/usr/bin/../lib/clang/3.4.2/include/',
 '-isystem/usr/include',
 '-DUSE_CLANG_COMPLETER',
 ]

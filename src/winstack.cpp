@@ -68,7 +68,6 @@ FireWindow WinStack::findWindow(Window win) {
 
 void WinStack::renderWindows() {
     int num = 0;
-
     if(FireWin::allDamaged) {
         XDestroyRegion(core->dmg);
         core->dmg = copyRegion(output);

@@ -1,7 +1,7 @@
 #ifndef PLUGIN_H
 #define PLUGIN_H
 #include "commonincludes.hpp"
-
+using std::string;
 /* a useful macro for making animation/hook duration
  * independent of refresh rate
  * x is in milliseconds(for example see Expo) */
@@ -31,7 +31,7 @@
 
 class Core;
 
-using Owner = std::string;
+using Owner = string;
 /* owners are used to acquire screen grab and to activate */
 struct _Ownership {
     Owner name;
@@ -52,13 +52,32 @@ using Ownership = std::shared_ptr<_Ownership>;
 
 
 enum DataType { DataTypeBool, DataTypeInt,
-                DataTypeFloat, DataTypeString };
+                DataTypeFloat, DataTypeString,
+                DataTypeColor, DataTypeKey,
+                DataTypeButton};
+
+struct Color {
+    float r, g, b;
+};
+struct Key {
+    uint mod;
+    int key;
+};
+struct Button {
+    uint mod;
+    int button;
+};
 
 union SubData {
     bool  bval;
     int   ival;
     float fval;
-    std::string *sval;
+
+    string *sval;
+    Color  *color;
+    Key    *key;
+    Button *but;
+
     SubData();
     ~SubData();
 };
@@ -74,19 +93,23 @@ struct Data {
     Data();
 };
 
+using DataPair = std::pair<string, Data*>;
 /* helper functions to easily add options */
-std::pair<std::string, Data*> newIntOption(std::string name,
-                                           int defaultVal);
-std::pair<std::string, Data*> newFloatOption(std::string name,
-                                             float defaultVal);
-std::pair<std::string, Data*> newBoolOption(std::string name,
-                                            bool defaultVal);
-std::pair<std::string, Data*> newStringOption(std::string name,
-                                              std::string defaultVal);
+DataPair newIntOption   (string name, int    defaultVal);
+DataPair newFloatOption (string name, float  defaultVal);
+DataPair newBoolOption  (string name, bool   defaultVal);
+DataPair newStringOption(string name, string defaultVal);
+DataPair newColorOption (string name, Color  defaultVal);
+DataPair newKeyOption   (string name, Key    defaultVal);
+DataPair newButtonOption(string name, Button defaultVal);
+
+void readColor  (string value, Color &colorval);
+void readKey    (string value, Key   &keyval  );
+void readButton (string value, Key   &butval  );
 
 class Plugin {
     public:
-        std::unordered_map<std::string, Data*> options;
+        std::unordered_map<string, Data*> options;
 
         /* initOwnership() should set all values in own */
         virtual void initOwnership();

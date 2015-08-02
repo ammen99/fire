@@ -23,5 +23,5 @@ namespace OpenGL {
     GLuint getTex();
     /* set program to current program */
     void useDefaultProgram();
-};
+}
 #endif
