@@ -358,6 +358,10 @@ void FireWin::moveResize(int x, int y, int w, int h) {
     /* dirty hack for windows which *want* to be resized
      * even when maximized(for ex. terminator)
      * and don't show up properly if don't get configured */
+    int nx = x, ny = y;
+    if(visible && WinUtil::constrainNewWindowPosition(nx, ny))
+        x = nx, y = ny;
+
     move(x, y);
     resize(w, h);
     updateState();
