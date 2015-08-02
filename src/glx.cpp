@@ -174,14 +174,14 @@ Window createNewWindowWithContext(Window parent) {
     auto w = std::get<0>(t);
     auto h = std::get<1>(t);
 
-    auto window = XCreateWindow ( core->d,core->root,
+    auto window = XCreateWindow (core->d, core->root,
             0, 0, w, h, 0,
             defaultVisual->depth, InputOutput, defaultVisual->visual,
             CWBorderPixel | CWColormap | CWEventMask,
             &winAttr );
 
 
-    XReparentWindow(core->d, window, core->overlay, 0, 0);
+    XReparentWindow(core->d, window, parent, 0, 0);
     XMapRaised ( core->d, window );
 
     int dummy;

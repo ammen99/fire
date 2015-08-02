@@ -1,10 +1,9 @@
 [core]
-background = /tarball/backgrounds/last.jpg
-fadeduration = 150
-pluginpath = /home/ilex/work/cwork/fire/plugins
-plugins = animate cube move resize vswitch grid expo switcher
+background = /home/ilex/Desktop/maxresdefault.jpg
+pluginpath = /home/ilex/work/fire/plugins
+plugins = cube move resize vswitch grid expo switcher
 rrate = 60
-shadersrc = /home/ilex/work/cwork/fire/shaders
+shadersrc = /home/ilex/work/fire/shaders
 vheight = 3
 vwidth = 3
 
@@ -28,4 +27,3 @@ duration = 250
 
 [animate]
 duration = 150
-
