@@ -1,4 +1,4 @@
-#include "../include/core.hpp"
+#include <core.hpp>
 
 void triggerScaleChange(int scX, int scY) {
         SignalListenerData sigData;

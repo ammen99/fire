@@ -1,5 +1,5 @@
-#include "../include/winstack.hpp"
-#include "../include/opengl.hpp"
+#include <winstack.hpp>
+#include <opengl.hpp>
 #include <algorithm>
 
 

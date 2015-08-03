@@ -1,4 +1,4 @@
-#include "../include/wm.hpp"
+#include <wm.hpp>
 /* specialized class for operations on window(for ex. Move and Resize) */
 class Resize : public Plugin {
     private:

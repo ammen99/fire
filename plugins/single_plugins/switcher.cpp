@@ -1,5 +1,5 @@
-#include "../include/core.hpp"
-#include "../include/opengl.hpp"
+#include <core.hpp>
+#include <opengl.hpp>
 
 
 float getFactor(int x, int y, float percent) {

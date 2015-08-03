@@ -1,5 +1,5 @@
-#include "../../include/core.hpp"
-#include "../../include/opengl.hpp"
+#include <core.hpp>
+#include <opengl.hpp>
 class Cube : public Plugin {
     ButtonBinding activate;
     ButtonBinding deactiv;

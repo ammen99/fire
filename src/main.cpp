@@ -1,5 +1,6 @@
-#include "../include/core.hpp"
-#include "../include/opengl.hpp"
+#include <core.hpp>
+#include <opengl.hpp>
+
 #include <signal.h>
 #include <sys/wait.h>
 #include <sys/ipc.h>

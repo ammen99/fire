@@ -1,5 +1,5 @@
-#include "../include/config.hpp"
-#include "../include/core.hpp"
+#include <config.hpp>
+#include <core.hpp>
 
 #define copyInto(x,y) std::memcpy(&(y), &x, sizeof((y)))
 

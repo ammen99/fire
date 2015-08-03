@@ -1,4 +1,4 @@
-#include "../include/opengl.hpp"
+#include <opengl.hpp>
 
 namespace {
     GLuint program;

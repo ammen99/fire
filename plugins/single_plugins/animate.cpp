@@ -1,5 +1,4 @@
-#include "../include/core.hpp"
-#include <algorithm>
+#include <core.hpp>
 
 class Animation {
     public:

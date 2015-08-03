@@ -1,4 +1,4 @@
-#include "../include/core.hpp"
+#include <core.hpp>
 #include <algorithm>
 
 #define GetProgress(start,end,curstep,steps) (((end)*(curstep)+(start) \

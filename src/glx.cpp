@@ -1,6 +1,5 @@
-#include "../include/core.hpp"
-#include "../include/opengl.hpp"
-#include <X11/extensions/Xrender.h>
+#include <core.hpp>
+#include <opengl.hpp>
 
 namespace GLXUtils {
 

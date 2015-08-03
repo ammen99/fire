@@ -1,4 +1,4 @@
-#include "../include/core.hpp"
+#include <core.hpp>
 
 class Move : public Plugin {
         int sx, sy; // starting pointer x, y

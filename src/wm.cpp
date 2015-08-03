@@ -1,5 +1,4 @@
-#include "../include/wm.hpp"
-
+#include <wm.hpp>
 
 void Run::init() {
     this->owner->special = true;

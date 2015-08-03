@@ -1,7 +1,7 @@
-#include "../include/commonincludes.hpp"
-#include "../include/opengl.hpp"
-#include "../include/winstack.hpp"
-#include "../include/wm.hpp"
+#include <commonincludes.hpp>
+#include <opengl.hpp>
+#include <winstack.hpp>
+#include <wm.hpp>
 
 #include <sstream>
 #include <memory>

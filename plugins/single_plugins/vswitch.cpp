@@ -1,4 +1,4 @@
-#include "../include/core.hpp"
+#include <core.hpp>
 
 class VSwitch : public Plugin {
     private:
