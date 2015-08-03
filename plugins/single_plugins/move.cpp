@@ -11,32 +11,41 @@ class Move : public Plugin {
 
         int scX = 1, scY = 1;
 
+        Button iniButton;
+
     public:
         void initOwnership() {
             owner->name = "move";
             owner->compatAll = true;
         }
+        void updateConfiguration() {
 
-        void init() {
+            iniButton = *options["activate"]->data.but;
+            if(iniButton.button == 0)
+                return;
+
             hook.action = std::bind(std::mem_fn(&Move::Intermediate), this);
             core->addHook(&hook);
 
             using namespace std::placeholders;
-            sigScl.action = std::bind(std::mem_fn(&Move::onScaleChanged), this, _1);
-            core->connectSignal("screen-scale-changed", &sigScl);
-
-
             press.type   = BindingTypePress;
-            press.mod    = Mod1Mask;
-            press.button = Button1;
+            press.mod    = iniButton.mod;
+            press.button = iniButton.button;
             press.action = std::bind(std::mem_fn(&Move::Initiate), this, _1);
             core->addBut(&press, true);
 
             release.type   = BindingTypeRelease;
             release.mod    = AnyModifier;
-            release.button = Button1;
+            release.button = iniButton.button;
             release.action = std::bind(std::mem_fn(&Move::Terminate), this, _1);
             core->addBut(&release, false);
+        }
+
+        void init() {
+            using namespace std::placeholders;
+            options.insert(newButtonOption("activate", Button{0, 0}));
+            sigScl.action = std::bind(std::mem_fn(&Move::onScaleChanged), this, _1);
+            core->connectSignal("screen-scale-changed", &sigScl);
         }
 
         void Initiate(Context *ctx) {

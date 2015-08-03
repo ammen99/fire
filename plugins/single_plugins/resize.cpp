@@ -8,6 +8,7 @@ class Resize : public Plugin {
 
         int scX = 1, scY = 1;
         SignalListener sigScl;
+        Button iniButton;
 
     private:
         ButtonBinding press;
@@ -19,27 +20,33 @@ class Resize : public Plugin {
         owner->name = "resize";
         owner->compatAll = true;
     }
-
-    void init() {
+    void updateConfiguration(){
+        iniButton = *options["activate"]->data.but;
+        if(iniButton.button == 0)
+            return;
 
         using namespace std::placeholders;
-        sigScl.action = std::bind(std::mem_fn(&Resize::onScaleChanged), this, _1);
-        core->connectSignal("screen-scale-changed", &sigScl);
-
         hook.action = std::bind(std::mem_fn(&Resize::Intermediate), this);
         core->addHook(&hook);
         press.type   = BindingTypePress;
-        press.mod    = Mod4Mask;
-        press.button = Button1;
+        press.mod    = iniButton.mod;
+        press.button = iniButton.button;
         press.action = std::bind(std::mem_fn(&Resize::Initiate), this, _1);
         core->addBut(&press, true);
 
 
         release.type   = BindingTypeRelease;
         release.mod    = AnyModifier;
-        release.button = Button1;
+        release.button = iniButton.button;
         release.action = std::bind(std::mem_fn(&Resize::Terminate), this,_1);
         core->addBut(&release, false);
+    }
+
+    void init() {
+        options.insert(newButtonOption("activate", Button{0, 0}));
+        using namespace std::placeholders;
+        sigScl.action = std::bind(std::mem_fn(&Resize::onScaleChanged), this, _1);
+        core->connectSignal("screen-scale-changed", &sigScl);
     }
 
     void Initiate(Context *ctx) {

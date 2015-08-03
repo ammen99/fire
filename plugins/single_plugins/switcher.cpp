@@ -42,6 +42,8 @@ class ATSwitcher : public Plugin {
     KeyBinding forward;
     KeyBinding backward;
     KeyBinding terminate;
+
+    Key actKey;
     std::vector<FireWindow> windows;
 
 #define MAXDIRS 10
@@ -78,19 +80,16 @@ class ATSwitcher : public Plugin {
     void updateConfiguration() {
         steps = getSteps(options["duration"]->data.ival);
         initsteps = getSteps(options["init"]->data.ival);
-    }
 
-    void init() {
-
-        options.insert(newIntOption("duration", 1000));
-        options.insert(newIntOption("init", 1000));
+        actKey = *options["activate"]->data.key;
+        if(actKey.key == 0)
+            return;
 
         using namespace std::placeholders;
 
         active = false;
-
-        initiate.mod = Mod1Mask;
-        initiate.key = XKeysymToKeycode(core->d, XK_Tab);
+        initiate.mod = actKey.mod;
+        initiate.key = actKey.key;
         initiate.type = BindingTypePress;
         initiate.action =
             std::bind(std::mem_fn(&ATSwitcher::handleKey), this, _1);
@@ -122,6 +121,12 @@ class ATSwitcher : public Plugin {
 
         exit.action = std::bind(std::mem_fn(&ATSwitcher::exitHook), this);
         core->addHook(&exit);
+    }
+
+    void init() {
+        options.insert(newIntOption("duration", 1000));
+        options.insert(newIntOption("init", 1000));
+        options.insert(newKeyOption("activate", Key{0, 0}));
     }
 
     void handleKey(Context *ctx) {

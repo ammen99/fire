@@ -25,22 +25,21 @@ class Expo : public Plugin {
         Hook hook;
         bool active;
         std::function<FireWindow(int, int)> save; // used to restore
+
+        Key toggleKey;
     public:
     void updateConfiguration() {
         expostep = getSteps(options["duration"]->data.ival);
-    }
 
-    void init() {
-        options.insert(newIntOption("duration", 1000));
-        core->addSignal("screen-scale-changed");
+        toggleKey = *options["activate"]->data.key;
+        if(toggleKey.key == 0)
+            return;
 
         using namespace std::placeholders;
-        toggle.key = XKeysymToKeycode(core->d, XK_e);
-        toggle.mod = Mod4Mask;
+        toggle.key = toggleKey.key;
+        toggle.mod = toggleKey.mod;
         toggle.action = std::bind(std::mem_fn(&Expo::Toggle), this, _1);
         core->addKey(&toggle, true);
-
-        active = false;
 
         release.action =
             std::bind(std::mem_fn(&Expo::buttonRelease), this, _1);
@@ -58,6 +57,14 @@ class Expo : public Plugin {
 
         hook.action = std::bind(std::mem_fn(&Expo::zoom), this);
         core->addHook(&hook);
+    }
+
+    void init() {
+        options.insert(newIntOption("duration", 1000));
+        options.insert(newKeyOption("activate", Key{0, 0}));
+        core->addSignal("screen-scale-changed");
+        active = false;
+
     }
     void initOwnership() {
         owner->name = "expo";
