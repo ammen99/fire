@@ -9,3 +9,4 @@ src/2
 manager
 gui/.cvimrc
 *.pyc
+build

@@ -18,8 +18,8 @@ class CorePlugin : public Plugin {
             options.insert(newIntOption("vwidth", 3));
             options.insert(newIntOption("vheight", 3));
             options.insert(newStringOption("background", ""));
-            options.insert(newStringOption("shadersrc", ""));
-            options.insert(newStringOption("pluginpath", ""));
+            options.insert(newStringOption("shadersrc", "/usr/local/share/fireman/shaders"));
+            options.insert(newStringOption("pluginpath", "/usr/local/lib/fireman/"));
             options.insert(newStringOption("plugins", ""));
         }
         void initOwnership() {
@@ -1145,7 +1145,7 @@ void Core::loadDynamicPlugins() {
     while(stream >> plugin){
         if(plugin != "") {
             void *handle;
-            auto ptr = loadPluginFromFile(path + "/" + plugin + ".so",
+            auto ptr = loadPluginFromFile(path + "/lib" + plugin + ".so",
                     &handle);
             if(ptr) ptr->handle  = handle,
                     ptr->dynamic = true,

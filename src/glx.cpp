@@ -207,9 +207,10 @@ GLuint compileShader(const char *src, GLuint type) {
 
 GLuint loadShader(const char *path, GLuint type) {
 
-    std::fstream file(path);
+    std::fstream file(path, std::ios::in);
     if(!file.is_open())
-        std::cout << "Cannot open shader file. Aborting", std::exit(1);
+        std::cout << "Cannot open shader file " << path << ".\n Aborting",
+            std::exit(1);
 
     std::string str, line;
 
