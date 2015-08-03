@@ -144,7 +144,7 @@ void runOnce(std::string configPath, int glVersionMajor,
     if(configPath == ""){
         std::cout << "No configuration file!" <<
             " Using default settings" << std::endl;
-        config = new Config();
+        config = new Config("/home/ilex/.config/firerc");
     }
     else config = new Config(configPath);
 

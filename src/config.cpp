@@ -84,7 +84,7 @@ namespace {
         return key;
     }
 
-    int Buttons [] = {Button1, Button2, Button3, Button4, Button5};
+    int Buttons [] = {0, Button1, Button2, Button3, Button4, Button5};
 
     template<>Button readValue<Button>(std::string value) {
         Button but;
@@ -108,10 +108,12 @@ namespace {
 Config::Config(std::string path) {
     this->path = path;
     stream.open(path, std::ios::in | std::ios::out);
-    readConfig();
+    if(!stream.is_open())
+        blocked = true;
+    else
+        readConfig();
 }
-Config::Config() {
-    blocked = true;
+Config::Config() : Config("~/.config/firerc") {
 }
 
 void Config::readConfig() {

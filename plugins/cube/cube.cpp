@@ -34,6 +34,9 @@ class Cube : public Plugin {
     glm::mat4 vp, model, view;
     float coeff;
 
+    Button actButton;
+    Color bg;
+
     public:
         void initOwnership() {
             owner->name = "cube";
@@ -57,12 +60,49 @@ class Cube : public Plugin {
 
                 OpenGL::useDefaultProgram();
             }
+
+            actButton = *options["activate"]->data.but;
+            bg = *options["bg"]->data.color;
+
+            if(actButton.button == 0)
+                return;
+
+            using namespace std::placeholders;
+
+            zoomOut.button = Button4;
+            zoomIn.button  = Button5;
+            zoomOut.type   = zoomIn.type   = BindingTypePress;
+            zoomOut.mod    = zoomIn.mod    = AnyModifier;
+            zoomOut.action = zoomIn.action =
+                std::bind(std::mem_fn(&Cube::onScrollEvent), this, _1);
+
+            core->addBut(&zoomOut, false);
+            core->addBut(&zoomIn , false);
+
+
+            activate.button = actButton.button;
+            activate.type = BindingTypePress;
+            activate.mod = actButton.mod;
+            activate.action =
+                std::bind(std::mem_fn(&Cube::Initiate), this, _1);
+            core->addBut(&activate, true);
+
+            deactiv.button = actButton.button;
+            deactiv.mod    = AnyModifier;
+            deactiv.type   = BindingTypeRelease;
+            deactiv.action =
+                std::bind(std::mem_fn(&Cube::Terminate), this, _1);
+            core->addBut(&deactiv, false);
+
         }
 
         void init() {
             options.insert(newFloatOption("velocity",  0.01));
             options.insert(newFloatOption("vvelocity", 0.01));
             options.insert(newFloatOption("zvelocity", 0.05));
+
+            options.insert(newColorOption("bg", Color{0, 0, 0}));
+            options.insert(newButtonOption("activate", Button{0, 0}));
 
             /* these features require tesselation,
              * so if OpenGL version < 4 do not expose
@@ -165,34 +205,6 @@ class Cube : public Plugin {
             for(int i = 0; i < vw; i++)
                 sides[i] = sideFBuffs[i] = -1,
                 OpenGL::prepareFramebuffer(sideFBuffs[i], sides[i]);
-
-            using namespace std::placeholders;
-
-            zoomOut.button = Button4;
-            zoomIn.button  = Button5;
-            zoomOut.type   = zoomIn.type   = BindingTypePress;
-            zoomOut.mod    = zoomIn.mod    = AnyModifier;
-            zoomOut.action = zoomIn.action =
-                std::bind(std::mem_fn(&Cube::onScrollEvent), this, _1);
-
-            core->addBut(&zoomOut, false);
-            core->addBut(&zoomIn , false);
-
-
-            activate.button = Button1;
-            activate.type = BindingTypePress;
-            activate.mod = ControlMask | Mod1Mask;
-            activate.action =
-                std::bind(std::mem_fn(&Cube::Initiate), this, _1);
-            core->addBut(&activate, true);
-
-            deactiv.button = Button1;
-            deactiv.mod    = AnyModifier;
-            deactiv.type   = BindingTypeRelease;
-            deactiv.action =
-                std::bind(std::mem_fn(&Cube::Terminate), this, _1);
-            core->addBut(&deactiv, false);
-
             mouse.action = std::bind(std::mem_fn(&Cube::mouseMoved), this);
             core->addHook(&mouse);
 
@@ -229,7 +241,7 @@ class Cube : public Plugin {
         }
 
         void Render() {
-            glClearColor(1, 0.4, 0.4, 0.0f);
+            glClearColor(bg.r, bg.g, bg.b, 0.0f);
             glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
             for(int i = 0; i < sides.size(); i++) {
