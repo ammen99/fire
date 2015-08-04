@@ -158,6 +158,7 @@ class Expo : public Plugin {
             sclYcurrent = 1;
         }else {
             active = !active;
+            core->getWindowAtPoint = save;
 
             press.disable();
             release.disable();
@@ -207,7 +208,6 @@ class Expo : public Plugin {
                 output = core->getMaximisedRegion();
                 core->setRedrawEverything(false);
                 core->dmg = core->getMaximisedRegion();
-                core->getWindowAtPoint = save;
             }
 
         }
