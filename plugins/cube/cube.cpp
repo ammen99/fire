@@ -113,9 +113,9 @@ class Cube : public Plugin {
             }
 
             std::string shaderSrcPath =
-                "/home/ilex/work/cwork/fire/plugins/cube/shaders";
+                "/usr/local/share/fireman/cube/s4.0";
             if(OpenGL::VersionMajor < 4)
-                shaderSrcPath = shaderSrcPath.append("_3.3");
+                shaderSrcPath = "/usr/local/share/fireman/cube/s3.3";
 
 
             program = glCreateProgram();

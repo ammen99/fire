@@ -6,6 +6,7 @@ namespace {
 
 Data::Data(){}
 SubData::SubData() {}
+SubData::~SubData() {}
 
 void _Ownership::grab() {
     if(this->grabbed || !this->active)
