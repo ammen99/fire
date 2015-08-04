@@ -3,18 +3,11 @@
 
 namespace GLXUtils {
 
-
-    PFNGLXWAITVIDEOSYNCSGIPROC glXWaitVideoSyncSGI_func = NULL;
-    PFNGLXGETVIDEOSYNCSGIPROC glXGetVideoSyncSGI_func = NULL;
-
-
     namespace {
         typedef GLXContext (*glXCreateContextAttribsARBProc) (Display*,
                 GLXFBConfig, GLXContext,
                 Bool, const int* );
 
-        PFNGLXBINDTEXIMAGEEXTPROC glXBindTexImageEXT_func = NULL;
-        PFNGLXRELEASETEXIMAGEEXTPROC glXReleaseTexImageEXT_func = NULL;
         bool useXShm = false;
         XVisualInfo *defaultVisual;
     }
@@ -154,18 +147,6 @@ void initGLX() {
     iluInit();
     ilutInit();
     ilutRenderer ( ILUT_OPENGL );
-
-    glXBindTexImageEXT_func = (PFNGLXBINDTEXIMAGEEXTPROC)
-        glXGetProcAddress((GLubyte *) "glXBindTexImageEXT");
-    glXReleaseTexImageEXT_func = (PFNGLXRELEASETEXIMAGEEXTPROC)
-        glXGetProcAddress((GLubyte*) "glXReleaseTexImageEXT");
-
-    glXWaitVideoSyncSGI_func = (PFNGLXWAITVIDEOSYNCSGIPROC)
-        glXGetProcAddress((GLubyte *) "glXWaitVideoSyncSGI");
-
-    glXGetVideoSyncSGI_func = (PFNGLXGETVIDEOSYNCSGIPROC)
-        glXGetProcAddress((GLubyte *) "glXGetVideoSyncSGI");
-
     int ignore, major, minor;
     Bool pixmaps;
 

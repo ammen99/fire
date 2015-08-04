@@ -614,11 +614,8 @@ void Core::handleEvent(XEvent xev){
             mousex = xev.xbutton.x_root;
             mousey = xev.xbutton.y_root;
 
-            std::cout << "button press" << std::endl;
-
             for(auto bb : buttons) {
                 if(checkButPress(bb, xev.xbutton)) {
-                    std::cout << "CAlling action" << std::endl;
                     bb->action(new Context(xev));
                     break;
                 }

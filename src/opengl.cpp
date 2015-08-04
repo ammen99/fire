@@ -193,9 +193,9 @@ void endStage() {
     renderTexture(framebufferTexture, fullVAO, fullVBO);
     glFinish();
 
-    uint sync;
-    GLXUtils::glXGetVideoSyncSGI_func(&sync);
-    GLXUtils::glXWaitVideoSyncSGI_func(2, (sync + 1) % 2, &sync);
+//    uint sync;
+//    GLXUtils::glXGetVideoSyncSGI_func(&sync);
+//    GLXUtils::glXWaitVideoSyncSGI_func(2, (sync + 1) % 2, &sync);
 
     glXSwapBuffers(core->d, core->outputwin);
     glUniform1i(bgraID, 0);
