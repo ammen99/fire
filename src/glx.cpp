@@ -37,20 +37,22 @@ GLuint loadImage (char* path) {
     GLuint textureID;
     ILuint imageID;
 
-    ilGenImages ( 1, &imageID );
-    ilBindImage ( imageID );
-    if ( !ilLoadImage ( path ) ) {
+    ilGenImages (1, &imageID);
+    ilBindImage (imageID);
+    if (!ilLoadImage(path)) {
         std::cout << "Can't open image " << path;
-        std::exit ( 1 );
+        return -1;
     }
 
     ILinfo infoi;
-    iluGetImageInfo ( &infoi );
-    if ( infoi.Origin == IL_ORIGIN_UPPER_LEFT )
+    iluGetImageInfo (&infoi);
+    if (infoi.Origin == IL_ORIGIN_UPPER_LEFT)
         iluFlipImage();
 
-    if ( !ilConvertImage (IL_BGR, IL_UNSIGNED_BYTE))
-        std::cout << "Can't convert image!", std::exit ( 1 );
+    if (!ilConvertImage (IL_BGR, IL_UNSIGNED_BYTE)) {
+        std::cout << "Can't convert image!";
+        return -1;
+    }
 
     glGenTextures ( 1, &textureID );
     glBindTexture ( GL_TEXTURE_2D, textureID );

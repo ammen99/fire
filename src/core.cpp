@@ -1053,12 +1053,34 @@ int Core::getRefreshRate() {
     return refreshrate;
 }
 
+#define uchar unsigned char
+namespace {
+    GLuint getFilledTexture(int w, int h, uchar r, uchar g, uchar b, uchar a) {
+        int *arr = new int[w * h * 4];
+        for(int i = 0; i < w * h; i = i + 4) {
+            arr[i + 0] = r;
+            arr[i + 1] = g;
+            arr[i + 2] = b;
+            arr[i + 3] = a;
+        }
+        GLuint tex;
+        glGenTextures(1, &tex);
+        glBindTexture(GL_TEXTURE_2D, tex);
+        glTexImage2D (GL_TEXTURE_2D, 0, GL_RGBA,
+                w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, arr);
+
+        glBindTexture(GL_TEXTURE_2D, 0);
+        return tex;
+    }
+}
+
 void Core::setBackground(const char *path) {
     std::cout << "[DD] Background file: " << path << std::endl;
-    this->run(const_cast<char*>(std::string("feh --bg-scale ")
-                .append(path).c_str()));
 
     auto texture = GLXUtils::loadImage(const_cast<char*>(path));
+
+    if(texture == -1)
+        texture = getFilledTexture(width, height, 128, 128, 128, 255);
 
     uint vao, vbo;
     OpenGL::generateVAOVBO(0, height, width, -height, vao, vbo);
