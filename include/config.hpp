@@ -3,10 +3,17 @@
 #include "./commonincludes.hpp"
 #include "./plugin.hpp"
 
+enum InternalOptionType { IOTPlain, IOTKey, IOTButton, IOTColor };
 class Config {
+    struct Option {
+        InternalOptionType type;
+        std::string value;
+    };
+
     private:
         std::unordered_map<std::string,
-            std::unordered_map<std::string, std::string>> tree;
+            std::unordered_map<std::string, Option>> tree;
+
         std::fstream stream;
         std::string  path;
         bool blocked = false;

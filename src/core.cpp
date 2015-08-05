@@ -75,7 +75,7 @@ void Core::init() {
     if ( d == nullptr )
         std::cout << "Failed to open display!" << std::endl;
 
-    XSynchronize(d, 1);
+    //XSynchronize(d, 1);
 
     root = DefaultRootWindow(d);
     fd.fd = ConnectionNumber(d);
@@ -545,6 +545,7 @@ bool Core::checkButRelease(ButtonBinding *bb, XButtonEvent kb) {
 }
 
 void Core::handleEvent(XEvent xev){
+    std::cout << "Got an event" << std::endl;
     switch(xev.type) {
         case Expose:
             dmg = getMaximisedRegion();
@@ -568,34 +569,29 @@ void Core::handleEvent(XEvent xev){
             auto it = findWindow(xev.xcreatewindow.window);
 
             /* guard against (almost) indiscoverable bugs,
-             * although should not be executed */
+             * i.e we kept some destroyed window */
             if(it != nullptr) {
                 std::cout << "old window!!!" << std::endl;
                 wins->removeWindow(it);
             }
 
             addWindow(xev.xcreatewindow);
-            std::cout << "end create notify" << std::endl;
             break;
         }
         case DestroyNotify: {
             auto w = wins->findWindow(xev.xdestroywindow.window);
-            if(w == nullptr)
-                break;
-
+            if(!w) break;
             w->destroyed = true;
+            if(!w->keepCount)
+                removeWindow(w);
             break;
         }
         case MapRequest: {
-            std::cout << "map req" << std::endl;
             auto w = wins->findWindow(xev.xmaprequest.window);
-            if(w == nullptr)
-                break;
-            mapWindow(w);
+            if(w) mapWindow(w);
             break;
         }
         case MapNotify: {
-            std::cout << "map notify" << std::endl;
             auto w = findWindow(xev.xmap.window);
             if(w) mapWindow(w, false),
                   wins->focusWindow(w);
@@ -603,10 +599,7 @@ void Core::handleEvent(XEvent xev){
         }
         case UnmapNotify: {
             auto w = wins->findWindow(xev.xunmap.window);
-            std::cout << "unmap notify" << std::endl;
-            if(w == nullptr)
-                break;
-            unmapWindow(w);
+            if(w) unmapWindow(w);
             break;
         }
 
@@ -638,7 +631,6 @@ void Core::handleEvent(XEvent xev){
             break;
 
         case ConfigureRequest: {
-            std::cout << "Configure request " << xev.xconfigurerequest.window << std::endl;
             auto w = findWindow(xev.xconfigurerequest.window);
             if(!w) { // from compiz window manager
                 XWindowChanges xwc;
@@ -727,35 +719,27 @@ void Core::handleEvent(XEvent xev){
 
             auto w = findWindow(xev.xconfigure.window);
             if(!w) break;
+
             if(xev.xconfigure.width != w->attrib.width ||
                     xev.xconfigure.height != w->attrib.height)
                 w->resize(xev.xconfigure.width, xev.xconfigure.height, false);
+
             if(xev.xconfigure.x != w->attrib.x ||
                     xev.xconfigure.y != w->attrib.y)
                 w->move(xev.xconfigure.x, xev.xconfigure.y, false);
+
             wins->restackAbove(w, findWindow(xev.xconfigure.above));
             break;
         }
 
-        case CirculateRequest:
-        case CirculateNotify:
-            std::cout << "Circulate is sth important!" << std::endl;
-            break;
-
-        case ReparentNotify:
-            std::cout << "Reparent" << std::endl;
-            break;
-
-        case ClientMessage:
+        case ClientMessage: {
             if (xev.xclient.message_type == activeWinAtom) {
-                std::cout << "Active win atom" << std::endl;
                 auto w = findWindow(xev.xclient.window);
                 if(!w) break;
                 wins->focusWindow(w);
             }
-
-            std::cout << "A client message" << std::endl;
             break;
+        }
 
         case EnterNotify:
         case LeaveNotify:       // we ignore
@@ -764,11 +748,15 @@ void Core::handleEvent(XEvent xev){
         case SelectionRequest:
         case SelectionNotify:
         case KeyRelease:
-            //std::cout << "ignored" << std::endl;
+        case CirculateRequest:
+        case CirculateNotify:
+        case ReparentNotify:
+                            std::cout << "one of skipped events" << std::endl;
             break;
 
         default:
             if(xev.type == damage + XDamageNotify) {
+                std::cout << "Damage event" << std::endl;
                 XDamageNotifyEvent *x =
                     reinterpret_cast<XDamageNotifyEvent*> (&xev);
 
@@ -837,17 +825,17 @@ void Core::loop(){
         }
         else {
 
-            if(cntHooks) { // if running hooks, run them
-                for (auto hook : hooks)
-                    if(hook->getState())
-                        hook->action();
-            }
+            if(cntHooks)
+            for (auto hook : hooks)
+                 if(hook->getState())
+                     hook->action();
 
+            /* if some screen region is damaged, draw it */
             if(FireWin::allDamaged || !XEmptyRegion(dmg))
                 render.currentRenderer();
 
             /* optimisation when idle */
-            if(!cntHooks && !hadEvents && currentCycle <= Second && resetDMG)
+            if(!cntHooks && !hadEvents && resetDMG)
                 currentCycle *= 2;
 
             before = after;
@@ -1049,7 +1037,7 @@ Region Core::getMaximisedRegion() {
     return getRegionFromRect(0, 0, width, height);
 }
 
-#define MAX_DAMAGED_RECTS 50
+#define MAX_DAMAGED_RECTS 150
 
 void Core::damageRegion(Region r) {
     XUnionRegion(r, dmg, dmg);
@@ -1066,6 +1054,7 @@ int Core::getRefreshRate() {
 }
 
 void Core::setBackground(const char *path) {
+    std::cout << "[DD] Background file: " << path << std::endl;
     this->run(const_cast<char*>(std::string("feh --bg-scale ")
                 .append(path).c_str()));
 
