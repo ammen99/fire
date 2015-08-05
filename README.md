@@ -4,7 +4,16 @@ Fire is a compositing window manager written from scratch. It uses X11 and OpenG
 Note: The Fire window manager should be stable, although I cannot guarantee for that(I can only say that I'm using it on my main system without problems).
 
 # Configuration
-Currently configurable options are few. For example see config file.
+Configuration is done through a *simple* configuration file. Its default location is ~/.config/firerc, but can be optionally set by the -c option.
+It is recommended to edit the file using the fsm utility. Nevertheless, for people who want to edit the file by hand:
+Each plugin has a section beginning like this:
+    ['plugin name']
+
+Then, options follow in the following way:
+    type_name = value
+
+where type is one of the following: pln(Plain, used for ints, floats, strings), key(keybinding), but(buttonbinding), clr(color)
+See example configuration file config for more details
 
 # Future plans
 1. Improve configuration system(for ex. allow configurable KeyBindings)

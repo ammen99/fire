@@ -1,31 +1,41 @@
 [core]
-background = /tarball/backgrounds/last.jpg
-pluginpath = /home/ilex/work/cwork/fire/plugins
-plugins = animate cube move resize vswitch grid expo switcher
-rrate = 60
-shadersrc = /home/ilex/work/fire/shaders
-vheight = 3
-vwidth = 3
+pln_background = /tarball/backgrounds/last.jpg
+pln_pluginpath = /usr/local/lib/fireman
+pln_plugins = animate cube move resize vswitch grid expo switcher
+pln_rrate = 60
+pln_shadersrc = /usr/local/share/fireman/shaders
+pln_vheight = 3
+pln_vwidth = 3
 
 [cube]
-velocity = 0.01
-vvelocity = 0.01
-zvelocity = 0.03
-deform = 2
-light = 1
+pln_velocity = 0.01
+pln_vvelocity = 0.01
+pln_zvelocity = 0.03
+pln_deform = 1
+pln_light = 1
+clr_bg = 100 100 255
+but_activate = <Control><Alt>B1
 
 [expo]
-duration = 300
+pln_duration = 300
+key_activate = <Win>e
 
 [grid]
-duration = 150
+pln_duration = 150
 
 [switcher]
-duration = 100
-init = 100
+pln_duration = 100
+pln_init = 100
+key_activate = <Alt>Tab
 
 [vswitch]
-duration = 250
+pln_duration = 250
 
 [animate]
-duration = 150
+pln_duration = 150
+
+[move]
+but_activate = <Alt>B1
+
+[resize]
+but_activate = <Win>B1
