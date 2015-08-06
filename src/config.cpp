@@ -150,12 +150,18 @@ namespace {
     bool isValidToRead(InternalOptionType itype, DataType type) {
         if(type == DataTypeKey && itype != IOTKey)
             return false;
+        else if(type == DataTypeKey)
+            return true;
 
         if(type == DataTypeButton && itype != IOTButton)
             return false;
+        else if(type == DataTypeButton)
+            return true;
 
         if(type == DataTypeColor && itype != IOTColor)
             return false;
+        else if(type == DataTypeColor)
+            return true;
 
         if(itype != IOTPlain)
             std::cout << "[WW] Type mismatch in config file.\n";
@@ -232,7 +238,10 @@ void Config::setOptionsForPlugin(PluginPtr p) {
         auto oname = option.first;
         auto it = tree[name].find(oname);
 
+        log << " Requested option : " << oname << std::endl;
+
         if(it == tree[name].end()) {
+            std::cout << "USING DEF VALUE\n";
             copyInto(p->options[oname]->def,
                     p->options[oname]->data);
             continue;
