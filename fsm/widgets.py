@@ -84,7 +84,7 @@ class ButtonSelect(gtk.MessageDialog):
                 type=gtk.MESSAGE_OTHER, buttons=gtk.BUTTONS_OK_CANCEL);
 
         self.label1 = gtk.Label("Choose ButtonBinding")
-        self.button = ""
+        self.button = "B1"
         self.mod = ""
 
         content = self.get_content_area()

@@ -1,7 +1,7 @@
 #! /usr/bin/env python2
 
-import fireconf.config
-import fireconf.widgets
+import config
+import widgets
 
 import pygtk
 import gtk
@@ -211,7 +211,7 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         print sys.argv
 
-    config_path = "/home/ilex/test_config"
+    config_path = "/home/ilex/.config/firerc"
     config.parse_file(config_path)
     main_window = MainWindow()
     main_window.init()
