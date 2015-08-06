@@ -193,6 +193,14 @@ class MainWindow(gtk.Window):
                 self.note.show_all()
 
     def on_save(self, widget):
+        n_tabs = self.note.get_n_pages()
+        for tabno in xrange(n_tabs - 1):
+            tab = self.note.get_nth_page(tabno)
+            for opt in tab.options:
+                if opt.type == config.OptionTypePlain:
+                    config.options[tab.tab_name][opt.m_name] = \
+                            config.Option(opt.value.get_text(), config.OptionTypePlain)
+
         config.write_config(config_path)
         pass
 
