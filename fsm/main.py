@@ -195,7 +195,6 @@ class MainWindow(gtk.Window):
                 self.note.show_all()
 
     def on_save(self, widget):
-        config.print_config()
         config.write_config(config_path)
         pass
 

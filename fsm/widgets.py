@@ -63,7 +63,8 @@ class KeyGrab(gtk.MessageDialog):
             self.end_grab()
             return
 
-        if gtk.accelerator_valid(key, mods):
+        if gtk.accelerator_valid(key, mods) \
+                or key == gtk.keysyms.Tab:   # gtk won't allow to bind tab key
             self.update_label(key, mods)
 
     def update_label(self, key, mods):
