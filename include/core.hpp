@@ -141,7 +141,7 @@ class Core {
         static int onXError (Display* d, XErrorEvent* xev);
         static int onOtherWmDetected(Display *d, XErrorEvent *xev);
 
-        void run(char *command);
+        void run(const char *command);
         FireWindow findWindow(Window win);
         FireWindow getActiveWindow();
         std::function<FireWindow(int,int)> getWindowAtPoint;

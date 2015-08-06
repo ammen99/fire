@@ -10,7 +10,6 @@ find_package(PkgConfig)
 pkg_check_modules(xlib REQUIRED x11 xext xdamage xfixes xcomposite)
 pkg_check_modules(gl REQUIRED gl glew ILUT)
 
-
 # Main executable
 include_directories(include)
 file(GLOB SOURCES "src/*.cpp")

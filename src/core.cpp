@@ -131,7 +131,7 @@ void Core::init() {
     a = XInternAtom (d, "_NET_WM_CM_S0", False);
     XSetSelectionOwner (d, a, s0owner, 0);
 
-    run(const_cast<char*>("setxkbmap -model pc104 -layout us,bg -variant ,phonetic -option grp:alt_shift_toggle"));
+    run("setxkbmap -model pc104 -layout us,bg -variant ,phonetic -option grp:alt_shift_toggle");
 
 
     initDefaultPlugins();
@@ -184,7 +184,7 @@ Core::~Core(){
     XCompositeReleaseOverlayWindow(d, overlay);
 }
 
-void Core::run(char *command) {
+void Core::run(const char *command) {
     auto pid = fork();
 
     if(!pid) {
