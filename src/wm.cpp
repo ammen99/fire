@@ -1,18 +1,5 @@
 #include <wm.hpp>
 
-void Run::init() {
-    this->owner->special = true;
-    KeyBinding *run = new KeyBinding();
-    run->action = [](Context *ctx){
-        core->run(const_cast<char*>("dmenu_run"));
-    };
-
-    run->mod = Mod1Mask;
-    run->type = BindingTypePress;
-    run->key = XKeysymToKeycode(core->d, XK_r);
-    core->addKey(run, true);
-}
-
 void Exit::init() {
     this->owner->special = true;
     KeyBinding *exit = new KeyBinding();

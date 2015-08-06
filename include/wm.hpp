@@ -2,17 +2,9 @@
 #define WM_H
 #include "plugin.hpp"
 #include "core.hpp"
-/* here are the definitions for
- * the wm actions(i.e close, move, resize) */
 
 // The following plugins
 // are very, very simple(they just register a keybinding)
-
-class Run : public Plugin {
-    public:
-        void init();
-};
-
 class Exit : public Plugin {
     public:
         void init();
