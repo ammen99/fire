@@ -6,6 +6,7 @@ import widgets
 import pygtk
 import gtk
 import sys
+import os
 
 from gtk import gdk
 
@@ -205,12 +206,37 @@ class MainWindow(gtk.Window):
     def on_button_exit(self, widget):
         self.on_exit(0)
 
-config_path = ""
-if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        print sys.argv
+config_path = os.path.expanduser("~/.config/firerc")
 
-    config_path = "/home/ilex/.config/firerc"
+def check_default_path():
+    is_file = os.path.isfile(config_path);
+    if not is_file:
+        print   "Default config file does not exist " \
+                "and none has been specified. Exiting."
+        sys.exit(0)
+
+
+if __name__ == "__main__":
+
+    if len(sys.argv) == 1:
+        check_default_path()
+
+    elif len(sys.argv) == 2:
+        new_path = os.path.expanduser(sys.argv[1])
+        is_file = os.path.isfile(new_path)
+        if not is_file:
+            print   "The specified file doesn't exist" \
+                    " or is a directory." \
+                    " Using default config file."
+            check_default_path()
+
+        else:
+            config_path = new_path
+
+    else:
+        print "Usage: ./fsm [config file]"
+        sys.exit(0)
+
     config.parse_file(config_path)
     main_window = MainWindow()
     main_window.init()
