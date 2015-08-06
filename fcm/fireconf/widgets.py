@@ -239,14 +239,14 @@ class InputDialogOption(gtk.MessageDialog):
         if data == config.OptionTypeKey:
             keygrab = KeyGrab(self.parent_win)
             keygrab.begin()
-            if keygrab.mod and keygrab.key:
+            if keygrab.key:
                 self.value2 = keygrab.mod + keygrab.key
                 self.entry2.set_text(self.value2)
 
         if data == config.OptionTypeButton:
             bb = ButtonSelect(self.parent_win)
             bb.begin()
-            if bb.mod and bb.button:
+            if bb.button:
                 self.value2 = bb.mod + bb.button
                 self.entry2.set_text(self.value2)
 

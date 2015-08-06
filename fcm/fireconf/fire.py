@@ -22,6 +22,7 @@ class OptionBox(gtk.HBox):
 
     def __init__(self, name, value, type, plugin):
         super(OptionBox, self).__init__()
+        global main_window
 
         self.label = gtk.Label(name)
         self.value = gtk.Entry()
@@ -61,6 +62,7 @@ class OptionBox(gtk.HBox):
 
 
     def on_clicked(self, widget):
+        global main_window
         self.popup.begin()
         text = ""
 
@@ -203,6 +205,7 @@ class MainWindow(gtk.Window):
 
 def run(path):
     global config_path
+    global main_window
     config_path = path
     config.parse_file(path)
 
