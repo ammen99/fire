@@ -545,7 +545,6 @@ bool Core::checkButRelease(ButtonBinding *bb, XButtonEvent kb) {
 }
 
 void Core::handleEvent(XEvent xev){
-    std::cout << "Got an event" << std::endl;
     switch(xev.type) {
         case Expose:
             dmg = getMaximisedRegion();
@@ -756,7 +755,6 @@ void Core::handleEvent(XEvent xev){
 
         default:
             if(xev.type == damage + XDamageNotify) {
-                std::cout << "Damage event" << std::endl;
                 XDamageNotifyEvent *x =
                     reinterpret_cast<XDamageNotifyEvent*> (&xev);
 
@@ -1171,7 +1169,6 @@ void Core::initDefaultPlugins() {
     plug = createPlugin<CorePlugin>();
     plugins.push_back(createPlugin<Focus>());
     plugins.push_back(createPlugin<Exit>());
-    plugins.push_back(createPlugin<Run>());
     plugins.push_back(createPlugin<Close>());
     plugins.push_back(createPlugin<Refresh>());
 }

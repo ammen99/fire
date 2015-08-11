@@ -43,7 +43,6 @@ class Commands: public Plugin {
 
     void updateConfiguration() {
         using namespace std::placeholders;
-        std::cout << "WTF IS GOING ONT" << std::endl;
 
         for(int i = 1; i <= NUMBER_COMMANDS; i++) {
             auto str1 =
@@ -51,14 +50,12 @@ class Commands: public Plugin {
             auto str2 =
                 getStringFromCommandNumber(i, TYPE_BINDING);
 
-            std::cout << "COMMAND " << str1 << " " << str2 << std::endl;
             auto com = *options[str1]->data.sval;
-            std::cout << "RECEIVED " << com << std::endl;
             if(com == "")
                 continue;
 
             auto key = *options[str2]->data.key;
-            if(key.mod == 0 || key.key == 0)
+            if(key.mod == 0 && key.key == 0)
                 continue;
 
             commands[com].action = std::bind(
@@ -72,7 +69,6 @@ class Commands: public Plugin {
 
     }
     void init() {
-        std::cout << "WE ARE HERE TILL ITS OVER" << std::endl;
         for(int i = 1; i <= NUMBER_COMMANDS; i++) {
             auto str1 =
                 getStringFromCommandNumber(i, TYPE_COMMAND);

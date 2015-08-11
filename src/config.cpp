@@ -104,7 +104,7 @@ namespace {
         std::string tmp = value.substr(i, value.size() - i);
         tmp = trim(tmp); tmp = tmp.substr(1, tmp.size() - 1);
         if(!std::isdigit(tmp[0])){
-            std::cout << "Error by reading button binding!" << std::endl;
+            std::cout << "Error reading button binding!" << std::endl;
             but.button = 0;
             return but;
         }
@@ -114,8 +114,6 @@ namespace {
 
     /* get internal type from string code */
     InternalOptionType getIOTFromString(std::string str) {
-        log << "getIOTFromString " << str << std::endl;
-
         if(str == "pln")
             return IOTPlain;
         if(str == "key")
@@ -213,9 +211,6 @@ void Config::readConfig() {
         std::string realOption;
         auto type = getIOTNameFromString(option, realOption);
         value  = trim(line.substr(pos + 1, line.length() - pos));
-
-        log << "Got type " << type << " for option " << realOption << std::endl;
-
         tree[currentPluginName][realOption] = Option{type, value};
     }
 }
@@ -238,10 +233,7 @@ void Config::setOptionsForPlugin(PluginPtr p) {
         auto oname = option.first;
         auto it = tree[name].find(oname);
 
-        log << " Requested option : " << oname << std::endl;
-
         if(it == tree[name].end()) {
-            std::cout << "USING DEF VALUE\n";
             copyInto(p->options[oname]->def,
                     p->options[oname]->data);
             continue;
