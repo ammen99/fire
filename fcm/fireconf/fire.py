@@ -100,8 +100,9 @@ class Tab(gtk.VBox):
         self.tab_name = name
 
         self.options = []
+        self.set_homogeneous(False);
 
-        for opt in config.options[name]:
+        for opt in sorted(config.options[name]):
             box = OptionBox(opt, config.options[name][opt].value,
                 config.options[name][opt].type, self.tab_name)
             self.options.append(box)
