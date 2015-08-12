@@ -65,7 +65,8 @@ void Core::addExistingWindows() {
 
     for(int i = size - 1; i >= 0; i--) {
         auto w = findWindow(children[i]);
-        if(w) mapWindow(w, false);
+        if(w) w->initialMapping = false,
+              mapWindow(w, false);
     }
 }
 
@@ -75,7 +76,7 @@ void Core::init() {
     if ( d == nullptr )
         std::cout << "Failed to open display!" << std::endl;
 
-    //XSynchronize(d, 1);
+    XSynchronize(d, 1);
 
     root = DefaultRootWindow(d);
     fd.fd = ConnectionNumber(d);
@@ -205,15 +206,19 @@ void Core::addHook(Hook *hook){
 }
 
 void Core::remHook(uint key) {
-    std::remove_if(hooks.begin(), hooks.end(), [key] (Hook *hook) {
+    auto it = std::remove_if(hooks.begin(), hooks.end(), [key] (Hook *hook) {
                 if(hook) {
                     if(hook->id == key) {
                         hook->disable();
+                        std::cout << "Erasing hook" << std::endl;
                         return true;
                     }
                 }
-                return true;
+                return false;
             });
+
+    hooks.erase(it, hooks.end());
+    std::cout << "Gebliebene hooks : " << hooks.size() << std::endl;
 }
 
 
@@ -256,10 +261,12 @@ void Core::addKey(KeyBinding *kb, bool grab) {
 }
 
 void Core::remKey(uint key) {
-    std::remove_if(keys.begin(), keys.end(), [key] (KeyBinding *kb) {
+    auto it = std::remove_if(keys.begin(), keys.end(), [key] (KeyBinding *kb) {
                 if(kb) return kb->id == key;
                 else return true;
             });
+
+    keys.erase(it, keys.end());
 }
 
 void ButtonBinding::enable() {
@@ -287,10 +294,11 @@ void Core::addBut(ButtonBinding *bb, bool grab) {
 }
 
 void Core::remBut(uint key) {
-    std::remove_if(buttons.begin(), buttons.end(), [key] (ButtonBinding *bb) {
+    auto it = std::remove_if(buttons.begin(), buttons.end(), [key] (ButtonBinding *bb) {
                 if(bb) return bb->id == key;
                 else return true;
             });
+    buttons.erase(it, buttons.end());
 }
 
 void Core::regOwner(Ownership owner) {
@@ -374,10 +382,12 @@ void Core::connectSignal(std::string name, SignalListener *callback){
 }
 
 void Core::disconnectSignal(std::string name, uint id) {
-    std::remove_if(signals[name].begin(), signals[name].end(),
+    auto it = std::remove_if(signals[name].begin(), signals[name].end(),
             [id](SignalListener *sigl){
             return sigl->id == id;
             });
+
+    signals[name].erase(it, signals[name].end());
 }
 
 void Core::addDefaultSignals() {
@@ -422,7 +432,8 @@ void Core::mapWindow(FireWindow win, bool xmap) {
 
     if(win->initialMapping){
         win->initialMapping = false;
-
+        /* ensure windows do not save their position to some
+         * other workspace which might not exist */
         int x = win->attrib.x, y = win->attrib.y;
         if(WinUtil::constrainNewWindowPosition(x, y))
             win->move(x, y, true);
@@ -811,7 +822,6 @@ void Core::loop(){
 
         if(diff < currentCycle) {     // we have time to next redraw, wait
             wait(currentCycle - diff);// for events
-
             if(fd.revents & POLLIN || !resetDMG || cntHooks) {
                 /* disable optimisation */
                 hadEvents = true;
@@ -823,10 +833,19 @@ void Core::loop(){
         }
         else {
 
-            if(cntHooks)
-            for (auto hook : hooks)
-                 if(hook->getState())
-                     hook->action();
+            if(cntHooks) {
+
+                /* copy running hooks,
+                 * since a hook can remove itself
+                 * causing a crash */
+                std::vector<Hook*> runningHooks;
+                for (auto hook : hooks)
+                    if(hook->getState())
+                        runningHooks.push_back(hook);
+
+                for(auto hook : runningHooks)
+                    hook->action();
+            }
 
             /* if some screen region is damaged, draw it */
             if(FireWin::allDamaged || !XEmptyRegion(dmg))
@@ -851,10 +870,6 @@ int Core::onOtherWmDetected(Display* d, XErrorEvent *xev) {
 int Core::onXError(Display *d, XErrorEvent *xev) {
     if(xev->resourceid == 0) // invalid window
         return 0;
-
-    //return 0;
-    /* some of the calls to obtain a texture from this window
-     * have failed, so don't draw it the next time */
 
     std::cout << std::endl << "____________________________" << std::endl;
     std::cout << "XError code   " << int(xev->error_code) << std::endl;
@@ -998,7 +1013,6 @@ namespace {
 
 void Core::setRedrawEverything(bool val) {
     if(val) {
-        std::cout << "here" << std::endl;
         fullRedraw++;
 
         output = getRegionFromRect(-vx * width, -vy * height,

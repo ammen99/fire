@@ -115,9 +115,13 @@ void signalHandle(int sig) {
         case SIGUSR1:
             std::cout << "SIGUSR1" << std::endl;
             shdata[0] = 1;
-            if(!core) {
+            if(!core)
                 std::cout << "in main process" << std::endl;
+            else {
+                delete core;
+                std::exit(0);
             }
+
             break;
 
         default: // program crashed, so restart core
