@@ -1,4 +1,4 @@
-#! /bin/sh
+#! /bin/env python2
 
 # File which parses config
 
