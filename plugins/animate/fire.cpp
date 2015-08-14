@@ -115,10 +115,10 @@ Fire::Fire(FireWindow win) : w(win) {
 }
 
 void Fire::step() {
-    if(!w->isVisible())
-        return;
     ps->simulate();
-    ps->render(tex);
+
+    if(w->isVisible())
+        ps->render(tex);
 
     if(!ps->isRunning()) {
         w->transform.color[3] = 1;
