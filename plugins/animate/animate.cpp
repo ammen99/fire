@@ -1,21 +1,19 @@
 #include "fade.hpp"
+#include "fire.hpp"
 
 bool Animation::Step() {return false;}
 bool Animation::Run() {return true;}
 Animation::~Animation() {}
 
 AnimationHook::AnimationHook(Animation *_anim) {
-    std::cout << "new animation" << std::endl;
     this->anim = _anim;
     if(anim->Run()) {
         this->hook.action =
             std::bind(std::mem_fn(&AnimationHook::Step), this);
         core->addHook(&hook);
         this->hook.enable();
-        std::cout << "Creating hook nr " << hook.id << std::endl;;
     }
     else {
-        std::cout << "Deleting" << std::endl;
         delete anim;
         delete this;
     }
@@ -24,16 +22,15 @@ AnimationHook::AnimationHook(Animation *_anim) {
 void AnimationHook::Step() {
     if(!this->anim->Step()) {
         core->remHook(hook.id);
-        std::cout << "REMOVED HOOK" << std::endl;
         delete anim;
-        std::cout << "REMOVED ANIM" << std::endl;
         delete this;
-        std::cout << "REMOVED THIS" << std::endl;
     }
 }
 
 class AnimatePlugin : public Plugin {
     SignalListener map, unmap;
+
+    std::string map_animation;
 
     public:
         void initOwnership() {
@@ -43,10 +40,13 @@ class AnimatePlugin : public Plugin {
 
         void updateConfiguration() {
             fadeDuration = options["fade_duration"]->data.ival;
+            map_animation = *options["map_animation"]->data.sval;
         }
 
         void init() {
             options.insert(newIntOption("fade_duration", 150));
+            options.insert(newStringOption("map_animation", "fade"));
+
             using namespace std::placeholders;
             map.action = std::bind(std::mem_fn(&AnimatePlugin::mapWindow),
                         this, _1);
@@ -59,13 +59,14 @@ class AnimatePlugin : public Plugin {
 
         void mapWindow(SignalListenerData data) {
             auto win = *((FireWindow*) data[0]);
-            std::cout << "Creating animation for window " << win->id << std::endl;
-            new AnimationHook(new Fade<FadeIn>(win));
+            if(map_animation == "fire")
+                new Fire(win);
+            else
+                new AnimationHook(new Fade<FadeIn>(win));
         }
 
         void unmapWindow(SignalListenerData data) {
             auto win = *((FireWindow*) data[0]);
-            std::cout << "Createing fade out for window " << win->id << std::endl;
             new AnimationHook(new Fade<FadeOut>(win));
         }
 

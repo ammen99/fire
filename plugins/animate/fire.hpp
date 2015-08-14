@@ -1,0 +1,25 @@
+#ifndef FIRE_H_
+#define FIRE_H_
+
+#include "animate.hpp"
+#include "particle.hpp"
+
+class FireParticleSystem;
+
+class Fire {
+    FireParticleSystem *ps;
+    GLuint fbuff, tex;
+    FireWindow w;
+
+    EffectHook hook;
+    Hook transparency;
+
+    public:
+        Fire(FireWindow win);
+        void step();
+        void adjustAlpha();
+
+        ~Fire();
+};
+
+#endif

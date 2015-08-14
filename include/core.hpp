@@ -61,6 +61,10 @@ struct Hook {
  * image */
 using RenderHook = std::function<void()>;
 
+/* Effects are used to draw over the screen, e.g when animating window actions */
+/* Effects render directly to Core's framebuffer */
+using EffectHook = Hook;
+
 using SignalListenerData = std::vector<void*>;
 
 struct SignalListener {
@@ -95,6 +99,7 @@ class Core {
         std::vector<KeyBinding*> keys;
         std::vector<ButtonBinding*> buttons;
         std::vector<Hook*> hooks;
+        std::vector<EffectHook*> effects;
         std::unordered_set<Ownership> owners;
 
         std::unordered_map<std::string,
@@ -114,6 +119,7 @@ class Core {
         void loadDynamicPlugins();
 
         void defaultRenderer();
+        void afterEffects();
 
         struct {
             RenderHook currentRenderer;
@@ -161,10 +167,15 @@ class Core {
 
         void addKey (KeyBinding *kb, bool grab = false);
         void remKey (uint key);
+
         void addBut (ButtonBinding *bb, bool grab = false);
         void remBut (uint key);
+
         void addHook(Hook*);
         void remHook(uint key);
+
+        void addEffect(EffectHook *);
+        void remEffect(uint key);
 
         void addSignal(std::string name);
         void connectSignal(std::string name, SignalListener *callback);

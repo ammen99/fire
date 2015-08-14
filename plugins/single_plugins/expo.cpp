@@ -166,6 +166,10 @@ class Expo : public Plugin {
             core->deactivateOwner(owner);
             triggerScaleChange(1, 1);
 
+            if(hook.getState()) {
+                core->setRedrawEverything(false);
+                hook.disable();
+            }
             hook.enable();
             stepNum = expostep;
 

@@ -13,7 +13,7 @@ namespace {
 
     GLuint fullVAO, fullVBO;
 
-    /* these functions are disabled for now
+  // /*these functions are disabled for now
 
     const char *getStrSrc(GLenum src) {
         if(src == GL_DEBUG_SOURCE_API_ARB            )return "API_ARB        ";
@@ -57,7 +57,7 @@ namespace {
         std::cout << "Msg: " << msg << std::endl;;
         std::cout << "_______________________________________________\n";
     }
-    */
+    //*/
 }
 
 bool OpenGL::transformed = false;
@@ -232,7 +232,6 @@ void useDefaultProgram() {
     glClearColor (.0f, .0f, .0f, 1.f);
     glClearDepth (1.f);
 
-    glEnable     (GL_ALPHA_TEST);
     glEnable     (GL_BLEND);
     glBlendFunc  (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable     (GL_SCISSOR_TEST);
@@ -241,9 +240,9 @@ void useDefaultProgram() {
 
 void initOpenGL(const char *shaderSrcPath) {
 
-//    glEnable(GL_DEBUG_OUTPUT);
-//    glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-//    glDebugMessageCallback(errorHandler, (void*)0);
+    glEnable(GL_DEBUG_OUTPUT);
+    glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+    glDebugMessageCallback(errorHandler, (void*)0);
 
     GetTuple(sw, sh, core->getScreenSize());
     std::string tmp = shaderSrcPath;

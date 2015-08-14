@@ -207,20 +207,37 @@ void Core::addHook(Hook *hook){
 
 void Core::remHook(uint key) {
     auto it = std::remove_if(hooks.begin(), hooks.end(), [key] (Hook *hook) {
-                if(hook) {
-                    if(hook->id == key) {
+                if(hook && hook->id == key) {
                         hook->disable();
-                        std::cout << "Erasing hook" << std::endl;
                         return true;
-                    }
                 }
-                return false;
+                else
+                    return false;
             });
 
     hooks.erase(it, hooks.end());
-    std::cout << "Gebliebene hooks : " << hooks.size() << std::endl;
 }
 
+
+void Core::addEffect(EffectHook *hook){
+    if(hook)
+        hook->id = nextID++,
+        effects.push_back(hook);
+}
+
+void Core::remEffect(uint key) {
+    auto it = std::remove_if(effects.begin(), effects.end(), [key] (EffectHook *hook) {
+
+                if(hook && hook->id == key) {
+                    hook->disable();
+                    return true;
+                }
+                else
+                    return false;
+            });
+
+    effects.erase(it, effects.end());
+}
 
 bool Hook::getState() { return this->active; }
 
@@ -333,11 +350,25 @@ bool Core::deactivateOwner(Ownership owner) {
     return true;
 }
 
+void Core::afterEffects() {
+    std::vector<EffectHook*> runningEffects;
+    for(auto effect : effects)
+        if(effect && effect->getState())
+            runningEffects.push_back(effect);
+
+    for(auto effect : runningEffects)
+        effect->action();
+
+    glUseProgram(0);
+    OpenGL::useDefaultProgram();
+}
+
 void Core::defaultRenderer() {
     XIntersectRegion(dmg, output, dmg);
 
     OpenGL::preStage();
     wins->renderWindows();
+    afterEffects();
     OpenGL::endStage();
 
     if(resetDMG)
@@ -358,6 +389,7 @@ void Core::setDefaultRenderer() {
     if(!render.replaced)
         return;
 
+    std::cout << "using default renderer" << std::endl;
     render.replaced = false;
 
     render.currentRenderer =
@@ -766,6 +798,9 @@ void Core::handleEvent(XEvent xev){
 
         default:
             if(xev.type == damage + XDamageNotify) {
+                if(FireWin::allDamaged)
+                    break;
+
                 XDamageNotifyEvent *x =
                     reinterpret_cast<XDamageNotifyEvent*> (&xev);
 
@@ -774,7 +809,7 @@ void Core::handleEvent(XEvent xev){
 
                 w->damaged = true;
 
-                if(FireWin::allDamaged || !w->visible)
+                if(!w->visible)
                     break;
 
                 auto damagedArea = getREGIONFromRect(
@@ -834,7 +869,7 @@ void Core::loop(){
         else {
 
             if(cntHooks) {
-
+                std::cout << "Running hooks" << std::endl;
                 /* copy running hooks,
                  * since a hook can remove itself
                  * causing a crash */
@@ -843,6 +878,7 @@ void Core::loop(){
                     if(hook->getState())
                         runningHooks.push_back(hook);
 
+                 std::cout << runningHooks.size() << std::endl;
                 for(auto hook : runningHooks)
                     hook->action();
             }
