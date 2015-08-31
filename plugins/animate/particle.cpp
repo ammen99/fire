@@ -1,6 +1,11 @@
 #include "particle.hpp"
 #include <opengl.hpp>
 
+#define NUM_PARTICLES maxParticles
+#define NUM_WORKGROUPS 384
+#define WORKGROUP_SIZE (NUM_PARTICLES / NUM_WORKGROUPS)
+
+
 glm::vec4 operator * (glm::vec4 v, float x) {
     v[0] *= x;
     v[1] *= x;
@@ -17,49 +22,25 @@ glm::vec4 operator / (glm::vec4 v, float x) {
     return v;
 }
 
-/* Implementation of Particle */
-Particle::Particle() {}
-Particle::~Particle() {}
-Particle::Particle(int maxLife,
-                glm::vec4 startColor,
-                glm::vec4 targetColor,
-                float cX, float cY,
-                float dirX, float dirY) {
+template<class T>
+T *getShaderStorageBuffer(GLuint bufID, size_t arrSize) {
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, bufID);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, arrSize,
+            NULL, GL_STATIC_DRAW);
 
-    this->maxLife = maxLife;
-    this->startColor  = startColor;
-    this->targetColor = targetColor;
-    this->centerX = cX;
-    this->centerY = cY;
-    this->dirX = dirX;
-    this->dirY = dirY;
+    GLint mask =  GL_MAP_WRITE_BIT |
+        GL_MAP_INVALIDATE_BUFFER_BIT;
 
-    this->life = 0;
-    update();
+    return (T*) glMapBufferRange(GL_SHADER_STORAGE_BUFFER,
+            0, arrSize, mask);
 }
-
-bool Particle::update() {
-    currentColor = targetColor * life + startColor * (maxLife - life);
-    currentColor = currentColor / float(maxLife);
-
-    centerX += dirX;
-    centerY += dirY;
-
-    ++life;
-    return life <= maxLife;
-}
-
-void Particle::getPosition(float &x, float &y) {x = centerX, y = centerY;}
-glm::vec4 Particle::getColor() {return currentColor;}
 
 /* Implementation of ParticleSystem */
 
-void ParticleSystem::initGLPart() {
-
-    /* load particle program */
-    program = glCreateProgram();
+void ParticleSystem::loadRenderingProgram() {
+    renderProg = glCreateProgram();
     GLuint vss, fss;
-    std::string shaderSrcPath = "/usr/local/share/fireman/animate/pt";
+    std::string shaderSrcPath = "/usr/local/share/fireman/animate/shaders";
 
     vss = GLXUtils::loadShader(std::string(shaderSrcPath)
             .append("/vertex.glsl").c_str(), GL_VERTEX_SHADER);
@@ -67,179 +48,223 @@ void ParticleSystem::initGLPart() {
     fss = GLXUtils::loadShader(std::string(shaderSrcPath)
             .append("/frag.glsl").c_str(), GL_FRAGMENT_SHADER);
 
-    glAttachShader (program, vss);
-    glAttachShader (program, fss);
+    glAttachShader (renderProg, vss);
+    glAttachShader (renderProg, fss);
 
-    glBindFragDataLocation (program, 0, "outColor");
-    glLinkProgram (program);
-    glUseProgram(program);
+    glBindFragDataLocation (renderProg, 0, "outColor");
+    glLinkProgram (renderProg);
+    glUseProgram(renderProg);
+}
 
+void ParticleSystem::loadComputeProgram() {
+    std::string shaderSrcPath = "/usr/local/share/fireman/animate/shaders";
 
-    /* generate VAO and VBOs */
-    glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
+    computeProg = glCreateProgram();
+    GLuint css =
+        GLXUtils::loadShader(std::string(shaderSrcPath)
+                .append("/compute.glsl").c_str(),
+                GL_COMPUTE_SHADER);
 
-    glGenBuffers(1, &pbase);
+    glAttachShader(computeProg, css);
+    glLinkProgram(computeProg);
+    glUseProgram(computeProg);
 
-    glGenBuffers(1, &pcolor);
-    glBindBuffer(GL_ARRAY_BUFFER, pcolor);
-    glBufferData(GL_ARRAY_BUFFER, 24 * maxParticles * sizeof(GLfloat), NULL, GL_STREAM_DRAW);
+    glUniform1f(1, particleLife);
+}
 
-    glGenBuffers(1, &poffset);
-    glBindBuffer(GL_ARRAY_BUFFER, poffset);
-    glBufferData(GL_ARRAY_BUFFER, 12 * maxParticles * sizeof(GLfloat), NULL, GL_STREAM_DRAW);
+void ParticleSystem::loadGLPrograms() {
+    loadRenderingProgram();
+    loadComputeProgram();
+}
 
+void ParticleSystem::createBuffers() {
+    glGenBuffers(1, &base_mesh);
+    glGenBuffers(1, &particleSSbo);
+    glGenBuffers(1, &lifeInfoSSbo);
+}
+
+void ParticleSystem::initParticleBuffer() {
+
+    particleBufSz = maxParticles * sizeof(Particle);
+
+    Particle *p = getShaderStorageBuffer<Particle>(particleSSbo,
+            particleBufSz);
+
+    for(int i = 0; i < maxParticles; ++i) {
+        /* make all particles invisible */
+        p[i].x = p[i].y = -2;
+
+        p[i].dx = float(std::rand() % 1001 - 500) /
+            (500 * particleLife);
+        p[i].dy = float(std::rand() % 1001 - 500) /
+            (500 * particleLife);
+
+        p[i].life = particleLife + 1;
+
+        p[i].r = p[i].g = p[i].b = p[i].a = 0;
+    }
+
+    glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+}
+
+void ParticleSystem::initLifeInfoBuffer() {
+    lifeBufSz = sizeof(uint) * maxParticles;
+    uint *lives = getShaderStorageBuffer<uint>(lifeInfoSSbo, lifeBufSz);
+
+    for(int i = 0; i < maxParticles; ++i)
+        lives[i] = 0;
+
+    glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+}
+
+void ParticleSystem::genBaseMesh() {
+    /* scale base mesh */
     for(int i = 0; i < sizeof(vertices) / sizeof(float); i++)
         vertices[i] *= particleSize;
 
+}
+void ParticleSystem::uploadBaseMesh() {
+    genBaseMesh();
+
+    glUseProgram(renderProg);
+
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
+
     /* upload static base mesh */
     glEnableVertexAttribArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER, pbase);
+    glBindBuffer(GL_ARRAY_BUFFER, base_mesh);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices),
             vertices, GL_STATIC_DRAW);
     glVertexAttribPointer (0, 2, GL_FLOAT, GL_FALSE, 0, 0);
     glDisableVertexAttribArray(0);
+
+    glUseProgram(0);
 }
 
-Particle *ParticleSystem::newParticle()  {
-        float dx = float(std::rand() % 1001 - 500) / (500 * particleLife);
-        float dy = float(std::rand() % 1001 - 500) / (500 * particleLife);
+void ParticleSystem::initGLPart() {
+    loadGLPrograms();
+    createBuffers();
 
-        return new Particle(particleLife, glm::vec4(1, 1, 1, 1), glm::vec4(1, 1, 1, 1),
-                0, 0, dx, dy);
+    initParticleBuffer();
+    initLifeInfoBuffer();
+    uploadBaseMesh();
 }
 
+void ParticleSystem::setParticleColor(glm::vec4 scol,
+        glm::vec4 ecol) {
+
+    glUseProgram(computeProg);
+    glUniform4fv(2, 1, &scol[0]);
+    glUniform4fv(3, 1, &ecol[0]);
+}
+
+ParticleSystem::ParticleSystem() {}
 ParticleSystem::ParticleSystem(float size,  size_t _maxp,
             size_t _pspawn, size_t _plife, size_t _respInterval) {
 
     particleSize = size;
 
-    this->maxParticles    = _maxp;
-    this->partSpawn       = _pspawn;
-    this->particleLife    = _plife;
-    this->respawnInterval = _respInterval;
-
-    std::cout << maxParticles << std::endl;
-    _particles.resize(maxParticles);
-    colorBuffer = new float[24 * maxParticles];
-    offsetBuffer = new float[12 * maxParticles];
-
-    /* mark unused particles */
-    for(int i = 0; i < maxParticles; i++) {
-        _particles[i] = nullptr,
-        freePlaces.insert(i);
-    }
+    maxParticles    = _maxp;
+    partSpawn       = _pspawn;
+    particleLife    = _plife;
+    respawnInterval = _respInterval;
 
     initGLPart();
+    setParticleColor(glm::vec4(0, 0, 1, 1), glm::vec4(1, 0, 0, 1));
 }
 
 ParticleSystem::~ParticleSystem() {
-    GLuint buffs[] = { bgVBO, pbase, pcolor, poffset };
 
-    glDeleteBuffers(4, buffs);
+    glDeleteBuffers(1, &particleSSbo);
+    glDeleteBuffers(1, &lifeInfoSSbo);
+    glDeleteBuffers(1, &base_mesh);
 
-    glDeleteVertexArrays(1, &bgVAO);
+    glUseProgram(renderProg);
     glDeleteVertexArrays(1, &vao);
+    glUseProgram(0);
 
-    glDeleteProgram(program);
-    glDeleteProgram(backgroundProgram);
-}
-
-void ParticleSystem::spawnNew() {
-
-    int particlesToSpawn = std::min(partSpawn, freePlaces.size());
-    for(int i = 0; i < particlesToSpawn; i++) {
-        auto new_place = *freePlaces.begin();
-        _particles[new_place] = newParticle();
-        freePlaces.erase(new_place);
-    }
+    glDeleteProgram(renderProg);
+    glDeleteProgram(computeProg);
 }
 
 void ParticleSystem::simulate() {
-    for(int i = 0; i < maxParticles; i++) {
-        if(_particles[i]) {
-            if(!_particles[i]->update()) {
-                delete _particles[i];
-                _particles[i] = nullptr;
-                freePlaces.insert(i);
+    std::cout << "BEGIN SIMULATE " << currentIteration << std::endl;
+    glUseProgram(computeProg);
+
+    if(currentIteration++ % respawnInterval == 0) {
+        std::cout << "SPAWN" << std::endl;
+        glUseProgram(computeProg);
+
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, lifeInfoSSbo);
+        auto lives =  (uint*) glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0,
+                sizeof(GLint),
+                GL_MAP_WRITE_BIT | GL_MAP_READ_BIT);
+
+        size_t sp_num = partSpawn, i = 0;
+
+        while(i < maxParticles && sp_num > 0) {
+            if(lives[i] == 0) {
+                lives[i] = 1;
+                --sp_num;
             }
+            ++i;
         }
+
+
+        glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     }
 
-    if(currentIteration % respawnInterval == 0)
-        spawnNew();
-    ++currentIteration;
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, particleSSbo);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, lifeInfoSSbo);
+
+    glDispatchComputeGroupSizeARB(NUM_WORKGROUPS, 1, 1,
+                    WORKGROUP_SIZE, 1, 1);
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+    std::cout << "END SIMULATE" << std::endl;
 }
 
 
 /* TODO: use glDrawElementsInstanced instead of glDrawArraysInstanced */
-void ParticleSystem::render(GLuint backgroundTex) {
+void ParticleSystem::render() {
 
-    glUseProgram(program);
-    std::cout << "somewhere here " << std::endl;
-
+    glUseProgram(renderProg);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     glBindVertexArray(vao);
 
-    /* prepare vertex data */
-    for(int i = 0; i < maxParticles; i++) {
-        float cx = -10000, cy = -10000;
-        glm::vec4 c(0, 0, 0, 0);
-
-        if(_particles[i]) {
-            c = _particles[i]->getColor();
-            _particles[i]->getPosition(cx, cy);
-        }
-
-        for(int j = 0; j < 6; j++) {
-            for(int k = 0; k < 4; k++)
-                colorBuffer[i * 24 + j * 4 + k] = c[k];
-
-            offsetBuffer[i * 12 + j * 2 + 0] = cx;
-            offsetBuffer[i * 12 + j * 2 + 1] = cy;
-        }
-    }
-    /* upload data to GPU */
-
-    size_t a = maxParticles * 24 * sizeof(GLfloat);
-    size_t b = maxParticles * 12 * sizeof(GLfloat);
-
-    glBindBuffer(GL_ARRAY_BUFFER, pcolor);
-    glBufferData(GL_ARRAY_BUFFER, a, NULL, GL_DYNAMIC_DRAW);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, a, &colorBuffer[0]);
-
-
-    glBindBuffer(GL_ARRAY_BUFFER, poffset);
-    glBufferData(GL_ARRAY_BUFFER, b, NULL, GL_DYNAMIC_DRAW);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, b, &offsetBuffer[0]);
-
     /* prepare vertex attribs */
     glEnableVertexAttribArray(0);
-    glBindBuffer (GL_ARRAY_BUFFER, pbase);
+    glBindBuffer (GL_ARRAY_BUFFER, base_mesh);
     glVertexAttribPointer (0, 2, GL_FLOAT, GL_FALSE, 0, 0);
 
     glEnableVertexAttribArray(1);
-    glBindBuffer(GL_ARRAY_BUFFER, poffset);
-    glVertexAttribPointer (1, 2, GL_FLOAT, GL_FALSE, 0, 0);
+    glBindBuffer(GL_ARRAY_BUFFER, particleSSbo);
+    glVertexAttribPointer (1, 2, GL_FLOAT, GL_FALSE, sizeof(Particle), (void*)sizeof(float));
 
+    //TODO: add colors
     glEnableVertexAttribArray(2);
-    glBindBuffer(GL_ARRAY_BUFFER, pcolor);
-    glVertexAttribPointer (2, 4, GL_FLOAT, GL_FALSE, 0, 0);
-
+    glBindBuffer(GL_ARRAY_BUFFER, particleSSbo);
+    glVertexAttribPointer (2, 4, GL_FLOAT, GL_FALSE, sizeof(Particle), (void*)(5 * sizeof(float)));
+//
     glVertexAttribDivisor(0, 0);
     glVertexAttribDivisor(1, 1);
     glVertexAttribDivisor(2, 1);
 
+    std::cout << "DRAW PARTICLES " << maxParticles << std::endl;
     /* draw particles */
-    glDrawArraysInstanced (GL_TRIANGLES, 0, 6, maxParticles * 6);
+    glDrawArraysInstanced (GL_TRIANGLES, 0, 6,
+            maxParticles);
 
     glDisableVertexAttribArray(0);
     glDisableVertexAttribArray(1);
     glDisableVertexAttribArray(2);
 
+    std::cout << "USE NO PROG" << std::endl;
     glUseProgram(0);
-
-    std::cout << "ENDED LOOK IN MAIN!!!" << std::endl;
+    std::cout << "END RENDER" << std::endl;
 }
+

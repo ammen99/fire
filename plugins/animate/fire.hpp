@@ -8,7 +8,6 @@ class FireParticleSystem;
 
 class Fire {
     FireParticleSystem *ps;
-    GLuint fbuff, tex;
     FireWindow w;
 
     EffectHook hook;

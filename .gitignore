@@ -10,3 +10,4 @@ manager
 gui/.cvimrc
 *.pyc
 build
+save
