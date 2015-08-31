@@ -1,7 +1,7 @@
 #include <opengl.hpp>
 #include "fire.hpp"
 
-#define EFFECT_CYCLES 16
+#define EFFECT_CYCLES 128
 #define BURSTS 8
 #define MAX_PARTICLES 256 * 384
 #define PARTICLE_SIZE 0.003
@@ -50,12 +50,12 @@ class FireParticleSystem : public ParticleSystem {
             particleSize = PARTICLE_SIZE;
 
             maxParticles    = numParticles;
-            partSpawn       = numParticles / BURSTS;
+            partSpawn       = numParticles / (BURSTS - 1);
             particleLife    = EFFECT_CYCLES;
-            respawnInterval = EFFECT_CYCLES / BURSTS;
+            respawnInterval = EFFECT_CYCLES / (BURSTS + 1);
 
             initGLPart();
-            setParticleColor(glm::vec4(0, 1, 1, 1), glm::vec4(0, 0, 0.5, 1));
+            setParticleColor(glm::vec4(0, 0.5, 1, 1), glm::vec4(0, 0, 0.7, 0.8));
         }
 
     bool isRunning() {return this->currentIteration <= EFFECT_CYCLES;}

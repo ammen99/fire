@@ -35,6 +35,7 @@ float rand(vec2 co){
     return fract(sin(dot(co.xy * 143.729 ,vec2(12.9898,78.233))) * 43758.5453);
 }
 
+#define EC 1.2
 
 void main() {
     uint i = gl_GlobalInvocationID.x;
@@ -66,14 +67,14 @@ void main() {
     p.x += p.dx * maxw;
     p.y += p.dy * maxh;
 
-    float r1 = rand(vec2(p.x, p.y)) * abs(maxw) / 100.;
-    float r2 = rand(vec2(p.y, p.x)) * abs(maxh) / 100.;
+    float r1 = (rand(vec2(p.x, p.y)) - 0.5) * abs(maxw) / 40.;
+    float r2 = (rand(vec2(p.y, p.x)) - 0.5) * abs(maxh) / 40.;
 
     p.x += r1;
     p.y += r2;
 
-    p.x = clamp(p.x, -maxw, maxw);
-    p.y = clamp(p.y, -maxh, maxh);
+    p.x = clamp(p.x, -maxw * EC, maxw * EC);
+    p.y = clamp(p.y, -maxh * EC, maxh * EC);
 
     p.r += tmp.x;
     p.g += tmp.y;
