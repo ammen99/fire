@@ -1,10 +1,12 @@
 #include <opengl.hpp>
 #include "fire.hpp"
 
-#define EFFECT_CYCLES 128
-#define BURSTS 8
-#define MAX_PARTICLES 256 * 384
-#define PARTICLE_SIZE 0.003
+#define EFFECT_CYCLES 64
+#define BURSTS 4
+#define MAX_PARTICLES 1024 * 384
+#define PARTICLE_SIZE 0.006
+#define MAX_LIFE 32
+#define RESP_INTERVAL 4
 
 bool run = true;
 
@@ -14,6 +16,8 @@ bool run = true;
 class FireParticleSystem : public ParticleSystem {
     float _cx, _cy;
     float _w, _h;
+
+    float wind, gravity;
 
     public:
 
@@ -38,8 +42,28 @@ class FireParticleSystem : public ParticleSystem {
     void genBaseMesh() {
         ParticleSystem::genBaseMesh();
         for(int i = 0; i < 6; i++)
-            vertices[2 * i + 0] += _cx,
-            vertices[2 * i + 1] += _cy;
+            vertices[2 * i + 0] += _cx - _w,
+            vertices[2 * i + 1] += _cy - _h;
+    }
+
+    void initParticleBuffer() {
+        particleBufSz = maxParticles * sizeof(Particle);
+        Particle *p = getShaderStorageBuffer<Particle>(particleSSbo,
+                particleBufSz);
+
+        for(int i = 0; i < maxParticles; ++i) {
+            p[i].life = particleLife + 1;
+
+            p[i].dy = 2. * float(std::rand() % 1001) / (1000 * particleLife);
+            p[i].dx = 0;
+
+            p[i].x = (float(std::rand() % 1001) / 1000.0) * _w * 2.;
+            p[i].y = 0;
+
+            p[i].r = p[i].g = p[i].b = p[i].a = 0;
+        }
+
+        glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
     }
 
     FireParticleSystem(float cx, float cy,
@@ -49,16 +73,45 @@ class FireParticleSystem : public ParticleSystem {
 
             particleSize = PARTICLE_SIZE;
 
+            gravity = -_h * 0.001;
+            wind = -gravity * RESP_INTERVAL * BURSTS * 2;
+
             maxParticles    = numParticles;
-            partSpawn       = numParticles / (BURSTS - 1);
-            particleLife    = EFFECT_CYCLES;
-            respawnInterval = EFFECT_CYCLES / (BURSTS + 1);
+            partSpawn       = numParticles / BURSTS;
+            particleLife    = MAX_LIFE;
+            respawnInterval = RESP_INTERVAL;
 
             initGLPart();
-            setParticleColor(glm::vec4(0, 0.5, 1, 1), glm::vec4(0, 0, 0.7, 0.8));
+            setParticleColor(glm::vec4(0, 0.5, 1, 1), glm::vec4(0, 0, 0.7, 0.2));
+
+            glUseProgram(renderProg);
+            glUniform1f(1, particleSize);
+            glUseProgram(0);
+
+            //wind = 0;
         }
 
-    bool isRunning() {return this->currentIteration <= EFFECT_CYCLES;}
+    /* checks if PS should run further
+     * and if we should stop spawning */
+    int numSpawnedBursts = 0;
+    bool check() {
+
+        if((currentIteration - 1) % respawnInterval == 0)
+            ++numSpawnedBursts;
+
+        if(numSpawnedBursts >= BURSTS)
+            pause();
+
+        return currentIteration <= EFFECT_CYCLES;
+    }
+
+    void simulate() {
+        glUseProgram(computeProg);
+        glUniform1f(6, wind);
+        ParticleSystem::simulate();
+
+        wind += gravity;
+    }
 };
 bool first_time = true;
 
@@ -81,7 +134,7 @@ Fire::Fire(FireWindow win) : w(win) {
 
 
     int numParticles =
-        MAX_PARTICLES *  w / float(w) * h / float(h);
+        MAX_PARTICLES *  w / float(sw) * h / float(sh);
     //if(numParticles > MAX_PARTICLES) numParticles = MAX_PARTICLES;
 
 //    numParticles = MAX_PARTICLES;;
@@ -111,7 +164,7 @@ void Fire::step() {
     if(w->isVisible())
         ps->render();
 //
-    if(!ps->isRunning()) {
+    if(!ps->check()) {
         w->transform.color[3] = 1;
 
         core->remHook(transparency.id);

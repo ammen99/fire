@@ -61,6 +61,8 @@ class ParticleSystem {
         -1.f, -1.f,
     };
 
+    bool spawnNew = true;
+
     /* creates program, VAO, VBO ... */
     virtual void initGLPart();
 
@@ -94,6 +96,10 @@ class ParticleSystem {
 
     /* render to screen */
     virtual void render();
+
+    /* pause/resume spawning */
+    virtual void pause();
+    virtual void resume();
 };
 
 #endif

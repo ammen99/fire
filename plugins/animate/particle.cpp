@@ -188,11 +188,14 @@ ParticleSystem::~ParticleSystem() {
     glDeleteProgram(computeProg);
 }
 
+void ParticleSystem::pause () {spawnNew = false;}
+void ParticleSystem::resume() {spawnNew = true; }
+
 void ParticleSystem::simulate() {
     std::cout << "BEGIN SIMULATE " << currentIteration << std::endl;
     glUseProgram(computeProg);
 
-    if(currentIteration++ % respawnInterval == 0) {
+    if(currentIteration++ % respawnInterval == 0 && spawnNew) {
         std::cout << "SPAWN" << std::endl;
         glUseProgram(computeProg);
 
