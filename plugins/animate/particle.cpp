@@ -186,6 +186,9 @@ void ParticleSystem::setParticleColor(glm::vec4 scol,
     glUseProgram(computeProg);
     glUniform4fv(2, 1, &scol[0]);
     glUniform4fv(3, 1, &ecol[0]);
+
+    auto tmp = (ecol - scol) / float(particleLife);
+    glUniform4fv(4, 1, &tmp[0]);
 }
 
 ParticleSystem::ParticleSystem() {}

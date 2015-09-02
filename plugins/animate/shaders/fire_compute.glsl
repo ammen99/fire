@@ -10,17 +10,19 @@ layout(location = 1) uniform float maxLife;
 
 layout(location = 2) uniform vec4 scol;
 layout(location = 3) uniform vec4 ecol;
+layout(location = 4) uniform vec4 colDiffStep;
 
-layout(location = 4) uniform float maxw;
-layout(location = 5) uniform float maxh;
+layout(location = 5) uniform float maxw;
+layout(location = 6) uniform float maxh;
 
 /* used only for Upwards movement */
-layout(location = 6) uniform float wind;
+layout(location = 7) uniform float wind;
 
 struct Particle {
     float life;
     float x, y;
     float dx, dy;
+    //vec4 col;
     float r, g, b, a;
 };
 
@@ -36,11 +38,8 @@ layout(binding = 2) buffer ParticleLifeInfo {
 layout(local_size_variable) in;
 
 float rand(vec2 co){
-    return fract(sin(dot(co.xy * 143.729 ,vec2(12.9898,78.233))) * 43758.5453);
+    return fract(sin(dot(co.xy, vec2(12.9898,78.233))) * 43758.5453);
 }
-
-#define EC 1.05
-#define EEC 1.2
 
 void main() {
     uint i = gl_GlobalInvocationID.x;
@@ -56,11 +55,12 @@ void main() {
             //            p.x = p.y = 0;
             p.life = 0;
 
-            p.r = scol.x;
-            p.g = scol.y;
-            p.b = scol.z;
-            p.a = scol.w;
+         p.r = scol.x;
+         p.g = scol.y;
+         p.b = scol.z;
+         p.a = scol.w;
 
+            //p.col = scol;
             lifeInfo[i] = PARTICLE_ALIVE;
         }
         else if(lifeInfo[i] == PARTICLE_AFTER_LIVING) {
@@ -75,37 +75,20 @@ void main() {
     if(lifeInfo[i] == PARTICLE_ALIVE ||
        lifeInfo[i] == PARTICLE_AFTER_LIVING) {
 
-        vec4 tmp = (ecol - scol) / maxLife;
-
         p.life += 1;
 
         p.x += p.dx * maxw;
         p.y += p.dy * maxh + wind;
 
-        float r1 = (rand(vec2(p.x, p.y)) - 0.5) * abs(maxw) / 40.;
         float r2 = (rand(vec2(p.y, p.x)) - 0.5) * abs(maxh) / 20.;
 
-        p.x += r1;
         p.y += r2;
 
-
-        //
-        //    p.x = clamp(p.x, -maxw * (EC - 1), 2 * maxw * EC);
-
-        //    if(p.y > 2 * maxh * EC) {
-        //        float r = rand(vec2(p.x, p.y));
-        //        if(r > 0.5) {
-        //            p.y = clamp(p.y, -2, 2 * maxh * EEC);
-        //        }
-        //        else {
-        //            p.y = clamp(p.y, -2, 2 * maxh * EC);
-        //        }
-        //    }
-        //
-        p.r += tmp.x;
-        p.g += tmp.y;
-        p.b += tmp.z;
-        p.a += tmp.w;
+//        p.col += colDiffStep;
+        p.r += colDiffStep.x;
+        p.g += colDiffStep.y;
+        p.b += colDiffStep.z;
+        p.a += colDiffStep.w;
     }
 
     _particles[i] = p;

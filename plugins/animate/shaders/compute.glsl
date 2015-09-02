@@ -9,6 +9,8 @@ layout(location = 1) uniform float maxLife;
 
 layout(location = 2) uniform vec4 scol;
 layout(location = 3) uniform vec4 ecol;
+/* colDiffStep = (ecol - scol) / maxLife */;
+layout(location = 4) uniform vec4 colDiffStep;
 
 struct Particle {
     float life;
@@ -52,17 +54,15 @@ void main() {
         }
     }
 
-    vec4 tmp = (ecol - scol) / maxLife;
-
     p.life += 1;
 
     p.x += p.dx;
     p.y += p.dy;
 
-    p.r += tmp.x;
-    p.g += tmp.y;
-    p.b += tmp.z;
-    p.a += tmp.w;
+    p.r += colDiffStep.x;
+    p.g += colDiffStep.y;
+    p.b += colDiffStep.z;
+    p.a += colDiffStep.w;
 
     _particles[i] = p;
 }

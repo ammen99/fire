@@ -36,8 +36,8 @@ class FireParticleSystem : public ParticleSystem {
         glUseProgram(computeProg);
 
         glUniform1f(1, particleLife);
-        glUniform1f(4, _w);
-        glUniform1f(5, _h);
+        glUniform1f(5, _w);
+        glUniform1f(6, _h);
     }
 
     void genBaseMesh() {
@@ -100,7 +100,7 @@ class FireParticleSystem : public ParticleSystem {
 
     void simulate() {
         glUseProgram(computeProg);
-        glUniform1f(6, wind);
+        glUniform1f(7, wind);
         ParticleSystem::simulate();
 
         wind += gravity;
