@@ -152,8 +152,6 @@ void ParticleSystem::genBaseMesh() {
 
 }
 void ParticleSystem::uploadBaseMesh() {
-    genBaseMesh();
-
     glUseProgram(renderProg);
 
     glGenVertexArrays(1, &vao);
@@ -177,6 +175,7 @@ void ParticleSystem::initGLPart() {
     using namespace std::placeholders;
     initParticleBuffer();
     initLifeInfoBuffer();
+    genBaseMesh();
     uploadBaseMesh();
 }
 

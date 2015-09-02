@@ -282,6 +282,15 @@ void FireWin::move(int x, int y, bool configure) {
     if(existPreviousRegion)
         prevRegion = copyRegion(region);
 
+    int dx = x - attrib.x,
+        dy = y - attrib.y;
+
+    SignalListenerData d;
+    d.push_back((void*)(this));
+    d.push_back((void*)(&dx));
+    d.push_back((void*)(&dy));
+    core->triggerSignal("move-window", d);
+
     attrib.x = x;
     attrib.y = y;
     updateRegion();

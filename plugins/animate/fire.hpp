@@ -12,6 +12,7 @@ class Fire {
 
     EffectHook hook;
     Hook transparency;
+    SignalListener moveListener;
 
     int progress = 0;
 
@@ -19,6 +20,7 @@ class Fire {
         Fire(FireWindow win);
         void step();
         void adjustAlpha();
+        void handleWindowMoved(SignalListenerData d);
 
         ~Fire();
 };

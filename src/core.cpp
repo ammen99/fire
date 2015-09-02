@@ -423,8 +423,19 @@ void Core::disconnectSignal(std::string name, uint id) {
 }
 
 void Core::addDefaultSignals() {
+    /* map-window and unmap-window are triggered
+     * when a window is (un)mapped. The data they
+     * contain is just a pointer to the FireWindow */
     addSignal("map-window");
     addSignal("unmap-window");
+
+    /* move-window is triggered when a window is moved
+     * Data contains 3 elements:
+     * 1. raw pointer to FireWin
+     * 2. dx
+     * 3. dy */
+
+    addSignal("move-window");
 }
 
 void Core::addWindow(XCreateWindowEvent xev) {

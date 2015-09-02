@@ -77,12 +77,8 @@ void main() {
 
         p.life += 1;
 
-        p.x += p.dx * maxw;
-        p.y += p.dy * maxh + wind;
-
-        float r2 = (rand(vec2(p.y, p.x)) - 0.5) * abs(maxh) / 20.;
-
-        p.y += r2;
+        p.y += p.dy + wind;
+        p.y += (rand(vec2(p.y, p.x)) - 0.5) * abs(maxh) / 20.;
 
 //        p.col += colDiffStep;
         p.r += colDiffStep.x;

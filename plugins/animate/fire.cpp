@@ -4,7 +4,7 @@
 
 #define EFFECT_CYCLES 16
 #define BURSTS 10
-#define MAX_PARTICLES 1023 * 384
+#define MAX_PARTICLES 1024 * 384
 #define PARTICLE_SIZE 0.006
 #define MAX_LIFE 32
 #define RESP_INTERVAL 1
@@ -50,7 +50,7 @@ class FireParticleSystem : public ParticleSystem {
     void defaultParticleIniter(Particle &p) {
         p.life = particleLife + 1;
 
-        p.dy = 2. * float(std::rand() % 1001) / (1000 * EFFECT_CYCLES);
+        p.dy = 2. * _h * float(std::rand() % 1001) / (1000 * EFFECT_CYCLES);
         p.dx = 0;
 
         p.x = (float(std::rand() % 1001) / 1000.0) * _w * 2.;
@@ -105,10 +105,20 @@ class FireParticleSystem : public ParticleSystem {
 
         wind += gravity;
     }
+
+    void addOffset(float dx, float dy) {
+        for(int i = 0; i < 6; ++i) {
+            vertices[2 * i + 0] += dx;
+            vertices[2 * i + 1] += dy;
+        }
+
+        uploadBaseMesh();
+    }
 };
 bool first_time = true;
 
 Fire::Fire(FireWindow win) : w(win) {
+
     auto x = win->attrib.x,
          y = win->attrib.y,
          w = win->attrib.width,
@@ -128,9 +138,6 @@ Fire::Fire(FireWindow win) : w(win) {
 
     int numParticles =
         MAX_PARTICLES *  w / float(sw) * h / float(sh);
-    //if(numParticles > MAX_PARTICLES) numParticles = MAX_PARTICLES;
-
-//    numParticles = MAX_PARTICLES;;
 
     ps = new FireParticleSystem(avg(tlx, brx), avg(tly, bry),
             w / float(sw), h / float(sh), numParticles);
@@ -143,6 +150,11 @@ Fire::Fire(FireWindow win) : w(win) {
     transparency.action = std::bind(std::mem_fn(&Fire::adjustAlpha), this);
     core->addHook(&transparency);
     transparency.enable();
+
+    moveListener.action =
+        std::bind(std::mem_fn(&Fire::handleWindowMoved),
+                this, std::placeholders::_1);
+    core->connectSignal("move-window", &moveListener);
 
     step();
 
@@ -164,6 +176,7 @@ void Fire::step() {
 
         core->remHook(transparency.id);
         core->remEffect(hook.id);
+        core->disconnectSignal("move-window", moveListener.id);
         delete this;
     }
 }
@@ -175,6 +188,23 @@ void Fire::adjustAlpha() {
 
     w->transform.color[3] = c;
     ++progress;
+}
+
+void Fire::handleWindowMoved(SignalListenerData d) {
+    FireWin *w = (FireWin*)d[0];
+    if(w->id != this->w->id)
+        return;
+
+    int dx = *(int*)d[1];
+    int dy = *(int*)d[2];
+
+    GetTuple(sw, sh, core->getScreenSize());
+
+    float fdx = 2. * float(dx) / float(sw);
+    float fdy = 2. * float(dy) / float(sh);
+
+    ps->addOffset(fdx, -fdy);
+    OpenGL::useDefaultProgram();
 }
 
 struct RedrawOnceMoreHook {
