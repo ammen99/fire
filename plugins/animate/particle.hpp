@@ -61,6 +61,8 @@ class ParticleSystem {
         -1.f, -1.f,
     };
 
+    using ParticleIniter = std::function<void(Particle&)>;
+
     bool spawnNew = true;
 
     /* creates program, VAO, VBO ... */
@@ -71,6 +73,12 @@ class ParticleSystem {
     virtual void loadGLPrograms();
 
     virtual void createBuffers();
+
+    /* to change initial particle spawning,
+     * override defaultParticleIniter */
+    virtual void defaultParticleIniter(Particle &p);
+    virtual void threadWorker_InitParticles(Particle *buff,
+            size_t start, size_t end);
     virtual void initParticleBuffer();
     virtual void initLifeInfoBuffer();
 

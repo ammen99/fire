@@ -1,12 +1,13 @@
 #include <opengl.hpp>
+#include <cmath>
 #include "fire.hpp"
 
-#define EFFECT_CYCLES 64
-#define BURSTS 4
-#define MAX_PARTICLES 1024 * 384
+#define EFFECT_CYCLES 16
+#define BURSTS 10
+#define MAX_PARTICLES 1023 * 384
 #define PARTICLE_SIZE 0.006
 #define MAX_LIFE 32
-#define RESP_INTERVAL 4
+#define RESP_INTERVAL 1
 
 bool run = true;
 
@@ -46,29 +47,21 @@ class FireParticleSystem : public ParticleSystem {
             vertices[2 * i + 1] += _cy - _h;
     }
 
-    void initParticleBuffer() {
-        particleBufSz = maxParticles * sizeof(Particle);
-        Particle *p = getShaderStorageBuffer<Particle>(particleSSbo,
-                particleBufSz);
+    void defaultParticleIniter(Particle &p) {
+        p.life = particleLife + 1;
 
-        for(int i = 0; i < maxParticles; ++i) {
-            p[i].life = particleLife + 1;
+        p.dy = 2. * float(std::rand() % 1001) / (1000 * EFFECT_CYCLES);
+        p.dx = 0;
 
-            p[i].dy = 2. * float(std::rand() % 1001) / (1000 * particleLife);
-            p[i].dx = 0;
+        p.x = (float(std::rand() % 1001) / 1000.0) * _w * 2.;
+        p.y = 0;
 
-            p[i].x = (float(std::rand() % 1001) / 1000.0) * _w * 2.;
-            p[i].y = 0;
-
-            p[i].r = p[i].g = p[i].b = p[i].a = 0;
-        }
-
-        glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+        p.r = p.g = p.b = p.a = 0;
     }
 
     FireParticleSystem(float cx, float cy,
-                float w, float h,
-                int numParticles) :
+            float w, float h,
+            int numParticles) :
         _cx(cx), _cy(cy), _w(w), _h(h) {
 
             particleSize = PARTICLE_SIZE;
@@ -161,8 +154,10 @@ Fire::Fire(FireWindow win) : w(win) {
 void Fire::step() {
     ps->simulate();
 
-    if(w->isVisible())
+    if(w->isVisible()) {
+        glFinish();
         ps->render();
+    }
 //
     if(!ps->check()) {
         w->transform.color[3] = 1;
@@ -174,7 +169,12 @@ void Fire::step() {
 }
 
 void Fire::adjustAlpha() {
-    w->transform.color[3] += 1. / float(EFFECT_CYCLES);
+
+    float c = float(progress) / float(EFFECT_CYCLES);
+    c = std::pow(100, c) / 100.;
+
+    w->transform.color[3] = c;
+    ++progress;
 }
 
 struct RedrawOnceMoreHook {

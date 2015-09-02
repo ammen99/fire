@@ -13,6 +13,8 @@ class Fire {
     EffectHook hook;
     Hook transparency;
 
+    int progress = 0;
+
     public:
         Fire(FireWindow win);
         void step();

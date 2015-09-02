@@ -1,5 +1,6 @@
 #include "particle.hpp"
 #include <opengl.hpp>
+#include <thread>
 
 #define NUM_PARTICLES maxParticles
 #define NUM_WORKGROUPS 384
@@ -83,6 +84,24 @@ void ParticleSystem::createBuffers() {
     glGenBuffers(1, &lifeInfoSSbo);
 }
 
+void ParticleSystem::defaultParticleIniter(Particle &p) {
+    p.life = particleLife + 1;
+
+    p.x = p.y = -2;
+    p.dx = float(std::rand() % 1001 - 500) / (500 * particleLife);
+    p.dy = float(std::rand() % 1001 - 500) / (500 * particleLife);
+
+    p.r = p.g = p.b = p.a = 0;
+}
+
+void ParticleSystem::threadWorker_InitParticles(Particle *p,
+        size_t start, size_t end) {
+
+    for(size_t i = start; i < end; ++i)
+        defaultParticleIniter(p[i]);
+
+}
+
 void ParticleSystem::initParticleBuffer() {
 
     particleBufSz = maxParticles * sizeof(Particle);
@@ -90,19 +109,28 @@ void ParticleSystem::initParticleBuffer() {
     Particle *p = getShaderStorageBuffer<Particle>(particleSSbo,
             particleBufSz);
 
-    for(int i = 0; i < maxParticles; ++i) {
-        /* make all particles invisible */
-        p[i].x = p[i].y = -2;
+    using namespace std::placeholders;
+    auto threadFunction =
+        std::bind(std::mem_fn(&ParticleSystem::threadWorker_InitParticles),
+                this, _1, _2, _3);
 
-        p[i].dx = float(std::rand() % 1001 - 500) /
-            (500 * particleLife);
-        p[i].dy = float(std::rand() % 1001 - 500) /
-            (500 * particleLife);
+    size_t sz = std::thread::hardware_concurrency();
 
-        p[i].life = particleLife + 1;
+    int interval = maxParticles / sz;
+    if(maxParticles % sz != 0)
+        ++interval;
 
-        p[i].r = p[i].g = p[i].b = p[i].a = 0;
+    std::vector<std::thread> threads;
+    threads.resize(sz);
+
+    for(size_t i = 0; i < sz; ++i) {
+        auto start = i * interval;
+        auto end   = std::min((i + 1) * interval, maxParticles);
+        threads[i] = std::thread(threadFunction, p, start, end);
     }
+
+    for(size_t i = 0; i < sz; ++i)
+        threads[i].join();
 
     glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
 }
@@ -146,6 +174,7 @@ void ParticleSystem::initGLPart() {
     loadGLPrograms();
     createBuffers();
 
+    using namespace std::placeholders;
     initParticleBuffer();
     initLifeInfoBuffer();
     uploadBaseMesh();
