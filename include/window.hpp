@@ -53,6 +53,8 @@ enum Layer {LayerAbove = 0, LayerNormal = 1, LayerBelow = 2};
 struct WindowData {
 };
 
+struct EffectHook;
+
 #define GetData(type, win, name) ((type*)(win->data[(name)]))
 #define ExistsData(win, name) ((win)->data.find((name)) != (win)->data.end())
 #define AllocData(type, win, name) (win)->data[(name)] = new type()
@@ -65,6 +67,7 @@ class FireWin {
         /* this can be used by plugins to store
          * specific for the plugin data */
         std::unordered_map<std::string, WindowData*> data;
+        std::unordered_map<uint, EffectHook*> effects;
 
         static bool allDamaged;
         Window id;

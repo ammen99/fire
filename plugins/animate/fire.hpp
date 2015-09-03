@@ -12,7 +12,8 @@ class Fire {
 
     EffectHook hook;
     Hook transparency;
-    SignalListener moveListener;
+    SignalListener moveListener,
+                   unmapListener;
 
     int progress = 0;
 
@@ -21,6 +22,7 @@ class Fire {
         void step();
         void adjustAlpha();
         void handleWindowMoved(SignalListenerData d);
+        void handleWindowUnmapped(SignalListenerData d);
 
         ~Fire();
 };

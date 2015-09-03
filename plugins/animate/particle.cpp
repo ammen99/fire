@@ -223,11 +223,9 @@ void ParticleSystem::pause () {spawnNew = false;}
 void ParticleSystem::resume() {spawnNew = true; }
 
 void ParticleSystem::simulate() {
-    std::cout << "BEGIN SIMULATE " << currentIteration << std::endl;
     glUseProgram(computeProg);
 
     if(currentIteration++ % respawnInterval == 0 && spawnNew) {
-        std::cout << "SPAWN" << std::endl;
         glUseProgram(computeProg);
 
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, lifeInfoSSbo);
@@ -256,8 +254,6 @@ void ParticleSystem::simulate() {
     glDispatchComputeGroupSizeARB(NUM_WORKGROUPS, 1, 1,
                     WORKGROUP_SIZE, 1, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-
-    std::cout << "END SIMULATE" << std::endl;
 }
 
 
@@ -279,16 +275,14 @@ void ParticleSystem::render() {
     glBindBuffer(GL_ARRAY_BUFFER, particleSSbo);
     glVertexAttribPointer (1, 2, GL_FLOAT, GL_FALSE, sizeof(Particle), (void*)sizeof(float));
 
-    //TODO: add colors
     glEnableVertexAttribArray(2);
     glBindBuffer(GL_ARRAY_BUFFER, particleSSbo);
     glVertexAttribPointer (2, 4, GL_FLOAT, GL_FALSE, sizeof(Particle), (void*)(5 * sizeof(float)));
-//
+
     glVertexAttribDivisor(0, 0);
     glVertexAttribDivisor(1, 1);
     glVertexAttribDivisor(2, 1);
 
-    std::cout << "DRAW PARTICLES " << maxParticles << std::endl;
     /* draw particles */
     glDrawArraysInstanced (GL_TRIANGLES, 0, 6,
             maxParticles);
@@ -297,8 +291,6 @@ void ParticleSystem::render() {
     glDisableVertexAttribArray(1);
     glDisableVertexAttribArray(2);
 
-    std::cout << "USE NO PROG" << std::endl;
     glUseProgram(0);
-    std::cout << "END RENDER" << std::endl;
 }
 

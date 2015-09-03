@@ -44,14 +44,14 @@ struct ButtonBinding : Binding {
 
 // hooks are done once a redraw cycle
 struct Hook {
-    private:
+    protected:
         bool active;
     public:
         uint id;
         std::function<void(void)> action;
 
-        void enable();
-        void disable();
+        virtual void enable();
+        virtual void disable();
         bool getState();
         Hook();
 };
@@ -62,8 +62,16 @@ struct Hook {
 using RenderHook = std::function<void()>;
 
 /* Effects are used to draw over the screen, e.g when animating window actions */
-/* Effects render directly to Core's framebuffer */
-using EffectHook = Hook;
+/* Effects render directly to Core's framebuffer
+ * They are either as overlays, which means they are always drawn
+ * or they are on per-window basis */
+
+enum EffectType { EFFECT_OVERLAY, EFFECT_WINDOW };
+struct EffectHook : public Hook {
+    EffectType type;
+    /* used only if type == EFFECT_WINDOW */
+    FireWindow win;
+};
 
 using SignalListenerData = std::vector<void*>;
 
@@ -175,7 +183,7 @@ class Core {
         void remHook(uint key);
 
         void addEffect(EffectHook *);
-        void remEffect(uint key);
+        void remEffect(uint key, FireWindow win = nullptr);
 
         void addSignal(std::string name);
         void connectSignal(std::string name, SignalListener *callback);

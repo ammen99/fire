@@ -273,6 +273,14 @@ void FireWin::render() {
     OpenGL::depth = attrib.depth;
     OpenGL::renderTransformedTexture(texture, vao, vbo,
             transform.compose());
+
+    std::vector<EffectHook*> hooksToRun;
+    for(auto h : effects)
+        if(h.second->getState())
+            hooksToRun.push_back(h.second);
+
+    for(auto h : hooksToRun)
+        h->action();
 }
 
 void FireWin::move(int x, int y, bool configure) {

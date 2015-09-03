@@ -220,23 +220,35 @@ void Core::remHook(uint key) {
 
 
 void Core::addEffect(EffectHook *hook){
-    if(hook)
-        hook->id = nextID++,
+    if(!hook) return;
+
+    hook->id = nextID++;
+
+    if(hook->type == EFFECT_OVERLAY)
         effects.push_back(hook);
+    else if(hook->type == EFFECT_WINDOW)
+        hook->win->effects[hook->id] = hook;
 }
 
-void Core::remEffect(uint key) {
-    auto it = std::remove_if(effects.begin(), effects.end(), [key] (EffectHook *hook) {
+void Core::remEffect(uint key, FireWindow w) {
+    if(w == nullptr) {
+        auto it = std::remove_if(effects.begin(), effects.end(),
+                [key] (EffectHook *hook) {
+            if(hook && hook->id == key) {
+                hook->disable();
+                return true;
+            }
+            else
+                return false;
+        });
 
-                if(hook && hook->id == key) {
-                    hook->disable();
-                    return true;
-                }
-                else
-                    return false;
-            });
-
-    effects.erase(it, effects.end());
+        effects.erase(it, effects.end());
+    }
+    else {
+        auto it = w->effects.find(key);
+        it->second->disable();
+        w->effects.erase(it);
+    }
 }
 
 bool Hook::getState() { return this->active; }
@@ -402,9 +414,14 @@ void Core::addSignal(std::string name) {
 }
 
 void Core::triggerSignal(std::string name, SignalListenerData data) {
-    if(signals.find(name) != signals.end())
+    if(signals.find(name) != signals.end()) {
+        std::vector<SignalListener*> toTrigger;
+        for(auto proc : signals[name])
+            toTrigger.push_back(proc);
+
         for(auto proc : signals[name])
             proc->action(data);
+    }
 }
 
 void Core::connectSignal(std::string name, SignalListener *callback){

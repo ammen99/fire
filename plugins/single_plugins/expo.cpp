@@ -1,5 +1,8 @@
 #include <core.hpp>
 
+// TODO: do not just hack window scaling/offsetting,
+// but fetch each viewport independently
+
 void triggerScaleChange(int scX, int scY) {
         SignalListenerData sigData;
         sigData.push_back(&scX);

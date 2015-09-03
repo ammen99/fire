@@ -14,6 +14,11 @@ bool run = true;
 #define avg(x,y) (((x) + (y))/2.0)
 #define clamp(t,x,y) t=(t > (y) ? (y) : (t < (x) ? (x) : t))
 
+/* a set of windows we are animating,
+ * so that we don't create 2+ particle systems
+ * for the same window */
+std::unordered_set<Window> animating_windows;
+
 class FireParticleSystem : public ParticleSystem {
     float _cx, _cy;
     float _w, _h;
@@ -87,6 +92,12 @@ class FireParticleSystem : public ParticleSystem {
     /* checks if PS should run further
      * and if we should stop spawning */
     int numSpawnedBursts = 0;
+
+    /* make particle system report it has stopped */
+    void disable() {
+        currentIteration = EFFECT_CYCLES + 1;
+    }
+
     bool check() {
 
         if((currentIteration - 1) % respawnInterval == 0)
@@ -117,8 +128,11 @@ class FireParticleSystem : public ParticleSystem {
 };
 bool first_time = true;
 
-Fire::Fire(FireWindow win) : w(win) {
+struct DeleteFireObjectHook {
 
+};
+
+Fire::Fire(FireWindow win) : w(win) {
     auto x = win->attrib.x,
          y = win->attrib.y,
          w = win->attrib.width,
@@ -139,10 +153,13 @@ Fire::Fire(FireWindow win) : w(win) {
     int numParticles =
         MAX_PARTICLES *  w / float(sw) * h / float(sh);
 
+    std::cout << "INITIATING WITH " << numParticles << " " << numParticles / 384 << std::endl;
     ps = new FireParticleSystem(avg(tlx, brx), avg(tly, bry),
             w / float(sw), h / float(sh), numParticles);
 
     hook.action = std::bind(std::mem_fn(&Fire::step), this);
+    hook.type = EFFECT_WINDOW;
+    hook.win = win;
     core->addEffect(&hook);
     hook.enable();
 
@@ -156,7 +173,18 @@ Fire::Fire(FireWindow win) : w(win) {
                 this, std::placeholders::_1);
     core->connectSignal("move-window", &moveListener);
 
-    step();
+
+    if(animating_windows.find(this->w->id) != animating_windows.end()) {
+        ps->disable();
+    }
+    else {
+        animating_windows.insert(this->w->id);
+    }
+
+    unmapListener.action =
+        std::bind(std::mem_fn(&Fire::handleWindowUnmapped),
+                this, std::placeholders::_1);
+    core->connectSignal("unmap-window", &unmapListener);
 
     /* TODO : Check if necessary */
     core->setRedrawEverything(true);
@@ -166,17 +194,19 @@ Fire::Fire(FireWindow win) : w(win) {
 void Fire::step() {
     ps->simulate();
 
-    if(w->isVisible()) {
-        glFinish();
+    if(w->isVisible())
         ps->render();
-    }
+    OpenGL::useDefaultProgram();
 //
     if(!ps->check()) {
         w->transform.color[3] = 1;
 
         core->remHook(transparency.id);
-        core->remEffect(hook.id);
+        core->remEffect(hook.id, w);
         core->disconnectSignal("move-window", moveListener.id);
+        core->disconnectSignal("unmap-window", unmapListener.id);
+
+        animating_windows.erase(w->id);
         delete this;
     }
 }
@@ -207,6 +237,14 @@ void Fire::handleWindowMoved(SignalListenerData d) {
     OpenGL::useDefaultProgram();
 }
 
+void Fire::handleWindowUnmapped(SignalListenerData d) {
+    FireWindow ww = *(FireWindow*)d[0];
+    if(ww->id == w->id) {
+        ps->disable();
+        step();
+    }
+}
+
 struct RedrawOnceMoreHook {
     Hook h;
     RedrawOnceMoreHook() {
@@ -219,6 +257,7 @@ struct RedrawOnceMoreHook {
         core->damageRegion(core->getMaximisedRegion());
         core->remHook(h.id);
         delete this;
+        OpenGL::useDefaultProgram();
     }
 };
 

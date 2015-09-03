@@ -13,7 +13,7 @@ namespace {
 
     GLuint fullVAO, fullVBO;
 
-  // /*these functions are disabled for now
+   /*these functions are disabled for now
 
     const char *getStrSrc(GLenum src) {
         if(src == GL_DEBUG_SOURCE_API_ARB            )return "API_ARB        ";
@@ -36,10 +36,10 @@ namespace {
     }
 
     const char *getStrSeverity(GLenum severity) {
-        if( severity == GL_DEBUG_SEVERITY_HIGH_ARB  )return "HIGH";
-        if( severity == GL_DEBUG_SEVERITY_MEDIUM_ARB)return "MEDIUM";
-        if( severity == GL_DEBUG_SEVERITY_LOW_ARB   )return "LOW";
-        if( severity == GL_DEBUG_SEVERITY_NOTIFICATION) return "NOTIFICATION";
+        if(severity == GL_DEBUG_SEVERITY_HIGH_ARB  )return "HIGH";
+        if(severity == GL_DEBUG_SEVERITY_MEDIUM_ARB)return "MEDIUM";
+        if(severity == GL_DEBUG_SEVERITY_LOW_ARB   )return "LOW";
+        if(severity == GL_DEBUG_SEVERITY_NOTIFICATION) return "NOTIFICATION";
         return "UNKNOWN";
     }
 
@@ -47,6 +47,10 @@ namespace {
             GLuint id, GLenum severity,
             GLsizei len, const GLchar *msg,
             const void *dummy) {
+
+        // ignore notifications
+        if(severity == GL_DEBUG_SEVERITY_NOTIFICATION)
+            return;
 
         std::cout << "_______________________________________________\n";
         std::cout << "OGL debug: \n";
@@ -57,7 +61,7 @@ namespace {
         std::cout << "Msg: " << msg << std::endl;;
         std::cout << "_______________________________________________\n";
     }
-    //*/
+    */
 }
 
 bool OpenGL::transformed = false;
@@ -240,9 +244,9 @@ void useDefaultProgram() {
 
 void initOpenGL(const char *shaderSrcPath) {
 
-    glEnable(GL_DEBUG_OUTPUT);
-    glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-    glDebugMessageCallback(errorHandler, (void*)0);
+    //glEnable(GL_DEBUG_OUTPUT);
+    //glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+    //glDebugMessageCallback(errorHandler, (void*)0);
 
     GetTuple(sw, sh, core->getScreenSize());
     std::string tmp = shaderSrcPath;
