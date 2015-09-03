@@ -122,7 +122,30 @@ Window createNewWindowWithContext(Window parent) {
     GLXContext context = glXCreateContextAttribsARB (core->d,
             fbconfig[0], NULL, true, openGLVersion);
 
+    if(context == NULL) {
+        std::cout << "[EE] Failed to create OpenGL " <<
+            OpenGL::VersionMajor << "." << OpenGL::VersionMinor <<
+            " context. Trying again with OpenGL 3.3" << std::endl;
+
+        OpenGL::VersionMajor = OpenGL::VersionMinor = 3;
+
+        int openGLVersion[]= {
+            GLX_CONTEXT_MAJOR_VERSION_ARB, OpenGL::VersionMajor,
+            GLX_CONTEXT_MINOR_VERSION_ARB, OpenGL::VersionMinor,
+            GLX_CONTEXT_FLAGS_ARB, GLX_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB, None
+        };
+        context = glXCreateContextAttribsARB (core->d,
+                      fbconfig[0], NULL, true, openGLVersion);
+
+        if(context == NULL) {
+            std::cout << "[EE] Fatal: Failed to create OpenGL 3.3 context" <<
+                ". Terminating..." << std::endl;
+            std::exit(-1);
+        }
+    }
+
     glXMakeCurrent ( core->d, window, context );
+
     return window;
 }
 
