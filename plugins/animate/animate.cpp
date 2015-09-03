@@ -1,5 +1,9 @@
 #include "fade.hpp"
 #include "fire.hpp"
+#include <opengl.hpp>
+
+#define HAS_COMPUTE_SHADER (OpenGL::VersionMajor > 4 ||  \
+        (OpenGL::VersionMajor == 4 && OpenGL::VersionMinor >= 3))
 
 bool Animation::Step() {return false;}
 bool Animation::Run() {return true;}
@@ -41,6 +45,14 @@ class AnimatePlugin : public Plugin {
         void updateConfiguration() {
             fadeDuration = options["fade_duration"]->data.ival;
             map_animation = *options["map_animation"]->data.sval;
+            if(map_animation == "fire") {
+                if(!HAS_COMPUTE_SHADER) {
+                    std::cout << "[EE] OpenGL version below 4.3," <<
+                        " so no support for Fire effect" <<
+                        "defaulting to fade effect" << std::endl;
+                    map_animation = "fade";
+                }
+            }
         }
 
         void init() {
