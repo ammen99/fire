@@ -346,11 +346,21 @@ bool Core::activateOwner(Ownership owner) {
         return true;
     }
 
-    for(auto o : owners)
-        if(o && o->active)
-            if(o->compat.find(owner->name) == o->compat.end()
-                    && !o->compatAll)
+    for(auto act_owner : owners)
+        if(act_owner && act_owner->active) {
+            bool owner_in_act_owner_compat =
+                act_owner->compat.find(owner->name) != act_owner->compat.end();
+
+            bool act_owner_in_owner_compat =
+                owner->compat.find(act_owner->name) != owner->compat.end();
+
+
+            if(!owner_in_act_owner_compat && !act_owner->compatAll)
                 return false;
+
+            if(!act_owner_in_owner_compat && !owner->compatAll)
+                return false;
+        }
 
     owner->active = true;
     return true;
@@ -897,16 +907,15 @@ void Core::loop(){
         else {
 
             if(cntHooks) {
-                std::cout << "Running hooks" << std::endl;
                 /* copy running hooks,
                  * since a hook can remove itself
-                 * causing a crash */
+                 * causing a crash(same pattern is used
+                 * in other places such as effects, too) */
                 std::vector<Hook*> runningHooks;
                 for (auto hook : hooks)
                     if(hook->getState())
                         runningHooks.push_back(hook);
 
-                 std::cout << runningHooks.size() << std::endl;
                 for(auto hook : runningHooks)
                     hook->action();
             }

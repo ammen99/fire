@@ -78,6 +78,10 @@ class VSwitch : public Plugin {
         if(!ctx)
             return;
 
+        if(!core->activateOwner(owner))
+            return;
+        owner->grab();
+
         auto xev = ctx->xev.xkey;
 
         if(xev.keycode == switchWorkspaceBindings[0])
