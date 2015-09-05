@@ -744,22 +744,35 @@ void Core::handleEvent(XEvent xev){
 
             w->moveResize(x, y, width, height);
 
-            if(xev.xconfigurerequest.value_mask & CWStackMode) {
-                if(xev.xconfigurerequest.above) {
-                    auto below = findWindow(xev.xconfigurerequest.above);
-                    if(below) {
-                        if(xev.xconfigurerequest.detail == Above)
-                            wins->restackAbove(w, below);
-                        else
-                            wins->restackAbove(below, w);
-                    }
-                }
-                else {
-                    if(xev.xconfigurerequest.detail == Above) {
-                        focusWindow(w);
-                    }
-                }
+            /* note : pass XConfigureRequest to server, then wait for ConfigureNotify */
+
+            if(xev.xconfigurerequest.value_mask & CWStackMode &&
+               xev.xconfigurerequest.value_mask & CWSibling) {
+                XWindowChanges xwc;
+                xwc.sibling = xev.xconfigurerequest.above;
+                xwc.stack_mode = xev.xconfigurerequest.detail;
+                auto mask = CWStackMode | CWSibling;
+
+                XConfigureWindow(d, w->id, mask, &xwc);
             }
+
+//            if(xev.xconfigurerequest.value_mask & CWStackMode) {
+//                if(xev.xconfigurerequest.above) {
+//                    auto below = findWindow(xev.xconfigurerequest.above);
+//                    if(below) {
+//                        std::cout << "Calling from ConfigureRequest" << std::endl;
+//                        if(xev.xconfigurerequest.detail == Above)
+//                            wins->restackAbove(w, below);
+//                        else
+//                            wins->restackAbove(below, w);
+//                    }
+//                }
+//                else {
+//                    if(xev.xconfigurerequest.detail == Above) {
+//                        focusWindow(w);
+//                    }
+//                }
+//            }
             mapWindow(w, false);
 
         }
@@ -808,6 +821,7 @@ void Core::handleEvent(XEvent xev){
                     xev.xconfigure.y != w->attrib.y)
                 w->move(xev.xconfigure.x, xev.xconfigure.y, false);
 
+            std::cout << "Calling from ConfigureNotify" << std::endl;
             wins->restackAbove(w, findWindow(xev.xconfigure.above));
             break;
         }

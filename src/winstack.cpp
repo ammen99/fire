@@ -32,7 +32,6 @@ Layer WinStack::getTargetLayerForWindow(FireWindow win) {
         return LayerBelow;
 
     else if(win->type == WindowTypeDock ||
-            win->type == WindowTypeModal ||
             win->state & WindowStateAbove)
 
         return LayerAbove;
@@ -151,10 +150,10 @@ StackType WinStack::getStackType(FireWindow win1, FireWindow win2) {
     if(win1->id == win2->id)
         return StackTypeNoStacking;
 
-    if(isAncestorTo(win1, win2))
+    if(isAncestorTo(win1, win2) || isTransientInGroup(win2, win1))
         return StackTypeAncestor;
 
-    if(isAncestorTo(win2, win1))
+    if(isAncestorTo(win2, win1) || isTransientInGroup(win1, win2))
         return StackTypeChild;
 
     if(win1->layer == win2->layer)
@@ -196,9 +195,11 @@ FireWindow WinStack::getAncestor(FireWindow win) {
 
 void WinStack::restackAbove(FireWindow above, FireWindow below, bool rstTransients) {
 
+
     if(above == nullptr || below == nullptr)
         return;
 
+    std::cout << "Restacking " << above->id << " " << below->id << std::endl;
     auto pos = getIteratorPositionForWindow(below);
     auto val = getIteratorPositionForWindow(above);
 
@@ -208,8 +209,10 @@ void WinStack::restackAbove(FireWindow above, FireWindow below, bool rstTransien
 
     auto type = getStackType(above, below);
     if(type == StackTypeAncestor ||
-       type == StackTypeNoStacking)
+       type == StackTypeNoStacking) {
+        std::cout << "Failed restacking" << std::endl;
         return;
+    }
 
     layers[above->layer].erase(val);
     layers[below->layer].insert(pos, above);
@@ -273,6 +276,9 @@ void WinStack::focusWindow(FireWindow win) {
         return;
 
     activeWin = win;
+
+    std::cout << "Calling from FocusWindow" << std::endl;
+
 
     if(win->type == WindowTypeWidget) {
         if(win->transientFor)
