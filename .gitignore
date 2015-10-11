@@ -11,3 +11,8 @@ gui/.cvimrc
 *.pyc
 build
 save
+.local.vimrc
+fcm/.local.vimrc
+*.tags
+
+.ycm_extra_conf.py

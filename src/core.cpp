@@ -6,6 +6,8 @@
 #include <sstream>
 #include <memory>
 
+#define HI 1
+
 bool wmDetected;
 
 Core *core;
@@ -745,25 +747,54 @@ void Core::handleEvent(XEvent xev){
             w->moveResize(x, y, width, height);
 
             if(xev.xconfigurerequest.value_mask & CWStackMode) {
-                if(xev.xconfigurerequest.above) {
-                    auto below = findWindow(xev.xconfigurerequest.above);
-                    if(below) {
-                        if(xev.xconfigurerequest.detail == Above)
-                            wins->restackAbove(w, below);
-                        else
-                            wins->restackAbove(below, w);
-                    }
-                }
-                else {
-                    if(xev.xconfigurerequest.detail == Above) {
-                        focusWindow(w);
-                    }
-                }
+                //if(xev.xconfigurerequest.above) {
+
+                XWindowChanges xwc;
+                xwc.stack_mode = xev.xconfigurerequest.detail;
+                xwc.sibling = xev.xconfigurerequest.above;
+
+                XConfigureWindow(d, w->id,
+                        xev.xconfigurerequest.value_mask & (CWStackMode|CWSibling),
+                        &xwc);
+
+//                    auto below = findWindow(xev.xconfigurerequest.above);
+//                    if(below) {
+//                        if(xev.xconfigurerequest.detail == Above)
+//                            wins->restackAbove(w, below);
+//                        else
+//                            wins->restackAbove(below, w);
+//                    }
+//                }
+//                else {
+//                    if(xev.xconfigurerequest.detail == Above) {
+//                        focusWindow(w);
+//                    }
+//                }
             }
             mapWindow(w, false);
 
         }
 
+        case ConfigureNotify: {
+            if(xev.xconfigure.window == root) {
+                terminate = true, mainrestart = true;
+                break;
+            }
+
+            auto w = findWindow(xev.xconfigure.window);
+            if(!w) break;
+
+            if(xev.xconfigure.width != w->attrib.width ||
+                    xev.xconfigure.height != w->attrib.height)
+                w->resize(xev.xconfigure.width, xev.xconfigure.height, false);
+
+            if(xev.xconfigure.x != w->attrib.x ||
+                    xev.xconfigure.y != w->attrib.y)
+                w->move(xev.xconfigure.x, xev.xconfigure.y, false);
+
+            wins->restackAbove(w, findWindow(xev.xconfigure.above));
+            break;
+        }
         case PropertyNotify: {
             auto w = findWindow(xev.xproperty.window);
             if(!w) break;
@@ -788,27 +819,6 @@ void Core::handleEvent(XEvent xev){
             if(xev.xproperty.atom == wmClientLeaderAtom)
                 w->leader = WinUtil::getClientLeader(w->id),
                 wins->restackTransients(w);
-            break;
-        }
-
-        case ConfigureNotify: {
-            if(xev.xconfigure.window == root) {
-                terminate = true, mainrestart = true;
-                break;
-            }
-
-            auto w = findWindow(xev.xconfigure.window);
-            if(!w) break;
-
-            if(xev.xconfigure.width != w->attrib.width ||
-                    xev.xconfigure.height != w->attrib.height)
-                w->resize(xev.xconfigure.width, xev.xconfigure.height, false);
-
-            if(xev.xconfigure.x != w->attrib.x ||
-                    xev.xconfigure.y != w->attrib.y)
-                w->move(xev.xconfigure.x, xev.xconfigure.y, false);
-
-            wins->restackAbove(w, findWindow(xev.xconfigure.above));
             break;
         }
 

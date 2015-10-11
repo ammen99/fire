@@ -42,6 +42,6 @@ void main() {
         tp = vec3(tp[0] * scale, tp[1], tp[2] * scale);
     }
 
-    tePosition = tp;
     gl_Position = VP * vec4 (tp, 1.0);
+    tePosition = gl_Position.xyz;
 }

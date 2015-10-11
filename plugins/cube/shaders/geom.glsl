@@ -14,16 +14,32 @@ out vec3 colorFactor;
 
 #define AL 0.2    // ambient lighting
 #define DL (1-AL) // diffuse lighting
+#define DIFFUSE_FACTOR 0.2
+
+float getC(float dist, float maxd) {
+    float c01 = abs(dist) / maxd;
+    float pw = pow(100, c01) - 1;
+
+    return pw / 100;
+}
 
 void main() {
 
     if(light == 1) {
+        const vec3 eye = vec3(0, 2, 2);
+
+        vec3 tmp = (tePosition[0] + tePosition[1] + tePosition[2]) / 3.0;
+        float d = distance(tmp, eye);
+        float f = getC(d, 0.1);
+        d = d * f;
+
         vec3 A = tePosition[2] - tePosition[0];
         vec3 B = tePosition[1] - tePosition[0];
         vec3 N = normalize(NM * normalize(cross(A, B)));
         vec3 L = vec3(0, 0, 1.5);
+        float angle = abs(dot(N, L));
 
-        float df = clamp(abs(dot(N, L)), 0, 1);
+        float df = clamp(angle * DIFFUSE_FACTOR + d, 0, 1);
         colorFactor = vec3(AL, AL, AL) + df * vec3(DL, DL, DL);
     }
     else

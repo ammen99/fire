@@ -9,4 +9,4 @@ out vec3 vPos;
 void main() {
     vPos = position;
     uvpos = uvPosition;
-};
+}

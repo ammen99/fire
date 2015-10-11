@@ -273,46 +273,51 @@ void WinStack::focusWindow(FireWindow win) {
         return;
 
     activeWin = win;
-
-    if(win->type == WindowTypeWidget) {
-        if(win->transientFor)
-            restackAbove(win, win->transientFor),
-            win = win->transientFor;
-        else return;
-    }
-
-    if(win->type == WindowTypeModal) {
-        if(win->transientFor)
-            restackAbove(win, win->transientFor);
-        win->getInputFocus();
-        activeWin = win;
-        return;
-    }
-
-
-    /* window to be placed below the window being focused */
-    auto below = findTopmostStackingWindow(activeWin);
-
-    /* if we are already at the top of the stack
-     * just focus the window */
-    if(!below || below->id == activeWin->id){
-        /* ensure visibility */
-        if(layers[activeWin->layer].size() > 1)
-            restackAbove(activeWin, layers[activeWin->layer].front());
-        activeWin->getInputFocus();
-        return;
-    }
-
-    restackAbove(activeWin, below);
-
-    XWindowChanges xwc;
-    xwc.stack_mode = Above;
-    xwc.sibling = below->id;
-    XConfigureWindow(core->d, activeWin->id, CWSibling|CWStackMode, &xwc);
-
-    activeWin->getInputFocus();
-    below->addDamage();
-    activeWin->addDamage();
+    XRaiseWindow(core->d, win->id);
+    for(auto layer : layers)
+        for(auto w : layer)
+            if(isTransientInGroup(win, w))
+                XRaiseWindow(core->d, win->id);
+//
+//    if(win->type == WindowTypeWidget) {
+//        if(win->transientFor)
+//            restackAbove(win, win->transientFor),
+//            win = win->transientFor;
+//        else return;
+//    }
+//
+//    if(win->type == WindowTypeModal) {
+//        if(win->transientFor)
+//            restackAbove(win, win->transientFor);
+//        win->getInputFocus();
+//        activeWin = win;
+//        return;
+//    }
+//
+//
+//    /* window to be placed below the window being focused */
+//    auto below = findTopmostStackingWindow(activeWin);
+//
+//    /* if we are already at the top of the stack
+//     * just focus the window */
+//    if(!below || below->id == activeWin->id){
+//        /* ensure visibility */
+//        if(layers[activeWin->layer].size() > 1)
+//            restackAbove(activeWin, layers[activeWin->layer].front());
+//        activeWin->getInputFocus();
+//        return;
+//    }
+//
+//    restackAbove(activeWin, below);
+//
+//    XWindowChanges xwc;
+//    xwc.stack_mode = Above;
+//    xwc.sibling = below->id;
+//    XConfigureWindow(core->d, activeWin->id, CWSibling|CWStackMode, &xwc);
+//
+//    activeWin->getInputFocus();
+//    below->addDamage();
+//    activeWin->addDamage();
 }
 
 FireWindow WinStack::findWindowAtCursorPosition(int x, int y) {
