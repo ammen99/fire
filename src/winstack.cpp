@@ -16,6 +16,8 @@ void WinStack::addWindow(FireWindow win) {
         return;
     }
 
+    std::cout << "add win " << win->id << " " << win->attrib.x << " " << win->attrib.y << std::endl;
+
     win->layer = getTargetLayerForWindow(win);
 
     layers[win->layer].push_front(win);
@@ -46,9 +48,11 @@ void WinStack::recalcWindowLayer(FireWindow win) {
         return;
 
     auto it = getIteratorPositionForWindow(win);
+
     if(it != layers[win->layer].end())
         layers[win->layer].erase(it),
         layers[newLayer].push_front(win);
+
     win->layer = newLayer;
 }
 

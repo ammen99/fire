@@ -209,6 +209,7 @@ bool FireWin::isVisible() {
 
     if(attrib.c_class == InputOnly)
         return false;
+
     return true;
 }
 
@@ -254,6 +255,7 @@ int FireWin::setTexture() {
 }
 
 void FireWin::render() {
+
     OpenGL::color = transform.color;
     if(type == WindowTypeDesktop){
         OpenGL::renderTransformedTexture(texture, vao, vbo,

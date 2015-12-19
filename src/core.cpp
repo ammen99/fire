@@ -1199,6 +1199,7 @@ void Core::setBackground(const char *path) {
             backgrounds[i][j]->attrib.y = (i - vy) * height;
             backgrounds[i][j]->attrib.width  = width;
             backgrounds[i][j]->attrib.height = height;
+            backgrounds[i][j]->attrib.c_class = InputOutput;
 
             backgrounds[i][j]->type = WindowTypeDesktop;
             backgrounds[i][j]->updateVBO();

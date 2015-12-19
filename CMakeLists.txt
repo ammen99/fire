@@ -15,6 +15,9 @@ include_directories(include)
 file(GLOB SOURCES "src/*.cpp")
 add_executable(fireman ${SOURCES})
 
+# Options
+set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-O2")
+
 # Libraries
 target_link_libraries(fireman X11 Xext Xdamage Xfixes Xcomposite)
 target_link_libraries(fireman GL GLEW IL ILU ILUT)
