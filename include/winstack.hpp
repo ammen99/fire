@@ -42,6 +42,7 @@ class WinStack {
         void recalcWindowLayer(FireWindow win);
         Layer getTargetLayerForWindow(FireWindow win);
         FireWindow findWindow(Window win);
+
         FireWindow getTopmostToplevel();
         void renderWindows();
         void forEachWindow(WindowProc proc);
@@ -50,16 +51,18 @@ class WinStack {
         void checkRemoveClient(FireWindow win);
 
         void focusWindow(FireWindow win);
+
         /* rstr shows whether we have to restack transients also */
         void restackAbove(FireWindow above, FireWindow below, bool rstr = true);
         FireWindow findWindowAtCursorPosition(int x, int y);
 
         void restackTransients(FireWindow win);
-        FireWindow findTopmostStackingWindow(FireWindow win);
 
         FireWindow getAncestor(FireWindow win);
         bool isAncestorTo(FireWindow parent, FireWindow win);
         StackType getStackType(FireWindow win1, FireWindow win2);
         bool isTransientInGroup(FireWindow win, FireWindow parent);
+
+        void recurseFocus(FireWindow win);
 };
 #endif

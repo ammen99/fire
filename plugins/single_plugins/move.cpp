@@ -49,6 +49,7 @@ class Move : public Plugin {
         }
 
         void Initiate(Context *ctx) {
+            std::cout << "init move" << std::endl;
             auto xev = ctx->xev.xbutton;
             auto w = core->getWindowAtPoint(xev.x_root, xev.y_root);
 

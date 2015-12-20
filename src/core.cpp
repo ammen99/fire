@@ -339,7 +339,7 @@ void Core::regOwner(Ownership owner) {
 bool Core::activateOwner(Ownership owner) {
 
     if(!owner) {
-        std::cout << "Error detected ?? calling with nullptr!!1" << std::endl;
+        std::cout << "[EE] Bug: activateOwner() called with nullptr!" << std::endl;
         return false;
     }
 
@@ -413,7 +413,6 @@ void Core::setDefaultRenderer() {
     if(!render.replaced)
         return;
 
-    std::cout << "using default renderer" << std::endl;
     render.replaced = false;
 
     render.currentRenderer =
@@ -470,12 +469,9 @@ void Core::addDefaultSignals() {
 void Core::addWindow(XCreateWindowEvent xev) {
     FireWindow w = std::make_shared<FireWin>(xev.window, true);
 
-    if(xev.parent != root && xev.parent != 0 && !w->transientFor)
-        w->transientFor = findWindow(xev.parent);
-
     wins->addWindow(w);
-    if(w->type != WindowTypeWidget)
-        wins->focusWindow(w);
+    //if(w->type != WindowTypeWidget)
+    //    wins->focusWindow(w);
 }
 
 void Core::addWindow(Window id) {
@@ -494,7 +490,7 @@ FireWindow Core::findWindow(Window win) {
 }
 
 FireWindow Core::getActiveWindow() {
-    return wins->getTopmostToplevel();
+    return wins->activeWin;
 }
 
 void Core::mapWindow(FireWindow win, bool xmap) {
@@ -508,8 +504,10 @@ void Core::mapWindow(FireWindow win, bool xmap) {
          * other workspace which might not exist */
         int x = win->attrib.x, y = win->attrib.y;
         if(WinUtil::constrainNewWindowPosition(x, y))
-            win->move(x, y, true);
+            std::cout << "wring initial pos" << std::endl, win->move(x, y, true);
     }
+
+    bool has_been_mapped_before = (win->attrib.map_state == IsViewable);
 
     win->syncAttrib();
     win->addDamage();
@@ -523,9 +521,14 @@ void Core::mapWindow(FireWindow win, bool xmap) {
         wins->restackTransients(win->transientFor);
     wins->checkAddClient(win);
 
-    SignalListenerData v;
-    v.push_back((void*)&win);
-    triggerSignal("map-window", v);
+    /* some clients generate *false* mapping events,
+     * so don't trigger listeners if so */
+
+    if(!has_been_mapped_before){
+        SignalListenerData v;
+        v.push_back((void*)&win);
+        triggerSignal("map-window", v);
+    }
 }
 
 void Core::unmapWindow(FireWindow win) {
@@ -572,7 +575,9 @@ void Core::closeWindow(FireWindow win) {
     } else
         XKillClient(d, win->id);
 
-    wins->focusWindow(wins->getTopmostToplevel());
+    //TODO: check if substitution works 
+    wins->getTopmostToplevel()->getInputFocus();
+    //wins->focusWindow(wins->getTopmostToplevel());
 }
 
 void Core::removeWindow(FireWindow win) {
@@ -641,13 +646,13 @@ void Core::handleEvent(XEvent xev){
         }
 
         case CreateNotify: {
-                        if (xev.xcreatewindow.window == overlay)
+            std::cout << "Create notify" << std::endl;
+            if (xev.xcreatewindow.window == overlay)
                 break;
 
             if(xev.xcreatewindow.window == outputwin)
                 break;
 
-            std::cout << "Create notify" << std::endl;
             auto it = findWindow(xev.xcreatewindow.window);
 
             /* guard against (almost) indiscoverable bugs,
@@ -657,6 +662,7 @@ void Core::handleEvent(XEvent xev){
                 wins->removeWindow(it);
             }
 
+            std::cout << xev.xcreatewindow.window << std::endl;
             addWindow(xev.xcreatewindow);
             break;
         }
@@ -670,11 +676,13 @@ void Core::handleEvent(XEvent xev){
         }
         case MapRequest: {
             auto w = wins->findWindow(xev.xmaprequest.window);
+            std::cout << "map req" << xev.xmaprequest.window << std::endl;
             if(w) mapWindow(w);
             break;
         }
         case MapNotify: {
             auto w = findWindow(xev.xmap.window);
+            std::cout << "map notify" << xev.xmap.window << std::endl;
             if(w) mapWindow(w, false),
                   wins->focusWindow(w);
             break;
@@ -784,6 +792,7 @@ void Core::handleEvent(XEvent xev){
             auto w = findWindow(xev.xconfigure.window);
             if(!w) break;
 
+
             if(xev.xconfigure.width != w->attrib.width ||
                     xev.xconfigure.height != w->attrib.height)
                 w->resize(xev.xconfigure.width, xev.xconfigure.height, false);
@@ -826,6 +835,7 @@ void Core::handleEvent(XEvent xev){
             if (xev.xclient.message_type == activeWinAtom) {
                 auto w = findWindow(xev.xclient.window);
                 if(!w) break;
+                std::cout << "client message" << std::endl;
                 wins->focusWindow(w);
             }
             break;
@@ -841,7 +851,7 @@ void Core::handleEvent(XEvent xev){
         case CirculateRequest:
         case CirculateNotify:
         case ReparentNotify:
-                            std::cout << "one of skipped events" << std::endl;
+                            //std::cout << "one of skipped events" << std::endl;
             break;
 
         default:
@@ -879,6 +889,8 @@ void Core::handleEvent(XEvent xev){
 
 void Core::loop(){
 
+    /* we cannot receive new bindings, so restart.
+     * Note that this is an *almost impossible* case, since uint is big enough */
     if(nextID == (uint)(-1)) {
         mainrestart = true, terminate = true;
         return;
@@ -1012,6 +1024,7 @@ void Core::switchWorkspace(std::tuple<int, int> nPos) {
     vy = ny;
 
     auto ws = getWindowsOnViewport(this->getWorkspace());
+    std::cout << "ws change" << std::endl;
     if(ws.size() != 0)
         wins->focusWindow(ws[0]);
 }
@@ -1117,6 +1130,7 @@ REGION Core::getREGIONFromRect(int tlx, int tly, int brx, int bry) {
     r.extents.y1 = r.rects[0].y1 = tly;
     r.extents.x2 = r.rects[0].x2 = brx;
     r.extents.y2 = r.rects[0].y2 = bry;
+
     return r;
 }
 

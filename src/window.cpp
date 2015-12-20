@@ -147,22 +147,18 @@ void FireWin::updateRegion() {
 }
 
 void FireWin::updateState() {
-    std::cout << "UPdate state " << id << std::endl;
     GetTuple(sw, sh, core->getScreenSize());
     if(state & WindowStateMaxH) {
-        std::cout << "maxh" << std::endl;
         this->resize(sw, attrib.height, true);
         this->move(0, attrib.y, true);
     }
 
     if(state & WindowStateMaxV) {
-        std::cout << "maxv" << std::endl;
         this->resize(attrib.width, sh, true);
         this->move(attrib.x, 0, true);
     }
 
     if(state & WindowStateFullscreen){
-        std::cout  << "fullscreen" << std::endl;
         resize(sw, sh, true);
         move(0, 0, true);
     }
@@ -237,7 +233,7 @@ int FireWin::setTexture() {
     }
 
     if(!damaged)  {
-        glBindTexture(GL_TEXTURE_2D, texture);
+        //glBindTexture(GL_TEXTURE_2D, texture);
         XUngrabServer(core->d);
         return 1;
     }
@@ -250,6 +246,7 @@ int FireWin::setTexture() {
     texture = GLXUtils::textureFromPixmap(pixmap,
             attrib.width, attrib.height, &shared);
 
+    damaged = false;
     XUngrabServer(core->d);
     return 1;
 }
@@ -517,8 +514,7 @@ namespace WinUtil {
                 &n, &left, &data);
 
         if(result == Success && data) {
-            if(n)
-                std::memcpy (&a, data, sizeof (Atom));
+            if(n) std::memcpy (&a, data, sizeof (Atom));
             XFree((void*) data);
         }
         else return WindowTypeUnknown;
@@ -606,7 +602,6 @@ namespace WinUtil {
 
             XFree((void*)data);
         }
-        std::cout << "Returning state" << state << std::endl;
         return state;
     }
 

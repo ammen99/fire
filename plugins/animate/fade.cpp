@@ -100,7 +100,8 @@ bool Fade<FadeOut>::Step() {
             win->norender = true;
             XFreePixmap(core->d, win->pixmap);
 
-            core->focusWindow(core->getActiveWindow());
+            std::cout << "fade focus" << std::endl;
+            //core->focusWindow(core->getActiveWindow());
 
             /* there's been DestroyNotify, delete window */
             if(win->destroyed)

@@ -15,10 +15,10 @@ void WinStack::addWindow(FireWindow win) {
             win->type != WindowTypeDesktop) {
         return;
     }
-
-    std::cout << "add win " << win->id << " " << win->attrib.x << " " << win->attrib.y << std::endl;
-
     win->layer = getTargetLayerForWindow(win);
+
+    std::cout << "add win " << win->id << " " << win->attrib.x << " " << win->attrib.y << " " << win->layer << std::endl;
+
 
     layers[win->layer].push_front(win);
     restackTransients(win);
@@ -33,8 +33,7 @@ Layer WinStack::getTargetLayerForWindow(FireWindow win) {
            win->state & WindowStateBelow)
         return LayerBelow;
 
-    else if(win->type == WindowTypeDock ||
-            win->type == WindowTypeModal ||
+    else if(win->type == WindowTypeDock || 
             win->state & WindowStateAbove)
 
         return LayerAbove;
@@ -44,6 +43,7 @@ Layer WinStack::getTargetLayerForWindow(FireWindow win) {
 
 void WinStack::recalcWindowLayer(FireWindow win) {
     auto newLayer = getTargetLayerForWindow(win);
+    std::cout << "recalc layer " << win->id << " " << win->layer << std::endl;
     if(win->layer == newLayer)
         return;
 
@@ -129,18 +129,13 @@ void WinStack::removeWindow(FireWindow win) {
 
 
 bool WinStack::recurseIsAncestor(FireWindow parent, FireWindow win) {
+    if(parent == nullptr || win == nullptr)
+        return false;
+
     if(parent->id == win->id)
         return true;
 
-    bool mask = false;
-
-    if(win->transientFor)
-        mask |= recurseIsAncestor(parent, win->transientFor);
-
-    if(win->leader)
-        mask |= recurseIsAncestor(parent, win->leader);
-
-    return mask;
+    return recurseIsAncestor(parent, win->transientFor);
 }
 
 bool WinStack::isAncestorTo(FireWindow parent, FireWindow win) {
@@ -169,9 +164,7 @@ StackType WinStack::getStackType(FireWindow win1, FireWindow win2) {
 
 
 FireWindow WinStack::getAncestor(FireWindow win) {
-
-    if(!win)
-        return nullptr;
+    if(!win) return nullptr;
 
     if(win->type == WindowTypeNormal)
         return win;
@@ -181,9 +174,6 @@ FireWindow WinStack::getAncestor(FireWindow win) {
 
     if(win->transientFor)
         w1 = getAncestor(win->transientFor);
-
-    if(win->leader)
-        w2 = getAncestor(win->leader);
 
     if(w1 == nullptr && w2 == nullptr)
         return win;
@@ -199,6 +189,7 @@ FireWindow WinStack::getAncestor(FireWindow win) {
 }
 
 void WinStack::restackAbove(FireWindow above, FireWindow below, bool rstTransients) {
+    std::cout << "RST" << std::endl;
 
     if(above == nullptr || below == nullptr)
         return;
@@ -211,6 +202,8 @@ void WinStack::restackAbove(FireWindow above, FireWindow below, bool rstTransien
         return;                                // windows we do not own
 
     auto type = getStackType(above, below);
+    if(above->id % 100 + below->id % 100 == 36 + 31)
+    std::cout << "rst " << type << " " << above->id << " " << below->id << std::endl;
     if(type == StackTypeAncestor ||
        type == StackTypeNoStacking)
         return;
@@ -227,25 +220,11 @@ void WinStack::restackAbove(FireWindow above, FireWindow below, bool rstTransien
     below->addDamage();
 }
 
-/* returns the topmost window that we can restack above */
-FireWindow WinStack::findTopmostStackingWindow(FireWindow win) {
-    for(int layer = win->layer; layer < layers.size(); layer++) {
-        for(auto w : layers[layer]) {
-            if(win->id == w->id || win->type == WindowTypeDesktop)
-                return nullptr;
-
-            if(win->isVisible() && !isAncestorTo(win, w) &&
-                    w->type != WindowTypeWidget &&
-                    w->type != WindowTypeModal &&
-                    w->type != WindowTypeDock)
-                return w;
-        }
-    }
-    return nullptr;
-}
-
 bool WinStack::isTransientInGroup(FireWindow transient, FireWindow parent) {
     if(parent->leader != transient->leader && transient->leader != parent)
+        return false;
+
+    if(parent->type != WindowTypeNormal && parent->type != WindowTypeUnknown)
         return false;
 
     if(transient->type == WindowTypeWidget ||
@@ -256,6 +235,7 @@ bool WinStack::isTransientInGroup(FireWindow transient, FireWindow parent) {
 }
 
 void WinStack::restackTransients(FireWindow win) {
+    return;
 
     if(win == nullptr)
         return;
@@ -269,19 +249,51 @@ void WinStack::restackTransients(FireWindow win) {
         restackAbove(w, win, false);
 }
 
+void WinStack::recurseFocus(FireWindow win) {
+    if(!win) return;
+
+//    if(win->transientFor)
+//        recurseFocus(win->transientFor);
+//    else 
+//        for(const auto& layer : layers) {
+//            auto it = layer.rbegin();
+//
+//            while(it != layer.rend()) {
+//                auto w = *it;
+//                if(isTransientInGroup(win, w) || isAncestorTo(w, win))
+//                    recurseFocus(w);
+//                ++it;
+//            }
+//        }
+//
+    std::cout << "raise " << win->id << std::endl;
+    XRaiseWindow(core->d, win->id);
+    win->getInputFocus();
+
+//    for(auto layer : layers) {
+//        auto it = layer.rbegin();
+//        while(it != layer.rend()) {
+//            auto w = *it;
+//            if(isTransientInGroup(w, win) || isAncestorTo(win, w)) {
+//                std::cout << "raise " << win->id << std::endl;
+//                XRaiseWindow(core->d, w->id);
+//            }
+//            ++it;
+//        }
+//    }
+}
+
 void WinStack::focusWindow(FireWindow win) {
     if(win == nullptr || win->type == WindowTypeDesktop)
         return;
 
+    std::cout << "focus win" << win->id << std::endl;
     if(win->attrib.c_class == InputOnly)
         return;
 
     activeWin = win;
-    XRaiseWindow(core->d, win->id);
-    for(auto layer : layers)
-        for(auto w : layer)
-            if(isTransientInGroup(win, w))
-                XRaiseWindow(core->d, win->id);
+
+    recurseFocus(win);
 //
 //    if(win->type == WindowTypeWidget) {
 //        if(win->transientFor)
