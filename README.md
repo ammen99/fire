@@ -7,7 +7,7 @@ Fire depends on Xlib, OpenGL(at least 3.3, 4.0 needed for cube deformation) and 
 
 # Installation
 You need the following libraries(for Fedora):
-    sudo dnf install libX11-devel libXext-devel DevIL-devel libGLEW libXdamage-devel libXfixes-devel libXcomposite-devel libGL-devel libXmu-devel glm-devel
+    sudo dnf install libX11-devel libXext-devel DevIL-devel libGLEW libXdamage-devel libXfixes-devel libXcomposite-devel libGL-devel libXmu-devel glm-devel dmenu
 
 Then just clone the repo and run install.sh:
 
