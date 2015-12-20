@@ -54,7 +54,7 @@ void WinStack::recalcWindowLayer(FireWindow win) {
 StackIterator WinStack::getIteratorPositionForWindow(FireWindow win) {
     return std::find_if(layers[win->layer].begin(), layers[win->layer].end(),
             [win] (FireWindow w) {
-                return w->id == win->id;
+                return w && w->id == win->id;
             });
 }
 
@@ -194,12 +194,9 @@ FireWindow WinStack::getAncestor(FireWindow win) {
 }
 
 void WinStack::restackAbove(FireWindow above, FireWindow below, bool rstTransients) {
-
-
     if(above == nullptr || below == nullptr)
         return;
 
-    std::cout << "Restacking " << above->id << " " << below->id << std::endl;
     auto pos = getIteratorPositionForWindow(below);
     auto val = getIteratorPositionForWindow(above);
 
@@ -210,9 +207,11 @@ void WinStack::restackAbove(FireWindow above, FireWindow below, bool rstTransien
     auto type = getStackType(above, below);
     if(type == StackTypeAncestor ||
        type == StackTypeNoStacking) {
-        std::cout << "Failed restacking" << std::endl;
         return;
     }
+
+    if(below->id == activeWin->id)
+        activeWin = above;
 
     layers[above->layer].erase(val);
     layers[below->layer].insert(pos, above);
@@ -277,22 +276,27 @@ void WinStack::focusWindow(FireWindow win) {
 
     activeWin = win;
 
-    std::cout << "Calling from FocusWindow" << std::endl;
-
-
     if(win->type == WindowTypeWidget) {
+        /* ensure we are on the top of all siblings */
+        if(win->id != layers[win->layer].front()->id)
+            restackAbove(win, layers[win->layer].front());
+
         if(win->transientFor)
-            restackAbove(win, win->transientFor),
             win = win->transientFor;
+
         else return;
     }
 
     if(win->type == WindowTypeModal) {
-        if(win->transientFor)
-            restackAbove(win, win->transientFor);
+        if(win->id != layers[win->layer].front()->id)
+            restackAbove(win, layers[win->layer].front());
+
         win->getInputFocus();
-        activeWin = win;
-        return;
+
+        if(win->transientFor)
+            win = win->transientFor;
+
+        else return;
     }
 
 

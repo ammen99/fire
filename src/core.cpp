@@ -411,7 +411,6 @@ void Core::setDefaultRenderer() {
     if(!render.replaced)
         return;
 
-    std::cout << "using default renderer" << std::endl;
     render.replaced = false;
 
     render.currentRenderer =
@@ -645,7 +644,6 @@ void Core::handleEvent(XEvent xev){
             if(xev.xcreatewindow.window == outputwin)
                 break;
 
-            std::cout << "Create notify" << std::endl;
             auto it = findWindow(xev.xcreatewindow.window);
 
             /* guard against (almost) indiscoverable bugs,
@@ -821,7 +819,6 @@ void Core::handleEvent(XEvent xev){
                     xev.xconfigure.y != w->attrib.y)
                 w->move(xev.xconfigure.x, xev.xconfigure.y, false);
 
-            std::cout << "Calling from ConfigureNotify" << std::endl;
             wins->restackAbove(w, findWindow(xev.xconfigure.above));
             break;
         }
@@ -845,7 +842,6 @@ void Core::handleEvent(XEvent xev){
         case CirculateRequest:
         case CirculateNotify:
         case ReparentNotify:
-                            std::cout << "one of skipped events" << std::endl;
             break;
 
         default:
@@ -873,8 +869,6 @@ void Core::handleEvent(XEvent xev){
                 damageREGION(damagedArea);
             break;
             }
-            else
-                std::cout << "Another event(skipped)\n";
     }
 }
 #define Second 1000000

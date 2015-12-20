@@ -1,5 +1,5 @@
 [core]
-pln_background = /tarball/backgrounds/last.jpg
+pln_background = /tarball/backgrounds/last1.jpg
 pln_pluginpath = /usr/local/lib/fireman
 pln_plugins = animate cube move resize vswitch grid expo switcher
 pln_rrate = 60

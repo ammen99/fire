@@ -147,24 +147,28 @@ void FireWin::updateRegion() {
 }
 
 void FireWin::updateState() {
-    std::cout << "UPdate state " << id << std::endl;
     GetTuple(sw, sh, core->getScreenSize());
     if(state & WindowStateMaxH) {
-        std::cout << "maxh" << std::endl;
-        this->resize(sw, attrib.height, true);
-        this->move(0, attrib.y, true);
+        if(attrib.width != sw)
+            this->resize(sw, attrib.height, true);
+
+        if(attrib.x != 0)
+            this->move(0, attrib.y, true);
     }
 
     if(state & WindowStateMaxV) {
-        std::cout << "maxv" << std::endl;
-        this->resize(attrib.width, sh, true);
-        this->move(attrib.x, 0, true);
+        if(attrib.height != sh)
+            this->resize(attrib.width, sh, true);
+
+        if(attrib.y != 0)
+            this->move(attrib.x, 0, true);
     }
 
     if(state & WindowStateFullscreen){
-        std::cout  << "fullscreen" << std::endl;
-        resize(sw, sh, true);
-        move(0, 0, true);
+        if(attrib.width != sw || attrib.height != sh)
+            resize(sw, sh, true);
+        if(attrib.x != 0 || attrib.y != 0)
+            move(0, 0, true);
     }
 }
 
@@ -329,6 +333,8 @@ void FireWin::move(int x, int y, bool configure) {
 }
 
 void FireWin::resize(int w, int h, bool configure) {
+
+    if(w <= 0 || h <= 0) return;
 
     bool existPreviousRegion = !(region == nullptr);
     Region prevRegion = nullptr;
