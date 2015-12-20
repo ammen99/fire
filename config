@@ -1,37 +1,40 @@
+[animate]
+pln_duration = 150
+pln_map_animation = fire
+
+[command]
+key_01_binding = <Alt>r
+pln_01_command = dmenu_run
+key_02_binding = XF86AudioMute
+pln_02_command = amixer -q sset Master toggle
+key_03_binding = XF86AudioRaiseVolume
+pln_03_command = amixer -q sset Master 2%+
+key_04_binding = XF86AudioLowerVolume
+pln_04_command = amixer -q sset Master 2%-
+
 [core]
-pln_background = /tarball/backgrounds/last1.jpg
+pln_background = /tarball/backgrounds/last.jpg
 pln_pluginpath = /usr/local/lib/fireman
-pln_plugins = animate cube move resize vswitch grid expo switcher
+pln_plugins = command animate cube move resize vswitch grid expo switcher
 pln_rrate = 60
 pln_shadersrc = /usr/local/share/fireman/shaders
 pln_vheight = 3
 pln_vwidth = 3
 
 [cube]
+but_activate = <Control><Alt>B1
+clr_bg = 191 193 204
+pln_deform = 1
+pln_light = 1
 pln_velocity = 0.01
 pln_vvelocity = 0.01
 pln_zvelocity = 0.03
-pln_deform = 1
-pln_light = 1
-clr_bg = 100 100 255
-but_activate = <Control><Alt>B1
 
 [expo]
-pln_duration = 300
 key_activate = <Win>e
+pln_duration = 300
 
 [grid]
-pln_duration = 150
-
-[switcher]
-pln_duration = 100
-pln_init = 100
-key_activate = <Alt>Tab
-
-[vswitch]
-pln_duration = 250
-
-[animate]
 pln_duration = 150
 
 [move]
@@ -39,3 +42,12 @@ but_activate = <Alt>B1
 
 [resize]
 but_activate = <Win>B1
+
+[switcher]
+key_activate = <Alt>Tab
+pln_duration = 100
+pln_init = 100
+
+[vswitch]
+pln_duration = 250
+
