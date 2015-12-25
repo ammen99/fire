@@ -1,6 +1,7 @@
 #include <commonincludes.hpp>
 #include <opengl.hpp>
 #include <winstack.hpp>
+#include <core.hpp>
 #include <wm.hpp>
 
 #include <sstream>
@@ -37,103 +38,8 @@ Core::Core(int vx, int vy) {
     this->vy = vy;
 }
 
-void Core::enableInputPass(Window win) {
-    XserverRegion region;
-    region = XFixesCreateRegion(d, NULL, 0);
-    XFixesSetWindowShapeRegion(d, win, ShapeBounding, 0, 0, 0);
-    XFixesSetWindowShapeRegion(d, win, ShapeInput, 0, 0, region);
-    XFixesDestroyRegion(d, region);
-}
-
-void Core::addExistingWindows() {
-    Window dummy1, dummy2;
-    uint size;
-    Window  *children;
-
-    XQueryTree(d, root, &dummy1, &dummy2, &children, &size);
-
-    if(size == 0)
-        return;
-
-    for(int i = size - 1; i >= 0; i--)
-        if(children[i] != overlay   &&
-           children[i] != outputwin &&
-           children[i] != s0owner   &&
-           children[i] != root       )
-
-            addWindow(children[i]);
-
-    for(int i = size - 1; i >= 0; i--) {
-        auto w = findWindow(children[i]);
-        if(w) w->initialMapping = false,
-              mapWindow(w, false);
-    }
-}
 
 void Core::init() {
-    d = XOpenDisplay(NULL);
-
-    if ( d == nullptr )
-        std::cout << "Failed to open display!" << std::endl;
-
-    XSynchronize(d, 1);
-
-    root = DefaultRootWindow(d);
-    fd.fd = ConnectionNumber(d);
-    fd.events = POLLIN;
-
-    XSelectInput(d, root, SubstructureNotifyMask);
-
-    XWindowAttributes xwa;
-    XGetWindowAttributes(d, root, &xwa);
-    width = xwa.width;
-    height = xwa.height;
-
-    XSetErrorHandler(&Core::onOtherWmDetected);
-
-    XCompositeRedirectSubwindows(d, root, CompositeRedirectManual);
-    XSelectInput (d, root,
-             SubstructureRedirectMask | SubstructureNotifyMask   |
-             StructureNotifyMask      | PropertyChangeMask       |
-             LeaveWindowMask          | EnterWindowMask          |
-             KeyPressMask             | KeyReleaseMask           |
-             ButtonPressMask          | ButtonReleaseMask        |
-             FocusChangeMask          | ExposureMask             );
-
-    if(wmDetected)
-       std::cout << "Another WM already running!\n", std::exit(-1);
-
-    wins = new WinStack();
-
-    using namespace std::placeholders;
-    this->getWindowAtPoint =
-        std::bind(std::mem_fn(&WinStack::findWindowAtCursorPosition),
-                wins, _1, _2);
-
-    XSetErrorHandler(&Core::onXError);
-    overlay = XCompositeGetOverlayWindow(d, root);
-    outputwin = GLXUtils::createNewWindowWithContext(overlay);
-
-    enableInputPass(overlay);
-    enableInputPass(outputwin);
-
-    int dummy;
-    XDamageQueryExtension(d, &damage, &dummy);
-
-    cntHooks = 0;
-    output = getMaximisedRegion();
-    // enable compositing to be recognized by other programs
-    Atom a;
-    s0owner = XCreateSimpleWindow (d, root, 0, 0, 1, 1, 0, None, None);
-    Xutf8SetWMProperties (d, s0owner,
-            "xcompmgr", "xcompmgr",
-            NULL, 0, NULL, NULL, NULL);
-
-    a = XInternAtom (d, "_NET_WM_CM_S0", False);
-    XSetSelectionOwner (d, a, s0owner, 0);
-
-    run("setxkbmap -model pc104 -layout us,bg -variant ,phonetic -option grp:alt_shift_toggle");
-
 
     initDefaultPlugins();
 
@@ -149,8 +55,6 @@ void Core::init() {
 
     loadDynamicPlugins();
 
-    WinUtil::init();
-    GLXUtils::initGLX();
     OpenGL::initOpenGL((*plug->options["shadersrc"]->data.sval).c_str());
     core->setBackground((*plug->options["background"]->data.sval).c_str());
 
@@ -178,11 +82,6 @@ Core::~Core(){
             dlclose(p->handle);
         p.reset();
     }
-
-    XDestroyWindow(core->d, outputwin);
-    XDestroyWindow(core->d, s0owner);
-
-    XCompositeReleaseOverlayWindow(d, overlay);
 }
 
 void Core::run(const char *command) {

@@ -1,7 +1,7 @@
 #ifndef CONFIG_H
 #define CONFIG_H
-#include "./commonincludes.hpp"
-#include "./plugin.hpp"
+#include "commonincludes.hpp"
+#include "plugin.hpp"
 
 enum InternalOptionType { IOTPlain, IOTKey, IOTButton, IOTColor };
 class Config {

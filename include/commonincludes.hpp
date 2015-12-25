@@ -13,6 +13,10 @@
 #include <X11/Xmu/WinUtil.h>
 #include <X11/Xregion.h>
 
+#include <wayland-server.h>
+#include <systemd/sd-login.h>
+#include <dbus-1.0/dbus/dbus.h>
+
 
 #include <sys/time.h>
 #include <poll.h>

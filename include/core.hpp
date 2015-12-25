@@ -5,14 +5,13 @@
 #include "window.hpp"
 #include "glx.hpp"
 #include "config.hpp"
+#include "plugin.hpp"
 
 class WinStack;
 
 void print_trace();
 
 struct Context{
-    XEvent xev;
-    Context(XEvent xev);
 };
 
 enum BindingType {
@@ -88,11 +87,11 @@ class Core {
     friend struct Hook;
 
     private:
+
         WinStack *wins;
         pollfd fd;
         int cntHooks;
         int damage;
-        Window s0owner;
 
         int mousex, mousey; // pointer x, y
         int width, height;
@@ -115,7 +114,7 @@ class Core {
         void addDefaultSignals();
 
 
-        void handleEvent(XEvent xev);
+        void handleEvent();
         void wait(int timeout);
         void enableInputPass(Window win);
         void addExistingWindows(); // adds windows created before
@@ -134,11 +133,29 @@ class Core {
             bool replaced = true;
         } render;
 
+        struct {
+            char *seat;
+            char *sid;
+            DBusConnection *dbus;
+
+            wl_event_source *dbus_ctx;
+
+            std::string spaath;
+            int vt;
+
+            struct {
+                DBusPendingCall *active;
+            } pending;
+        } logind;
+
     public:
+
 
         /* warning!!!
          * no plugin should change these! */
-        Display *d;
+        wl_display *d;
+
+
         Window root;
         Window outputwin;
         Window overlay;
@@ -151,6 +168,9 @@ class Core {
         ~Core();
         void init();
         void loop();
+        void exit();
+        void set_active(bool active);
+        wl_event_loop * get_event_loop();
 
         static int onXError (Display* d, XErrorEvent* xev);
         static int onOtherWmDetected(Display *d, XErrorEvent *xev);
