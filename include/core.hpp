@@ -81,6 +81,20 @@ struct SignalListener {
 
 #define GetTuple(x,y,t) auto x = std::get<0>(t); \
                         auto y = std::get<1>(t)
+
+struct fire_system_signals {                                                                                                                                                                 
+    struct wl_signal terminate; // data: null (wlc.c)                                                                                                                                        
+    struct wl_signal activate;  // data: struct wlc_activate_event (wlc/wlc.c, compositor/seat/seat.c)                                                                                       
+    struct wl_signal compositor;// data: null (compositor.c)                                                                                                                                 
+    struct wl_signal focus;     // data: struct wlc_focus_event (view/view.c, output/output.c)                                                                                               
+    struct wl_signal surface;   // data: struct wlc_surface_event (compositor/compositor.c, shell/shell.c, shell/xdg-shell.c, resources/types/surface.c)                                     
+    struct wl_signal input;     // data: struct wlc_input_event (session/udev.c, backend/x11.c)                                                                                              
+    struct wl_signal output;    // data: struct wlc_output_event (backend/x11.c, backend/drm.c, session/udev.c)                                                                              
+    struct wl_signal render;    // data: struct wlc_render (compositor/output.c)                                                                                                             
+    struct wl_signal xwayland;  // data: bool <false/true> (xwayland/xwayland.c)
+};
+
+
 class Core {
 
     // used to optimize idle time by counting hooks(cntHooks)
@@ -139,7 +153,6 @@ class Core {
             DBusConnection *dbus;
 
             wl_event_source *dbus_ctx;
-
             std::string spaath;
             int vt;
 
@@ -154,6 +167,7 @@ class Core {
         /* warning!!!
          * no plugin should change these! */
         wl_display *d;
+        fire_system_signals sig;
 
 
         Window root;
@@ -171,6 +185,9 @@ class Core {
         void exit();
         void set_active(bool active);
         wl_event_loop * get_event_loop();
+
+        void input_created(libinput_device *dev);
+        void input_destroyed(libinput_device *dev);
 
         static int onXError (Display* d, XErrorEvent* xev);
         static int onOtherWmDetected(Display *d, XErrorEvent *xev);

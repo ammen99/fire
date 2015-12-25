@@ -17,6 +17,8 @@
 #include <systemd/sd-login.h>
 #include <dbus-1.0/dbus/dbus.h>
 
+#include <libinput.h>
+
 
 #include <sys/time.h>
 #include <poll.h>
