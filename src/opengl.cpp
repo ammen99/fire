@@ -1,9 +1,56 @@
 #include <opengl.hpp>
-
-void load_opengl() {
-}
+OpenGL::_API OpenGL::API;
 
 namespace {
+
+    namespace {
+        void *handle;
+    }
+
+#define NAME(x) gl ## x
+#define load(x) \
+    OpenGL::API. gl ## x = (decltype(OpenGL::API. gl ## x))dlsym(handle, "gl" #x); \
+    if(!OpenGL::API.gl ## x) { \
+        std::cout << "failed to load " << #x << std::endl; \
+        std::exit(-1); \
+    }
+
+    void load_gl() {
+        handle = dlopen("libGL.so", RTLD_LAZY);
+
+        load(ActiveTexture);
+        load(AttachShader);
+        load(BindBuffer);
+        load(BindFragDataLocation);
+        load(BindFramebuffer);
+        load(BindVertexArray);
+        load(BufferData);
+        load(CompileShader);
+        load(CreateProgram);
+        load(CreateShader);
+        load(DeleteBuffers);
+        load(DeleteVertexArrays);
+        load(EnableVertexAttribArray);
+        load(FramebufferTexture);
+        load(GenBuffers);
+        load(GenFramebuffers);
+        load(GenVertexArrays);
+        load(GetAttribLocation);
+        load(GetShaderInfoLog);
+        load(GetShaderiv);
+        load(GetUniformLocation);
+        load(LinkProgram);
+        load(ShaderSource);
+        load(Uniform1f);
+        load(Uniform1i);
+        load(Uniform4fv);
+        load(UniformMatrix4fv);
+        load(UseProgram);
+        load(VertexAttribPointer);
+        load(CheckFramebufferStatus);
+        load(DeleteTextures);
+    };
+
     GLuint program;
     GLuint mvpID;
     GLuint depthID, colorID, bgraID;
@@ -102,29 +149,29 @@ void generateVAOVBO(int x, int y, int w, int h,
     vao = 0;
     vbo = 0;
 
-    glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
+    OpenGL::API.glGenVertexArrays(1, &vao);
+    OpenGL::API.glBindVertexArray(vao);
 
-    glGenBuffers (1, &vbo);
-    glBindBuffer (GL_ARRAY_BUFFER, vbo);
+    OpenGL::API.glGenBuffers (1, &vbo);
+    OpenGL::API.glBindBuffer (GL_ARRAY_BUFFER, vbo);
 
 
-    glBufferData(GL_ARRAY_BUFFER,
+    OpenGL::API.glBufferData(GL_ARRAY_BUFFER,
             sizeof(vertexData), vertexData,
             GL_STATIC_DRAW);
 
-    GLint position = glGetAttribLocation (program, "position");
-    GLint uvPosition = glGetAttribLocation (program, "uvPosition");
+    GLint position = OpenGL::API.glGetAttribLocation (program, "position");
+    GLint uvPosition = OpenGL::API.glGetAttribLocation (program, "uvPosition");
 
-    glVertexAttribPointer (position, 3,
+    OpenGL::API.glVertexAttribPointer (position, 3,
             GL_FLOAT, GL_FALSE,
             5 * sizeof (GL_FLOAT), 0);
-    glVertexAttribPointer (uvPosition, 2,
+    OpenGL::API.glVertexAttribPointer (uvPosition, 2,
             GL_FLOAT, GL_FALSE,
             5 * sizeof (GL_FLOAT), (void*)(3 * sizeof (float)));
 
-    glEnableVertexAttribArray (position);
-    glEnableVertexAttribArray (uvPosition);
+    OpenGL::API.glEnableVertexAttribArray (position);
+    OpenGL::API.glEnableVertexAttribArray (uvPosition);
 }
 
 void generateVAOVBO(int w, int h, GLuint &vao, GLuint &vbo) {
@@ -138,8 +185,8 @@ void generateVAOVBO(int w, int h, GLuint &vao, GLuint &vbo) {
 
 
 void renderTexture(GLuint tex, GLuint vao, GLuint vbo) {
-    glBindVertexArray(vao);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    OpenGL::API.glBindVertexArray(vao);
+    OpenGL::API.glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, tex);
     glDrawArrays (GL_TRIANGLES, 0, 6);
@@ -153,16 +200,16 @@ void renderTransformedTexture(GLuint tex,
     else
         MVP = Model;
 
-    glUniformMatrix4fv(mvpID, 1, GL_FALSE, &MVP[0][0]);
-    glUniform1i(depthID, depth);
-    glUniform4fv(colorID, 1, &color[0]);
+    OpenGL::API.glUniformMatrix4fv(mvpID, 1, GL_FALSE, &MVP[0][0]);
+    OpenGL::API.glUniform1i(depthID, depth);
+    OpenGL::API.glUniform4fv(colorID, 1, &color[0]);
 
     renderTexture(tex, vao, vbo);
 }
 
 void preStage() {
 
-    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+    OpenGL::API.glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
     GetTuple(sw, sh, core->getScreenSize());
     if(FireWin::allDamaged) {
         glScissor(0, 0, sw, sh);
@@ -178,20 +225,20 @@ void preStage() {
 }
 
 void preStage(GLuint fbuff) {
-    glBindFramebuffer(GL_FRAMEBUFFER, fbuff);
+    OpenGL::API.glBindFramebuffer(GL_FRAMEBUFFER, fbuff);
     GetTuple(sw, sh, core->getScreenSize());
     glScissor(0, 0, sw, sh);
 }
 
 void endStage() {
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    OpenGL::API.glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     auto tmp = glm::mat4();
-    glUniformMatrix4fv(mvpID, 1, GL_FALSE, &tmp[0][0]);
-    glUniform1i(bgraID, 1);
+    OpenGL::API.glUniformMatrix4fv(mvpID, 1, GL_FALSE, &tmp[0][0]);
+    OpenGL::API.glUniform1i(bgraID, 1);
 
     OpenGL::color = glm::vec4(1, 1, 1, 1);
-    glUniform4fv(colorID, 1, &color[0]);
+    OpenGL::API.glUniform4fv(colorID, 1, &color[0]);
 
     GetTuple(sw, sh, core->getScreenSize());
     glScissor(0, 0, sw, sh);
@@ -207,14 +254,14 @@ void endStage() {
 //    GLXUtils::glXWaitVideoSyncSGI_func(2, (sync + 1) % 2, &sync);
 
     glXSwapBuffers(core->d, core->outputwin);
-    glUniform1i(bgraID, 0);
+    OpenGL::API.glUniform1i(bgraID, 0);
 }
 
 void prepareFramebuffer(GLuint &fbuff, GLuint &texture) {
     GetTuple(sw, sh, core->getScreenSize());
 
-    glGenFramebuffers(1, &fbuff);
-    glBindFramebuffer(GL_FRAMEBUFFER, fbuff);
+    OpenGL::API.glGenFramebuffers(1, &fbuff);
+    OpenGL::API.glBindFramebuffer(GL_FRAMEBUFFER, fbuff);
 
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
@@ -228,16 +275,16 @@ void prepareFramebuffer(GLuint &fbuff, GLuint &texture) {
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, sw, sh,
             0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
 
-    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+    OpenGL::API.glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
             texture, 0);
 
-    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE){
+    if(OpenGL::API.glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE){
         std::cout << "Error in framebuffer !!!" << std::endl;
     }
 }
 
 void useDefaultProgram() {
-    glUseProgram(program);
+    OpenGL::API.glUseProgram(program);
     glClearColor (.0f, .0f, .0f, 1.f);
     glClearDepth (1.f);
 
@@ -250,17 +297,6 @@ void useDefaultProgram() {
 void initOpenGL(const char *shaderSrcPath) {
 
     std::cout << "has come to here" << std::endl;
-
-//    auto x = glXGetCurrentContext();
-//    if ( x == NULL )
-//        std::cout << "current context is NULL!!!" << std::endl,
-//            std::exit(-1);
-
-//    glewExperimental = GL_TRUE;
-//
-      if(glewInit()) {
-        std::cout << "failed to init gl3w" << std::endl; 
-      }
 
     std::cout << "init glew" << std::endl;
 
@@ -275,6 +311,7 @@ void initOpenGL(const char *shaderSrcPath) {
     //glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
     //glDebugMessageCallback(errorHandler, (void*)0);
 
+    load_gl();
     //GetTuple(sw, sh, core->getScreenSize());
     int sw = 400;
     int sh = 400;
@@ -290,19 +327,19 @@ void initOpenGL(const char *shaderSrcPath) {
                 .append("/frag.glsl").c_str(),
                 GL_FRAGMENT_SHADER);
 
-    program = glCreateProgram();
+    program = OpenGL::API.glCreateProgram();
 
-    glAttachShader (program, vss);
-    glAttachShader (program, fss);
+    OpenGL::API.glAttachShader (program, vss);
+    OpenGL::API.glAttachShader (program, fss);
 
-    glBindFragDataLocation (program, 0, "outColor");
-    glLinkProgram (program);
+    OpenGL::API.glBindFragDataLocation (program, 0, "outColor");
+    OpenGL::API.glLinkProgram (program);
     useDefaultProgram();
 
-    mvpID = glGetUniformLocation(program, "MVP");
-    depthID = glGetUniformLocation(program, "depth");
-    colorID = glGetUniformLocation(program, "color");
-    bgraID = glGetUniformLocation(program, "bgra");
+    mvpID = OpenGL::API.glGetUniformLocation(program, "MVP");
+    depthID = OpenGL::API.glGetUniformLocation(program, "depth");
+    colorID = OpenGL::API.glGetUniformLocation(program, "color");
+    bgraID = OpenGL::API.glGetUniformLocation(program, "bgra");
 
     View = glm::lookAt(glm::vec3(0., 0., 1.67),
                        glm::vec3(0., 0., 0.),
@@ -311,13 +348,13 @@ void initOpenGL(const char *shaderSrcPath) {
 
     MVP = glm::mat4();
 
-    glUniformMatrix4fv(mvpID, 1, GL_FALSE, &MVP[0][0]);
+    OpenGL::API.glUniformMatrix4fv(mvpID, 1, GL_FALSE, &MVP[0][0]);
 
-    auto w2ID = glGetUniformLocation(program, "w2");
-    auto h2ID = glGetUniformLocation(program, "h2");
+    auto w2ID = OpenGL::API.glGetUniformLocation(program, "w2");
+    auto h2ID = OpenGL::API.glGetUniformLocation(program, "h2");
 
-    glUniform1f(w2ID, sw / 2);
-    glUniform1f(h2ID, sh / 2);
+    OpenGL::API.glUniform1f(w2ID, sw / 2);
+    OpenGL::API.glUniform1f(h2ID, sh / 2);
 
     generateVAOVBO(0, sh, sw, -sh, fullVAO, fullVBO);
 

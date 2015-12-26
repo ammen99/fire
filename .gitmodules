@@ -1,3 +1,6 @@
 [submodule "src/wlc"]
 	path = src/wlc
 	url = https://github.com/ammen99/wlc
+[submodule "gl_ext"]
+	path = glad
+	url = https://github.com/Dav1dde/glad

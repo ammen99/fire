@@ -282,7 +282,7 @@ void Core::afterEffects() {
     for(auto effect : runningEffects)
         effect->action();
 
-    glUseProgram(0);
+    OpenGL::API.glUseProgram(0);
     OpenGL::useDefaultProgram();
 }
 
@@ -986,7 +986,7 @@ void Core::getViewportTexture(std::tuple<int, int> vp,
         (*it++)->render();
 
     Transform::gtrs = save;
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    OpenGL::API.glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 namespace {

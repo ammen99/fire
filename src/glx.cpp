@@ -184,15 +184,15 @@ void initGLX() {
 GLuint compileShader(const char *src, GLuint type) {
     std::cout << "HERE" << std::endl;
     std::cout << glGetString(GL_VERSION) << std::endl;
-    GLuint shader = glCreateShader(type);
+    GLuint shader = OpenGL::API.glCreateShader(type);
     std::cout << "here and ther" << std::endl;
-    glShaderSource ( shader, 1, &src, NULL );
+    OpenGL::API.glShaderSource ( shader, 1, &src, NULL );
 
     int s;
     char b1[512];
-    glCompileShader ( shader );
-    glGetShaderiv ( shader, GL_COMPILE_STATUS, &s );
-    glGetShaderInfoLog ( shader, 512, NULL, b1 );
+    OpenGL::API.glCompileShader ( shader );
+    OpenGL::API.glGetShaderiv ( shader, GL_COMPILE_STATUS, &s );
+    OpenGL::API.glGetShaderInfoLog ( shader, 512, NULL, b1 );
 
 
     if ( s == GL_FALSE ) {

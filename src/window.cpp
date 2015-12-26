@@ -115,9 +115,9 @@ FireWin::FireWin(Window id, bool init) {
 }
 
 FireWin::~FireWin() {
-    glDeleteTextures(1, &texture);
-    glDeleteBuffers(1, &vbo);
-    glDeleteVertexArrays(1, &vao);
+    OpenGL::API.glDeleteTextures(1, &texture);
+    OpenGL::API.glDeleteBuffers(1, &vbo);
+    OpenGL::API.glDeleteVertexArrays(1, &vao);
 
     for(auto d : data)
         delete d.second;
@@ -194,8 +194,8 @@ void FireWin::syncAttrib() {
 
     attrib = xwa;
 
-    glDeleteBuffers(1, &vbo);
-    glDeleteVertexArrays(1, &vao);
+    OpenGL::API.glDeleteBuffers(1, &vbo);
+    OpenGL::API.glDeleteVertexArrays(1, &vao);
     updateVBO();
     updateRegion();
     addDamage();
@@ -312,15 +312,15 @@ void FireWin::move(int x, int y, bool configure) {
     core->damageRegion(region);
 
     if(type == WindowTypeDesktop) {
-        glDeleteBuffers(1, &vbo);
-        glDeleteVertexArrays(1, &vao);
+        OpenGL::API.glDeleteBuffers(1, &vbo);
+        OpenGL::API.glDeleteVertexArrays(1, &vao);
         updateVBO();
         return;
     }
 
     if(!disableVBOChange)
-        glDeleteBuffers(1, &vbo),
-        glDeleteVertexArrays(1, &vao);
+        OpenGL::API.glDeleteBuffers(1, &vbo),
+        OpenGL::API.glDeleteVertexArrays(1, &vao);
 
     if(configure) {
         XWindowChanges xwc;
@@ -350,8 +350,8 @@ void FireWin::resize(int w, int h, bool configure) {
     core->damageRegion(region);
 
     if(!disableVBOChange)
-        glDeleteBuffers(1, &vbo),
-        glDeleteVertexArrays(1, &vao);
+        OpenGL::API.glDeleteBuffers(1, &vbo),
+        OpenGL::API.glDeleteVertexArrays(1, &vao);
 
     if(configure) {
         XWindowChanges xwc;
