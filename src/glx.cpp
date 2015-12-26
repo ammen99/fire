@@ -160,13 +160,13 @@ void initGLX() {
         std::cout << "current context is NULL!!!" << std::endl,
             std::exit(-1);
 
-    glewExperimental = GL_TRUE;
-    auto res = glewInit();
-    glGetError(); // workaround for glew getting Invalid Enum
-    if ( res != GLEW_OK ) {
-        std::cout << "failed to init glew" << std::endl;
-        std::exit(-1);
-    }
+//    glewExperimental = GL_TRUE;
+//    auto res = glewInit();
+//    glGetError(); // workaround for glew getting Invalid Enum
+//    if ( res != GLEW_OK ) {
+//        std::cout << "failed to init glew" << std::endl;
+//        std::exit(-1);
+//    }
 
     ilInit();
     iluInit();
@@ -182,7 +182,10 @@ void initGLX() {
 }
 
 GLuint compileShader(const char *src, GLuint type) {
+    std::cout << "HERE" << std::endl;
+    std::cout << glGetString(GL_VERSION) << std::endl;
     GLuint shader = glCreateShader(type);
+    std::cout << "here and ther" << std::endl;
     glShaderSource ( shader, 1, &src, NULL );
 
     int s;

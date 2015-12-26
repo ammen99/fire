@@ -1,5 +1,8 @@
 #include <opengl.hpp>
 
+void load_opengl() {
+}
+
 namespace {
     GLuint program;
     GLuint mvpID;
@@ -76,7 +79,9 @@ namespace OpenGL {
 void generateVAOVBO(int x, int y, int w, int h,
         GLuint &vao, GLuint &vbo) {
 
-    GetTuple(sw, sh, core->getScreenSize());
+    int sw = 400;
+    int sh = 400;
+    //GetTuple(sw, sh, core->getScreenSize());
 
 
     float w2 = float(sw) / 2.;
@@ -244,11 +249,35 @@ void useDefaultProgram() {
 
 void initOpenGL(const char *shaderSrcPath) {
 
+    std::cout << "has come to here" << std::endl;
+
+//    auto x = glXGetCurrentContext();
+//    if ( x == NULL )
+//        std::cout << "current context is NULL!!!" << std::endl,
+//            std::exit(-1);
+
+//    glewExperimental = GL_TRUE;
+//
+      if(glewInit()) {
+        std::cout << "failed to init gl3w" << std::endl; 
+      }
+
+    std::cout << "init glew" << std::endl;
+
+    ilInit();
+    iluInit();
+    ilutInit();
+    ilutRenderer ( ILUT_OPENGL );
+
+    std::cout << "init ilut" << std::endl;
+
     //glEnable(GL_DEBUG_OUTPUT);
     //glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
     //glDebugMessageCallback(errorHandler, (void*)0);
 
-    GetTuple(sw, sh, core->getScreenSize());
+    //GetTuple(sw, sh, core->getScreenSize());
+    int sw = 400;
+    int sh = 400;
     std::string tmp = shaderSrcPath;
 
     GLuint vss =

@@ -12,7 +12,10 @@ flags = [
 '-DUSE_CLANG_COMPLETER',
 '-I/usr/include/dbus-1.0',
 '-I/usr/lib64/dbus-1.0/include',
-'-I/usr/include/drm'
+'-I/usr/include/drm',
+'-I/home/ilex/work/fire/src/wlc/src',
+'-I/usr/include/pixman-1',
+'-I/home/ilex/work/fire/gl3w/include'
 ]
 
 compilation_database_folder = ''

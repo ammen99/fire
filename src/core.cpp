@@ -38,6 +38,8 @@ Core::Core(int vx, int vy) {
     this->vy = vy;
 }
 
+void Core::addExistingWindows() {}
+
 
 void Core::init() {
 

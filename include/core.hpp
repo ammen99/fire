@@ -9,9 +9,10 @@
 
 class WinStack;
 
-void print_trace();
-
 struct Context{
+    XEvent xev;
+    Context();
+    Context(XEvent x);
 };
 
 enum BindingType {
@@ -82,18 +83,6 @@ struct SignalListener {
 #define GetTuple(x,y,t) auto x = std::get<0>(t); \
                         auto y = std::get<1>(t)
 
-struct fire_system_signals {                                                                                                                                                                 
-    struct wl_signal terminate; // data: null (wlc.c)                                                                                                                                        
-    struct wl_signal activate;  // data: struct wlc_activate_event (wlc/wlc.c, compositor/seat/seat.c)                                                                                       
-    struct wl_signal compositor;// data: null (compositor.c)                                                                                                                                 
-    struct wl_signal focus;     // data: struct wlc_focus_event (view/view.c, output/output.c)                                                                                               
-    struct wl_signal surface;   // data: struct wlc_surface_event (compositor/compositor.c, shell/shell.c, shell/xdg-shell.c, resources/types/surface.c)                                     
-    struct wl_signal input;     // data: struct wlc_input_event (session/udev.c, backend/x11.c)                                                                                              
-    struct wl_signal output;    // data: struct wlc_output_event (backend/x11.c, backend/drm.c, session/udev.c)                                                                              
-    struct wl_signal render;    // data: struct wlc_render (compositor/output.c)                                                                                                             
-    struct wl_signal xwayland;  // data: bool <false/true> (xwayland/xwayland.c)
-};
-
 
 class Core {
 
@@ -103,7 +92,6 @@ class Core {
     private:
 
         WinStack *wins;
-        pollfd fd;
         int cntHooks;
         int damage;
 
@@ -115,6 +103,9 @@ class Core {
         std::vector<std::vector<FireWindow> > backgrounds;
 
         uint nextID = 0;
+        pollfd fd;
+
+        Config *config;
 
         std::vector<PluginPtr> plugins;
         std::vector<KeyBinding*> keys;
@@ -128,7 +119,7 @@ class Core {
         void addDefaultSignals();
 
 
-        void handleEvent();
+        void handleEvent(XEvent xev);
         void wait(int timeout);
         void enableInputPass(Window win);
         void addExistingWindows(); // adds windows created before
@@ -163,16 +154,8 @@ class Core {
 
     public:
 
-
-        /* warning!!!
-         * no plugin should change these! */
-        wl_display *d;
-        fire_system_signals sig;
-
-
-        Window root;
-        Window outputwin;
-        Window overlay;
+        Display *d;
+        Window s0owner, overlay, root, outputwin;
 
         bool terminate = false; // should main loop exit?
         bool mainrestart = false; // should main() restart us?
