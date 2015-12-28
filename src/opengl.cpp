@@ -11,17 +11,16 @@ namespace {
 #define load(x) \
     OpenGL::API. gl ## x = (decltype(OpenGL::API. gl ## x))dlsym(handle, "gl" #x); \
     if(!OpenGL::API.gl ## x) { \
-        std::cout << "failed to load " << #x << std::endl; \
+        printf("failed to load %s\n", #x); \
         std::exit(-1); \
     }
 
     void load_gl() {
-        handle = dlopen("libGL.so", RTLD_LAZY);
+        handle = dlopen("libGLESv2.so", RTLD_LAZY);
 
         load(ActiveTexture);
         load(AttachShader);
         load(BindBuffer);
-        load(BindFragDataLocation);
         load(BindFramebuffer);
         load(BindVertexArray);
         load(BufferData);
@@ -31,7 +30,7 @@ namespace {
         load(DeleteBuffers);
         load(DeleteVertexArrays);
         load(EnableVertexAttribArray);
-        load(FramebufferTexture);
+        //load(FramebufferTexture);
         load(GenBuffers);
         load(GenFramebuffers);
         load(GenVertexArrays);
@@ -49,6 +48,8 @@ namespace {
         load(VertexAttribPointer);
         load(CheckFramebufferStatus);
         load(DeleteTextures);
+        load(FramebufferTexture2D);
+        //load(DebugMessageCallback);
     };
 
     GLuint program;
@@ -63,7 +64,7 @@ namespace {
 
     GLuint fullVAO, fullVBO;
 
-   /*these functions are disabled for now
+   ///*these functions are disabled for now
 
     const char *getStrSrc(GLenum src) {
         if(src == GL_DEBUG_SOURCE_API_ARB            )return "API_ARB        ";
@@ -96,22 +97,23 @@ namespace {
     void errorHandler(GLenum src, GLenum type,
             GLuint id, GLenum severity,
             GLsizei len, const GLchar *msg,
-            const void *dummy) {
+            void *dummy) {
 
         // ignore notifications
         if(severity == GL_DEBUG_SEVERITY_NOTIFICATION)
             return;
 
-        std::cout << "_______________________________________________\n";
-        std::cout << "OGL debug: \n";
-        std::cout << "Source: " << getStrSrc(src) << std::endl;
-        std::cout << "Type: " << getStrType(type) << std::endl;
-        std::cout << "ID: " << id << std::endl;
-        std::cout << "Severity: " << getStrSeverity(severity) << std::endl;
-        std::cout << "Msg: " << msg << std::endl;;
-        std::cout << "_______________________________________________\n";
+        printf( "_______________________________________________\n"
+                "OGL debug: \n"
+                "Source: %s\n"
+                "Type: %s\n"
+                "ID: %d\n"
+                "Severity: %s\n"
+                "Msg: %s\n"
+                "_______________________________________________\n",
+                getStrSrc(src), getStrType(type), id, getStrSeverity(severity), msg);
     }
-    */
+    //*/
 }
 
 bool OpenGL::transformed = false;
@@ -275,8 +277,8 @@ void prepareFramebuffer(GLuint &fbuff, GLuint &texture) {
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, sw, sh,
             0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
 
-    OpenGL::API.glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-            texture, 0);
+    OpenGL::API.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+            GL_TEXTURE_2D, texture, 0);
 
     if(OpenGL::API.glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE){
         std::cout << "Error in framebuffer !!!" << std::endl;
@@ -286,7 +288,6 @@ void prepareFramebuffer(GLuint &fbuff, GLuint &texture) {
 void useDefaultProgram() {
     OpenGL::API.glUseProgram(program);
     glClearColor (.0f, .0f, .0f, 1.f);
-    glClearDepth (1.f);
 
     glEnable     (GL_BLEND);
     glBlendFunc  (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -307,11 +308,12 @@ void initOpenGL(const char *shaderSrcPath) {
 
     std::cout << "init ilut" << std::endl;
 
-    //glEnable(GL_DEBUG_OUTPUT);
-    //glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-    //glDebugMessageCallback(errorHandler, (void*)0);
-
     load_gl();
+
+//    glEnable(GL_DEBUG_OUTPUT);
+//    glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+//    OpenGL::API.glDebugMessageCallback(errorHandler, (void*)0);
+
     //GetTuple(sw, sh, core->getScreenSize());
     int sw = 1366;
     int sh = 768;
@@ -327,12 +329,13 @@ void initOpenGL(const char *shaderSrcPath) {
                 .append("/frag.glsl").c_str(),
                 GL_FRAGMENT_SHADER);
 
+    printf("shader 1: %d 2: %d\n", vss, fss);
+
     program = OpenGL::API.glCreateProgram();
 
     OpenGL::API.glAttachShader (program, vss);
     OpenGL::API.glAttachShader (program, fss);
 
-    OpenGL::API.glBindFragDataLocation (program, 0, "outColor");
     OpenGL::API.glLinkProgram (program);
     useDefaultProgram();
 
@@ -340,24 +343,28 @@ void initOpenGL(const char *shaderSrcPath) {
     depthID = OpenGL::API.glGetUniformLocation(program, "depth");
     colorID = OpenGL::API.glGetUniformLocation(program, "color");
     bgraID = OpenGL::API.glGetUniformLocation(program, "bgra");
-
+//
     View = glm::lookAt(glm::vec3(0., 0., 1.67),
                        glm::vec3(0., 0., 0.),
                        glm::vec3(0., 1., 0.));
     Proj = glm::perspective(45.f, 1.f, .1f, 100.f);
-
+//
     MVP = glm::mat4();
-
+//
     OpenGL::API.glUniformMatrix4fv(mvpID, 1, GL_FALSE, &MVP[0][0]);
-
+//
     auto w2ID = OpenGL::API.glGetUniformLocation(program, "w2");
     auto h2ID = OpenGL::API.glGetUniformLocation(program, "h2");
-
+//
     OpenGL::API.glUniform1f(w2ID, sw / 2);
     OpenGL::API.glUniform1f(h2ID, sh / 2);
 
 //    generateVAOVBO(0, sh, sw, -sh, fullVAO, fullVBO);
 
 //    prepareFramebuffer(framebuffer, framebufferTexture);
+//
+ //   generateVAOVBO(0, sh, sw, -sh, fullVAO, fullVBO);
+//
+    //prepareFramebuffer(framebuffer, framebufferTexture);
 }
 }

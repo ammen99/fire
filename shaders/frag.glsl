@@ -1,20 +1,23 @@
-#version 330
+#version 100
 
-in vec2 uvpos;
-layout(location = 0) out vec4 outColor;
+varying mediump vec2 uvpos;
 
 
 uniform sampler2D smp;
 uniform int       depth;
-uniform vec4      color;
+uniform mediump vec4      color;
 uniform int       bgra;
 
-void main() {
-    if(depth == 32)
-        outColor = texture(smp, uvpos) * color;
-    else
-        outColor = vec4(texture(smp, uvpos).xyz, 1) * color;
+//out mediump vec4 gl_FragColor;
 
-    if(bgra == 1)
-        outColor = outColor.zyxw;
+
+void main() {
+
+    //if(depth == 32)
+        //gl_FragColor = texture(smp, uvpos) * color;
+    //else
+        gl_FragColor = vec4(texture2D(smp, uvpos).xyz, 1);
+
+    //if(bgra == 1)
+    //    gl_FragData[0] = gl_FragData[0].zyxw;
 }

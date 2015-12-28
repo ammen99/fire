@@ -1,10 +1,10 @@
-#version 330
+#version 100
 
-in vec3 position;
-in vec2 uvPosition;
+attribute  mediump vec3 position;
+attribute  mediump vec2 uvPosition;
 
-out vec2 uvpos;
-vec3 vPos;
+varying mediump vec2 uvpos;
+mediump vec3 vPos;
 
 uniform mat4 MVP;
 uniform float w2;

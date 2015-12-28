@@ -182,32 +182,25 @@ void initGLX() {
 }
 
 GLuint compileShader(const char *src, GLuint type) {
-    std::cout << "HERE" << std::endl;
-    std::cout << glGetString(GL_VERSION) << std::endl;
+    printf("compile shader\n");
+
     GLuint shader = OpenGL::API.glCreateShader(type);
-    std::cout << "here and ther" << std::endl;
     OpenGL::API.glShaderSource ( shader, 1, &src, NULL );
 
     int s;
-    char b1[512];
-    OpenGL::API.glCompileShader ( shader );
-    OpenGL::API.glGetShaderiv ( shader, GL_COMPILE_STATUS, &s );
-    OpenGL::API.glGetShaderInfoLog ( shader, 512, NULL, b1 );
+    char b1[2048];
+    OpenGL::API.glCompileShader(shader);
+    OpenGL::API.glGetShaderiv(shader, GL_COMPILE_STATUS, &s);
+    OpenGL::API.glGetShaderInfoLog(shader, 2048, NULL, b1);
 
 
     if ( s == GL_FALSE ) {
-        std::stringstream srcStream, errorStream;
-        std::string line;
-        std::cout << "shader compilation failed!" << std::endl;;
-        std::cout << "src: *****************************" << std::endl;
-        srcStream << src;
-        while(std::getline(srcStream, line))
-            std::cout << line << std::endl;
-        std::cout << "**********************************" << std::endl;
-        errorStream << b1;
-        while(std::getline(errorStream, line))
-            std::cout << line << std::endl;
-        std::cout << "**********************************" << std::endl;
+        printf("shader compilation failed!\n"
+               "src: ***************************\n"
+               "%s\n"
+               "********************************\n"
+               "%s\n"
+               "********************************\n", src, b1);
         return -1;
     }
     return shader;
@@ -217,7 +210,7 @@ GLuint loadShader(const char *path, GLuint type) {
 
     std::fstream file(path, std::ios::in);
     if(!file.is_open())
-        std::cout << "Cannot open shader file " << path << ".\n Aborting",
+        printf("Cannot open shader file %s. Aborting\n", path),
             std::exit(1);
 
     std::string str, line;

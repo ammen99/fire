@@ -39,8 +39,9 @@
 #include <queue>
 #include <algorithm>
 
-#include <GL/gl.h>
-#include <GL/glext.h>
+
+#include <GLES2/gl2.h>
+#include <GLES2/gl2ext.h>
 #include <GL/glx.h>
 
 #define GLM_FORCE_RADIANS
