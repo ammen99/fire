@@ -17,6 +17,8 @@ extern "C" {
 
 struct wlc_output* out;
 
+GLuint background;
+
 void terminate(ctx *context) { }
 void resolution(ctx *context, const wlc_size *mode, const wlc_size *resolution) {
     glViewport(0, 0, mode->w, mode->h);
@@ -55,13 +57,13 @@ bool shm_attach(struct wlc_surface *surface, struct wlc_buffer *buffer, wl_shm_b
    switch (wl_shm_buffer_get_format(shm_buffer)) {                                                                                                                                                                                                                        
       case WL_SHM_FORMAT_XRGB8888:                                                                                                                                                                                                                                        
          pitch = wl_shm_buffer_get_stride(shm_buffer) / 4;                                                                                                                                                                                                                
-         gl_format = GL_BGRA_EXT;                                                                                                                                                                                                                                         
+         gl_format = GL_RGBA;                                                                                                                                                                                                                                         
          gl_pixel_type = GL_UNSIGNED_BYTE;                                                                                                                                                                                                                                
          surface->format = SURFACE_RGB;                                                                                                                                                                                                                                   
          break;                                                                                                                                                                                                                                                           
       case WL_SHM_FORMAT_ARGB8888:                                                                                                                                                                                                                                        
          pitch = wl_shm_buffer_get_stride(shm_buffer) / 4;                                                                                                                                                                                                                
-         gl_format = GL_BGRA_EXT;                                                                                                                                                                                                                                         
+         gl_format = GL_RGBA;                                                                                                                                                                                                                                         
          gl_pixel_type = GL_UNSIGNED_BYTE;                                                                                                                                                                                                                                
          surface->format = SURFACE_RGBA;                                                                                                                                                                                                                                  
          break;                                                                                                                                                                                                                                                           
@@ -128,11 +130,6 @@ surface_paint_internal(struct ctx *context, struct wlc_surface *surface,
 
    //wlc_context_bind(&out->context);
 
-   if(!inited) {
-    OpenGL::initOpenGL("/usr/local/share/fireman/shaders/");
-    inited = true;
-   }
-
    GLuint vao, vbo;
    OpenGL::generateVAOVBO(geometry->origin.x, geometry->origin.y,
            geometry->size.w, geometry->size.h, vao, vbo);
@@ -159,6 +156,9 @@ void surface_paint(struct ctx *context, struct wlc_surface *surface, const wlc_g
 }
 
 void pointer_paint(struct ctx *context, const wlc_point *pos) {
+    GLuint vao, vbo;
+    OpenGL::generateVAOVBO(pos->x, pos->y, 100, 100, vao, vbo);
+    OpenGL::renderTransformedTexture(background, vao, vbo, glm::mat4());
 }
 
 void read_pixels(struct ctx *context, wlc_geometry *geometry, void *out_data) {
@@ -167,21 +167,23 @@ void read_pixels(struct ctx *context, wlc_geometry *geometry, void *out_data) {
             GL_RGBA, GL_UNSIGNED_BYTE, out_data);
 }
 
+
+
 void clear(ctx *context) {
 
-    std::cout << "clear called" << std::endl;
-    if(!inited){
-        std::cout << glGetString(GL_VERSION) << std::endl;
-        //wlc_context_bind(&out->context);
-        OpenGL::initOpenGL("/usr/local/share/fireman/shaders/");
-        inited = true;
-    }
-
+    glClearColor(1, 1, 0, 1);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    GLuint vao, vbo;
+    OpenGL::generateVAOVBO(0, 0, 1366, 768, vao, vbo);
+    OpenGL::renderTransformedTexture(background, vao, vbo, glm::mat4());
 }
 
 
 void opengl_init(wlc_render_api *api) {
+
+    OpenGL::initOpenGL("/usr/local/share/fireman/shaders/");
+    background = GLXUtils::loadImage("/home/ilex/Desktop/maxresdefault.jpg");
 
     api->terminate = terminate;
     api->resolution = resolution;

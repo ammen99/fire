@@ -126,8 +126,8 @@ namespace OpenGL {
 void generateVAOVBO(int x, int y, int w, int h,
         GLuint &vao, GLuint &vbo) {
 
-    int sw = 400;
-    int sh = 400;
+    int sw = 1366;
+    int sh = 768;
     //GetTuple(sw, sh, core->getScreenSize());
 
 
@@ -313,8 +313,8 @@ void initOpenGL(const char *shaderSrcPath) {
 
     load_gl();
     //GetTuple(sw, sh, core->getScreenSize());
-    int sw = 400;
-    int sh = 400;
+    int sw = 1366;
+    int sh = 768;
     std::string tmp = shaderSrcPath;
 
     GLuint vss =
@@ -356,8 +356,8 @@ void initOpenGL(const char *shaderSrcPath) {
     OpenGL::API.glUniform1f(w2ID, sw / 2);
     OpenGL::API.glUniform1f(h2ID, sh / 2);
 
-    generateVAOVBO(0, sh, sw, -sh, fullVAO, fullVBO);
+//    generateVAOVBO(0, sh, sw, -sh, fullVAO, fullVBO);
 
-    prepareFramebuffer(framebuffer, framebufferTexture);
+//    prepareFramebuffer(framebuffer, framebufferTexture);
 }
 }

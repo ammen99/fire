@@ -31,5 +31,5 @@ install(DIRECTORY shaders/ DESTINATION share/fireman/shaders)
 install(FILES config DESTINATION lib/fireman/firerc)
 
 # Plugins
-add_subdirectory(plugins)
+#add_subdirectory(plugins)
 
