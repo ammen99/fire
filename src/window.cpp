@@ -15,7 +15,7 @@ Transform::Transform() {
 }
 
 glm::mat4 Transform::compose() {
-    return (gtrs*translation)*(grot*rotation)*(gscl*scalation);
+    return (gtrs*translation*viewport_translation)*(grot*rotation)*(gscl*scalation);
 }
 
 bool FireWin::allDamaged = false;

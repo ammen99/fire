@@ -522,14 +522,32 @@ namespace {
 
 Config::Config(std::string path) {
     this->path = path;
+    printf("path to config %s\n", path.c_str());
     stream.open(path, std::ios::in | std::ios::out);
-    if(!stream.is_open())
+    if(!stream.is_open()) {
+        printf("[EE] Failed to open config file\n");
         blocked = true;
+    }
     else
         readConfig();
 }
 
-Config::Config() : Config("~/.config/firerc") { }
+#include <unistd.h>
+#include <sys/types.h>
+#include <pwd.h>
+
+
+std::string get_home_dir() {
+    const char *homedir;
+
+    if ((homedir = getenv("HOME")) == NULL) {
+        homedir = getpwuid(getuid())->pw_dir;
+    }
+
+    return homedir;
+}
+
+Config::Config() : Config(get_home_dir() + "/.config/firerc") { }
 
 void Config::readConfig() {
     if(blocked)

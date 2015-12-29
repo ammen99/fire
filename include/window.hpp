@@ -11,6 +11,9 @@ class Transform {
         glm::mat4 rotation;
         glm::mat4 scalation;
         glm::mat4 translation;
+
+        glm::mat4 viewport_translation;
+
         glm::vec4 color;
     public:
         Transform();

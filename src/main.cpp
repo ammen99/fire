@@ -31,13 +31,13 @@ bool pointer_button(wlc_handle view, uint32_t time,
    (void)button, (void)time, (void)modifiers;
 
    assert(core);
-
    return core->process_button_event(button, modifiers->mods,
            state, *position);
 }
 
 bool pointer_motion(wlc_handle handle, uint32_t time, const struct wlc_point *position) {
     assert(core);
+    wlc_pointer_set_position(position);
     return core->process_pointer_motion_event(*position);
 }
 
@@ -51,6 +51,7 @@ cb_log(enum wlc_log_type type, const char *str)
 bool view_created(wlc_handle view) {
     assert(core);
     core->add_window(view);
+    return true;
 }
 
 void view_destroyed(wlc_handle view) {
@@ -64,24 +65,72 @@ void view_focus(wlc_handle view, bool focus) {
    wlc_view_bring_to_front(view);
 }
 
+Matrix4x4 get_transform(glm::mat4 mat) {
+    printf("get transform\n");
+    return {{
+         mat[0][0], mat[0][1], mat[0][2], mat[0][3],
+         mat[1][0], mat[1][1], mat[1][2], mat[1][3],
+         mat[2][0], mat[2][1], mat[2][2], mat[2][3],
+         mat[3][0], mat[3][1], mat[3][2], mat[3][3],
+     }};
+}
+
+Matrix4x4 get_mvp_for_view(struct wlc_view *view) {
+    auto w = core->find_window(convert_to_wlc_handle(view));
+
+    if(w) return get_transform(w->transform.compose());
+}
+
+void view_request_resize(wlc_handle view, uint32_t edges, const struct wlc_point *origin) {
+    SignalListenerData data;
+
+    auto w = core->find_window(view);
+    if(!w) return;
+
+    data.push_back((void*)(&w));
+    data.push_back((void*)(origin));
+
+    core->triggerSignal("resize-request", data);
+}
+
+
+void view_request_move(wlc_handle view, const struct wlc_point *origin) {
+    SignalListenerData data;
+
+    auto w = core->find_window(view);
+    if(!w) return;
+
+    data.push_back((void*)(&w));
+    data.push_back((void*)(origin));
+
+    core->triggerSignal("move-request", data);
+}
+
 int main(int argc, char *argv[]) {
 
+    std::cout << "e hay" << std::endl;
     wlc_log_set_handler(cb_log);
 
     static struct wlc_interface interface;
+
+    interface.get_mvp_for_surface = get_mvp_for_view;
 
     interface.view.created        = view_created;
     interface.view.destroyed      = view_destroyed;
     interface.view.focus          = view_focus;
 
+    interface.view.request.resize = view_request_resize;
+    interface.view.request.move   = view_request_move;
+
     interface.keyboard.key = keyboard_key;
 
-    //interface.pointer.button = pointer_button;
-    //interface.pointer.motion = pointer_motion;
+    interface.pointer.button = pointer_button;
+    interface.pointer.motion = pointer_motion;
 
     if (!wlc_init(&interface, argc, argv))
         return EXIT_FAILURE;
 
+    std::cout << "please nope" << std::endl;
     core = new Core(0, 0);
     core->init();
 

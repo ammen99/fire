@@ -6,9 +6,9 @@ class Resize : public Plugin {
         int cx, cy; // coordinates of the center of the window
         FireWindow win; // window we're operating on
 
-        int scX = 1, scY = 1;
-        SignalListener sigScl;
         Button iniButton;
+
+        SignalListener resize_request;
 
         uint32_t edges;
 
@@ -28,35 +28,41 @@ class Resize : public Plugin {
             return;
 
         using namespace std::placeholders;
-        hook.action = std::bind(std::mem_fn(&Resize::Intermediate), this);
+        hook.action = std::bind(std::mem_fn(&Resize::intermediate), this);
         core->add_hook(&hook);
         press.type   = BindingTypePress;
         press.mod    = iniButton.mod;
         press.button = iniButton.button;
-        press.action = std::bind(std::mem_fn(&Resize::Initiate), this, _1);
+        press.action = std::bind(std::mem_fn(&Resize::initiate), this, _1, nullptr);
         core->add_but(&press, true);
 
 
         release.type   = BindingTypeRelease;
         release.mod    = AnyModifier;
         release.button = iniButton.button;
-        release.action = std::bind(std::mem_fn(&Resize::Terminate), this,_1);
+        release.action = std::bind(std::mem_fn(&Resize::terminate), this, _1);
         core->add_but(&release, false);
+
+        resize_request.action = std::bind(std::mem_fn(&Resize::on_resize_request), this, _1);
+        core->connectSignal("resize-request", &resize_request);
     }
 
     void init() {
         options.insert(newButtonOption("activate", Button{0, 0}));
         using namespace std::placeholders;
-        sigScl.action = std::bind(std::mem_fn(&Resize::onScaleChanged), this, _1);
-        core->connectSignal("screen-scale-changed", &sigScl);
     }
 
-    void Initiate(Context ctx) {
-        auto xev = ctx.xev.xbutton;
-        auto w = core->getWindowAtPoint(xev.x_root,xev.y_root);
+    void initiate(Context ctx, FireWindow pwin) {
 
-        if(!w)
-            return;
+        auto xev = ctx.xev.xbutton;
+
+        if(!pwin) {
+            auto win_at_coord = core->getWindowAtPoint(xev.x_root,xev.y_root);
+
+            if(!win_at_coord) return;
+            else win = win_at_coord;
+        }
+        else win = pwin;
 
         if(!core->activateOwner(owner)) {
             return;
@@ -64,9 +70,8 @@ class Resize : public Plugin {
 
         owner->grab();
 
-        core->focus_window(w);
+        core->focus_window(win);
 
-        win = w;
         hook.enable();
         release.enable();
 
@@ -79,16 +84,16 @@ class Resize : public Plugin {
         edges = (sx < halfw ? WLC_RESIZE_EDGE_LEFT : (sx >= halfw ? WLC_RESIZE_EDGE_RIGHT : 0)) |
             (sy < halfh ? WLC_RESIZE_EDGE_TOP : (sy >= halfh ? WLC_RESIZE_EDGE_BOTTOM : 0));
 
-        if(!edges) Terminate(ctx);
+        if(!edges) terminate(ctx);
     }
 
-    void Terminate(Context ctx) {
+    void terminate(Context ctx) {
         hook.disable();
         release.disable();
         core->deactivateOwner(owner);
     }
 
-    void Intermediate() {
+    void intermediate() {
 
         GetTuple(cmx, cmy, core->getMouseCoord());
 
@@ -119,12 +124,18 @@ class Resize : public Plugin {
             win->moveResize(n.origin.x, n.origin.y, n.size.w, n.size.h);
 
         }
+
+        sx = cmx;
+        sy = cmy;
     }
 
-    void onScaleChanged(SignalListenerData data) {
-        scX = *(int*)data[0];
-        scY = *(int*)data[1];
+    void on_resize_request(SignalListenerData data) {
+        FireWindow w = *(FireWindow*)data[0];
+        wlc_point point = *(wlc_point*)data[1];
+
+        initiate(Context(point.x, point.y, 0, 0), w);
     }
+
 };
 
 extern "C" {

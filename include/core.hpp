@@ -14,11 +14,19 @@ struct Context{
         struct {
             int x_root, y_root;
         } xbutton;
+
+        struct {
+            uint32_t key;
+            uint32_t mod;
+        } xkey;
     } xev;
 
-    Context(int x, int y) {
+    Context(int x, int y, int key, int mod) {
         xev.xbutton.x_root = x;
         xev.xbutton.y_root = y;
+
+        xev.xkey.key = key;
+        xev.xkey.mod = mod;
     }
 };
 

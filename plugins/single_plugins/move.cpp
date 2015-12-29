@@ -10,7 +10,7 @@ class Move : public Plugin {
         ButtonBinding release;
         //Hook hook;
 
-        SignalListener sigScl;
+        SignalListener sigScl, move_request;
 
         int scX = 1, scY = 1;
 
@@ -37,7 +37,7 @@ class Move : public Plugin {
             press.type   = BindingTypePress;
             press.mod    = iniButton.mod;
             press.button = iniButton.button;
-            press.action = std::bind(std::mem_fn(&Move::Initiate), this, _1);
+            press.action = std::bind(std::mem_fn(&Move::Initiate), this, _1, nullptr);
             core->add_but(&press, true);
 
             release.type   = BindingTypeRelease;
@@ -48,19 +48,28 @@ class Move : public Plugin {
         }
 
         void init() {
+            printf("move init\n");
+
             using namespace std::placeholders;
             options.insert(newButtonOption("activate", Button{0, 0}));
             sigScl.action = std::bind(std::mem_fn(&Move::onScaleChanged), this, _1);
             core->connectSignal("screen-scale-changed", &sigScl);
+
+            move_request.action = std::bind(std::mem_fn(&Move::on_move_request), this, _1);
+            core->connectSignal("move-request", &move_request);
         }
 
-        void Initiate(Context ctx) {
-            auto xev = ctx.xev.xbutton;
-            auto w = core->getWindowAtPoint(xev.x_root, xev.y_root);
+        void Initiate(Context ctx, FireWindow pwin) {
 
-            if(!w)
-                return;
-            win = w;
+            auto xev = ctx.xev.xbutton;
+            if(!pwin) {
+                auto w = core->getWindowAtPoint(xev.x_root, xev.y_root);
+
+                if(!w) return;
+                else win = w;
+            }
+
+            else win = pwin;
 
             if(!core->activateOwner(owner)){
                 return;
@@ -68,7 +77,7 @@ class Move : public Plugin {
 
             owner->grab();
 
-            core->focus_window(w);
+            core->focus_window(win);
 
             hook.enable();
             release.enable();
@@ -98,6 +107,8 @@ class Move : public Plugin {
             GetTuple(cmx, cmy, core->getMouseCoord());
             GetTuple(w, h, core->getScreenSize());
 
+            printf("%d %d\n", cmx - sx, sy - cmy);
+
             win->transform.translation =
                 glm::translate(glm::mat4(), glm::vec3(
                             float(cmx - sx) / float(w / 2.0),
@@ -108,6 +119,15 @@ class Move : public Plugin {
         void onScaleChanged(SignalListenerData data) {
             scX = *(int*)data[0];
             scY = *(int*)data[1];
+        }
+
+        void on_move_request(SignalListenerData data) {
+            FireWindow w = *(FireWindow*)data[0];
+            if(!w) return;
+
+            wlc_point origin = *(wlc_point*)data[1];
+
+            Initiate(Context(origin.x, origin.y, 0, 0), w);
         }
 };
 

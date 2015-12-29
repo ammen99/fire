@@ -34,7 +34,7 @@ class CorePlugin : public Plugin {
 PluginPtr plug; // used to get core options
 
 Core::Core(int vx, int vy) {
-    config = new Config("~/.config/firerc");
+    config = new Config();
 
     this->vx = vx;
     this->vy = vy;
@@ -290,11 +290,10 @@ void Core::disconnectSignal(std::string name, uint id) {
 }
 
 void Core::addDefaultSignals() {
-    /* map-window and unmap-window are triggered
-     * when a window is (un)mapped. The data they
-     * contain is just a pointer to the FireWindow */
-    addSignal("map-window");
-    addSignal("unmap-window");
+
+    /* single element: the window */
+    addSignal("create-window");
+    addSignal("destroy-window");
 
     /* move-window is triggered when a window is moved
      * Data contains 3 elements:
@@ -303,6 +302,10 @@ void Core::addDefaultSignals() {
      * 3. dy */
 
     addSignal("move-window");
+
+    addSignal("move-request");
+    addSignal("resize-request");
+
 }
 
 void Core::add_window(wlc_handle view) {
@@ -314,7 +317,7 @@ void Core::add_window(wlc_handle view) {
 }
 
 void Core::focus_window(FireWindow win) {
-    assert(win);
+    if(!win) return;
     auto id = win->get_id();
     wlc_view_focus(id);
 }
@@ -339,7 +342,7 @@ void Core::for_each_window(WindowCallbackProc call) {
     size_t num;
     const wlc_handle* views = wlc_output_get_views(wlc_get_focused_output(), &num);
 
-    for(int i = 0; i < num; i++) {
+    for(int i = num - 1; i >= 0; i--) {
         auto w = find_window(views[i]);
         if(w) call(w);
     }
@@ -349,6 +352,7 @@ void Core::for_each_window(WindowCallbackProc call) {
 void Core::close_window(FireWindow win) {
     assert(win);
 
+    printf("close windows\n");
     wlc_view_close(win->get_id());
     focus_window(get_active_window());
 }
@@ -375,8 +379,10 @@ bool Core::check_key(KeyBinding *kb, uint32_t key, uint32_t mod) {
 
 bool Core::check_but_press(ButtonBinding *bb, uint32_t button, uint32_t mod) {
 
+    //printf("check but press %d\n", mod == WLC_BIT_MOD_ALT);
     if(!bb->active)
         return false;
+
 
     if(bb->type != BindingTypePress)
         return false;
@@ -406,9 +412,14 @@ bool Core::check_but_release(ButtonBinding *bb, uint32_t button, uint32_t mod) {
 bool Core::process_key_event(uint32_t key_in, uint32_t mod, wlc_key_state state) {
     if(state == WLC_KEY_STATE_RELEASED) return false;
 
+    if(key_in == XKB_KEY_r && (mod & WLC_BIT_MOD_ALT)) {
+        run("weston-terminal");
+        //wlc_exec("weston-terminal", t);
+    }
+
     for(auto key : keys) {
         if(check_key(key, key_in, mod)) {
-            key->action(Context(0, 0));
+            key->action(Context(0, 0, key_in, mod));
             return true;
         }
     }
@@ -425,12 +436,15 @@ bool Core::process_button_event(uint32_t button, uint32_t mod,
 
     for(auto but : buttons) {
         if(state == WLC_BUTTON_STATE_PRESSED && check_but_press(but, button, mod)) {
-            but->action(Context(mousex, mousey));
-            return true;
+            but->action(Context(mousex, mousey, 0, 0));
+            if(mod != 0) /* disable grabbing of pointer button without mod */
+                return true;
+            else
+                break;
         }
 
         if(state == WLC_BUTTON_STATE_RELEASED && check_but_release(but, button, mod)) {
-            but->action(Context(mousex, mousey));
+            but->action(Context(mousex, mousey, 0, 0));
             return true;
         }
     }
@@ -439,7 +453,6 @@ bool Core::process_button_event(uint32_t button, uint32_t mod,
 }
 
 bool Core::process_pointer_motion_event(wlc_point point) {
-    return false;
 
     mousex = point.x;
     mousey = point.y;
@@ -467,6 +480,7 @@ std::tuple<int, int> Core::getWorksize() {
 }
 
 std::tuple<int, int> Core::getScreenSize() {
+    return std::make_tuple(1366, 768);
     return std::make_tuple(width, height);
 }
 
@@ -487,6 +501,16 @@ namespace {
 
         return true;
     }
+
+    bool rect_inside(wlc_geometry screen, wlc_geometry win) {
+        if(win.origin.x + win.size.w < screen.origin.x) return false;
+        if(win.origin.y + win.size.h < screen.origin.y) return false;
+
+        if(screen.origin.x + screen.size.w < win.origin.x) return false;
+        if(screen.origin.y + screen.size.h < win.origin.y) return false;
+
+        return true;
+    }
 }
 
 FireWindow Core::getWindowAtPoint(int x, int y) {
@@ -495,7 +519,7 @@ FireWindow Core::getWindowAtPoint(int x, int y) {
 
     for_each_window([x,y, &chosen] (FireWindow w) {
             if(point_inside({x, y}, w->attrib)) {
-                if(!chosen) chosen = w;
+                if(chosen == nullptr) chosen = w;
             }
     });
 
@@ -512,6 +536,8 @@ void Core::switchWorkspace(std::tuple<int, int> nPos) {
     auto dx = (vx - nx) * width;
     auto dy = (vy - ny) * height;
     GetTuple(sw, sh, core->getScreenSize());
+
+    //glm::mat4 translate_matrix = glm::translate(glm::mat4(), glm::vec3(2 * dx / float(sw),))
 
     using namespace std::placeholders;
     auto proc = [dx, dy, sw, sh] (FireWindow w) {
@@ -538,36 +564,26 @@ void Core::switchWorkspace(std::tuple<int, int> nPos) {
 }
 
 std::vector<FireWindow> Core::getWindowsOnViewport(std::tuple<int, int> vp) {
- //   auto x = std::get<0>(vp);
-//    auto y = std::get<1>(vp);
-//
-//    auto view = getRegionFromRect((x - vx) * width, (y - vy) * height,
-//                       (x - vx + 1) * width, (y - vy + 1) * height);
-//
-//    std::vector<FireWindow> ret;
-//    Region tmp = XCreateRegion();
-//
-//    auto proc = [view, &ret, tmp] (FireWindow w) {
-//        if(!w->region)
-//            return;
-//
-//        if(w->state & WindowStateSkipTaskbar)
-//            return;
-//
-//        if(w->type == WindowTypeWidget ||
-//                w->type == WindowTypeDock)
-//            return;
-//
-//        XIntersectRegion(view, w->region, tmp);
-//        if(tmp && !XEmptyRegion(tmp) && !w->norender)
-//            ret.push_back(w);
-//    };
-//
-//    wins->forEachWindow(proc);
-//    XDestroyRegion(view);
-//    XDestroyRegion(tmp);
-//
-//    return ret;
+    auto x = std::get<0>(vp);
+    auto y = std::get<1>(vp);
+
+    wlc_geometry view;
+
+    view.origin.x = (x - vx) * width;
+    view.origin.y = (y - vy) * height;
+    view.size.w = width;
+    view.size.h = height;
+
+    std::vector<FireWindow> ret;
+
+    auto proc = [view, &ret] (FireWindow w) {
+        if(rect_inside(view, w->attrib))
+            ret.push_back(w);
+    };
+
+    for_each_window(proc);
+
+    return ret;
 }
 
 void Core::getViewportTexture(std::tuple<int, int> vp,
