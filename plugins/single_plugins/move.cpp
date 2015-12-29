@@ -1,15 +1,20 @@
 #include <core.hpp>
 
 class Move : public Plugin {
+
         int sx, sy; // starting pointer x, y
+
         FireWindow win; // window we're operating on
+
         ButtonBinding press;
         ButtonBinding release;
-        Hook hook;
+        //Hook hook;
 
         SignalListener sigScl;
 
         int scX = 1, scY = 1;
+
+        Hook hook;
 
         Button iniButton;
 
@@ -18,6 +23,7 @@ class Move : public Plugin {
             owner->name = "move";
             owner->compatAll = true;
         }
+
         void updateConfiguration() {
 
             iniButton = *options["activate"]->data.but;
@@ -25,20 +31,20 @@ class Move : public Plugin {
                 return;
 
             hook.action = std::bind(std::mem_fn(&Move::Intermediate), this);
-            core->addHook(&hook);
+            core->add_hook(&hook);
 
             using namespace std::placeholders;
             press.type   = BindingTypePress;
             press.mod    = iniButton.mod;
             press.button = iniButton.button;
             press.action = std::bind(std::mem_fn(&Move::Initiate), this, _1);
-            core->addBut(&press, true);
+            core->add_but(&press, true);
 
             release.type   = BindingTypeRelease;
             release.mod    = AnyModifier;
             release.button = iniButton.button;
             release.action = std::bind(std::mem_fn(&Move::Terminate), this, _1);
-            core->addBut(&release, false);
+            core->add_but(&release, false);
         }
 
         void init() {
@@ -48,8 +54,8 @@ class Move : public Plugin {
             core->connectSignal("screen-scale-changed", &sigScl);
         }
 
-        void Initiate(Context *ctx) {
-            auto xev = ctx->xev.xbutton;
+        void Initiate(Context ctx) {
+            auto xev = ctx.xev.xbutton;
             auto w = core->getWindowAtPoint(xev.x_root, xev.y_root);
 
             if(!w)
@@ -62,34 +68,30 @@ class Move : public Plugin {
 
             owner->grab();
 
-            core->focusWindow(w);
+            core->focus_window(w);
+
             hook.enable();
             release.enable();
 
             this->sx = xev.x_root;
             this->sy = xev.y_root;
-            core->setRedrawEverything(true);
         }
 
-        void Terminate(Context *ctx) {
+        void Terminate(Context ctx) {
             hook.disable();
             release.disable();
             core->deactivateOwner(owner);
 
-            auto xev = ctx->xev.xbutton;
+            auto xev = ctx.xev.xbutton;
             win->transform.translation = glm::mat4();
 
             int dx = (xev.x_root - sx) * scX;
             int dy = (xev.y_root - sy) * scY;
 
-            int nx = win->attrib.x + dx;
-            int ny = win->attrib.y + dy;
+            int nx = win->attrib.origin.x + dx;
+            int ny = win->attrib.origin.y + dy;
 
             win->move(nx, ny);
-            core->setRedrawEverything(false);
-
-            core->focusWindow(win);
-            win->addDamage();
         }
 
         void Intermediate() {

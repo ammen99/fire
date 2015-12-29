@@ -16,14 +16,8 @@ void _Ownership::grab() {
     grabCount++;
 
     if(grabCount == 1) {
-        XGrabPointer(core->d, core->overlay, TRUE,
-                ButtonPressMask | ButtonReleaseMask |
-                PointerMotionMask,
-                GrabModeAsync, GrabModeAsync,
-                core->root, None, CurrentTime);
-
-        XGrabKeyboard(core->d, core->overlay, True,
-                GrabModeAsync, GrabModeAsync, CurrentTime);
+        core->grab_pointer();
+        core->grab_keyboard();
     }
 }
 
@@ -33,9 +27,10 @@ void _Ownership::ungrab() {
 
     grabbed = false;
     grabCount--;
+
     if(grabCount == 0) {
-        XUngrabPointer(core->d, CurrentTime);
-        XUngrabKeyboard(core->d, CurrentTime);
+        core->ungrab_pointer();
+        core->grab_keyboard();
     }
 
     if(grabCount < 0)

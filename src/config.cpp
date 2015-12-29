@@ -40,15 +40,15 @@ namespace {
         return tmp;
     }
 
-    uint getModFromStr(std::string value) {
+    uint32_t getModFromStr(std::string value) {
         if(value == "Control")
-            return ControlMask;
+            return WLC_BIT_MOD_CTRL;
         if(value == "Alt")
-            return Mod1Mask;
+            return WLC_BIT_MOD_ALT;
         if(value == "Win")
-            return Mod4Mask;
+            return WLC_BIT_MOD_LOGO;
         if(value == "Shift")
-            return ShiftMask;
+            return WLC_BIT_MOD_SHIFT;
 
         log << "modval not recognized" << std::endl;
         return 0;
@@ -77,6 +77,354 @@ namespace {
         c.r /= 255.f, c.g /= 255.f, c.b /= 255.f;
         return c;
     }
+
+    namespace {
+        uint32_t readXKBKeyFromString(std::string value) {
+            if(value == "a")
+                return XKB_KEY_a;
+            if(value == "A")
+                return XKB_KEY_A;
+            if(value == "b")
+                return XKB_KEY_b;
+            if(value == "B")
+                return XKB_KEY_B;
+            if(value == "c")
+                return XKB_KEY_c;
+            if(value == "C")
+                return XKB_KEY_C;
+            if(value == "d")
+                return XKB_KEY_d;
+            if(value == "D")
+                return XKB_KEY_D;
+            if(value == "e")
+                return XKB_KEY_e;
+            if(value == "E")
+                return XKB_KEY_E;
+            if(value == "f")
+                return XKB_KEY_f;
+            if(value == "F")
+                return XKB_KEY_F;
+            if(value == "g")
+                return XKB_KEY_g;
+            if(value == "G")
+                return XKB_KEY_G;
+            if(value == "h")
+                return XKB_KEY_h;
+            if(value == "H")
+                return XKB_KEY_H;
+            if(value == "i")
+                return XKB_KEY_i;
+            if(value == "I")
+                return XKB_KEY_I;
+            if(value == "j")
+                return XKB_KEY_j;
+            if(value == "J")
+                return XKB_KEY_J;
+            if(value == "k")
+                return XKB_KEY_k;
+            if(value == "K")
+                return XKB_KEY_K;
+            if(value == "l")
+                return XKB_KEY_l;
+            if(value == "L")
+                return XKB_KEY_L;
+            if(value == "m")
+                return XKB_KEY_m;
+            if(value == "M")
+                return XKB_KEY_M;
+            if(value == "n")
+                return XKB_KEY_n;
+            if(value == "N")
+                return XKB_KEY_N;
+            if(value == "o")
+                return XKB_KEY_o;
+            if(value == "O")
+                return XKB_KEY_O;
+            if(value == "p")
+                return XKB_KEY_p;
+            if(value == "P")
+                return XKB_KEY_P;
+            if(value == "q")
+                return XKB_KEY_q;
+            if(value == "Q")
+                return XKB_KEY_Q;
+            if(value == "r")
+                return XKB_KEY_r;
+            if(value == "R")
+                return XKB_KEY_R;
+            if(value == "s")
+                return XKB_KEY_s;
+            if(value == "S")
+                return XKB_KEY_S;
+            if(value == "t")
+                return XKB_KEY_t;
+            if(value == "T")
+                return XKB_KEY_T;
+            if(value == "u")
+                return XKB_KEY_u;
+            if(value == "U")
+                return XKB_KEY_U;
+            if(value == "v")
+                return XKB_KEY_v;
+            if(value == "V")
+                return XKB_KEY_V;
+            if(value == "w")
+                return XKB_KEY_w;
+            if(value == "W")
+                return XKB_KEY_W;
+            if(value == "x")
+                return XKB_KEY_x;
+            if(value == "X")
+                return XKB_KEY_X;
+            if(value == "y")
+                return XKB_KEY_y;
+            if(value == "Y")
+                return XKB_KEY_Y;
+            if(value == "z")
+                return XKB_KEY_z;
+            if(value == "Z")
+                return XKB_KEY_Z;
+            if(value == "KP_0")
+                return XKB_KEY_KP_0;
+            if(value == "KP_1")
+                return XKB_KEY_KP_1;
+            if(value == "KP_2")
+                return XKB_KEY_KP_2;
+            if(value == "KP_3")
+                return XKB_KEY_KP_3;
+            if(value == "KP_4")
+                return XKB_KEY_KP_4;
+            if(value == "KP_5")
+                return XKB_KEY_KP_5;
+            if(value == "KP_6")
+                return XKB_KEY_KP_6;
+            if(value == "KP_7")
+                return XKB_KEY_KP_7;
+            if(value == "KP_8")
+                return XKB_KEY_KP_8;
+            if(value == "KP_9")
+                return XKB_KEY_KP_9;
+            if(value == "0")
+                return XKB_KEY_0;
+            if(value == "1")
+                return XKB_KEY_1;
+            if(value == "2")
+                return XKB_KEY_2;
+            if(value == "3")
+                return XKB_KEY_3;
+            if(value == "4")
+                return XKB_KEY_4;
+            if(value == "5")
+                return XKB_KEY_5;
+            if(value == "6")
+                return XKB_KEY_6;
+            if(value == "7")
+                return XKB_KEY_7;
+            if(value == "8")
+                return XKB_KEY_8;
+            if(value == "9")
+                return XKB_KEY_9;
+            if(value == "F1")
+                return XKB_KEY_F1;
+            if(value == "F2")
+                return XKB_KEY_F2;
+            if(value == "F3")
+                return XKB_KEY_F3;
+            if(value == "F4")
+                return XKB_KEY_F4;
+            if(value == "F5")
+                return XKB_KEY_F5;
+            if(value == "F6")
+                return XKB_KEY_F6;
+            if(value == "F7")
+                return XKB_KEY_F7;
+            if(value == "F8")
+                return XKB_KEY_F8;
+            if(value == "F9")
+                return XKB_KEY_F9;
+            if(value == "F10")
+                return XKB_KEY_F10;
+            if(value == "F11")
+                return XKB_KEY_F11;
+
+            if(value == "F12")
+                return XKB_KEY_F12;
+
+            return -1;
+        }
+
+        std::string keyToString(uint32_t value) {
+            if(value == XKB_KEY_a)
+                return "a";
+            if(value == XKB_KEY_A)
+                return "A";
+            if(value == XKB_KEY_b)
+                return "b";
+            if(value == XKB_KEY_B)
+                return "B";
+            if(value == XKB_KEY_c)
+                return "c";
+            if(value == XKB_KEY_C)
+                return "C";
+            if(value == XKB_KEY_d)
+                return "d";
+            if(value == XKB_KEY_D)
+                return "D";
+            if(value == XKB_KEY_e)
+                return "e";
+            if(value == XKB_KEY_E)
+                return "E";
+            if(value == XKB_KEY_f)
+                return "f";
+            if(value == XKB_KEY_F)
+                return "F";
+            if(value == XKB_KEY_g)
+                return "g";
+            if(value == XKB_KEY_G)
+                return "G";
+            if(value == XKB_KEY_h)
+                return "h";
+            if(value == XKB_KEY_H)
+                return "H";
+            if(value == XKB_KEY_i)
+                return "i";
+            if(value == XKB_KEY_I)
+                return "I";
+            if(value == XKB_KEY_j)
+                return "j";
+            if(value == XKB_KEY_J)
+                return "J";
+            if(value == XKB_KEY_k)
+                return "k";
+            if(value == XKB_KEY_K)
+                return "K";
+            if(value == XKB_KEY_l)
+                return "l";
+            if(value == XKB_KEY_L)
+                return "L";
+            if(value == XKB_KEY_m)
+                return "m";
+            if(value == XKB_KEY_M)
+                return "M";
+            if(value == XKB_KEY_n)
+                return "n";
+            if(value == XKB_KEY_N)
+                return "N";
+            if(value == XKB_KEY_o)
+                return "o";
+            if(value == XKB_KEY_O)
+                return "O";
+            if(value == XKB_KEY_p)
+                return "p";
+            if(value == XKB_KEY_P)
+                return "P";
+            if(value == XKB_KEY_q)
+                return "q";
+            if(value == XKB_KEY_Q)
+                return "Q";
+            if(value == XKB_KEY_r)
+                return "r";
+            if(value == XKB_KEY_R)
+                return "R";
+            if(value == XKB_KEY_s)
+                return "s";
+            if(value == XKB_KEY_S)
+                return "S";
+            if(value == XKB_KEY_t)
+                return "t";
+            if(value == XKB_KEY_T)
+                return "T";
+            if(value == XKB_KEY_u)
+                return "u";
+            if(value == XKB_KEY_U)
+                return "U";
+            if(value == XKB_KEY_v)
+                return "v";
+            if(value == XKB_KEY_V)
+                return "V";
+            if(value == XKB_KEY_w)
+                return "w";
+            if(value == XKB_KEY_W)
+                return "W";
+            if(value == XKB_KEY_x)
+                return "x";
+            if(value == XKB_KEY_X)
+                return "X";
+            if(value == XKB_KEY_y)
+                return "y";
+            if(value == XKB_KEY_Y)
+                return "Y";
+            if(value == XKB_KEY_z)
+                return "z";
+            if(value == XKB_KEY_Z)
+                return "Z";
+            if(value == XKB_KEY_KP_0)
+                return "KP_0";
+            if(value == XKB_KEY_KP_1)
+                return "KP_1";
+            if(value == XKB_KEY_KP_2)
+                return "KP_2";
+            if(value == XKB_KEY_KP_3)
+                return "KP_3";
+            if(value == XKB_KEY_KP_4)
+                return "KP_4";
+            if(value == XKB_KEY_KP_5)
+                return "KP_5";
+            if(value == XKB_KEY_KP_6)
+                return "KP_6";
+            if(value == XKB_KEY_KP_7)
+                return "KP_7";
+            if(value == XKB_KEY_KP_8)
+                return "KP_8";
+            if(value == XKB_KEY_KP_9)
+                return "KP_9";
+            if(value == XKB_KEY_0)
+                return "0";
+            if(value == XKB_KEY_1)
+                return "1";
+            if(value == XKB_KEY_2)
+                return "2";
+            if(value == XKB_KEY_3)
+                return "3";
+            if(value == XKB_KEY_4)
+                return "4";
+            if(value == XKB_KEY_5)
+                return "5";
+            if(value == XKB_KEY_6)
+                return "6";
+            if(value == XKB_KEY_7)
+                return "7";
+            if(value == XKB_KEY_8)
+                return "8";
+            if(value == XKB_KEY_9)
+                return "9";
+            if(value == XKB_KEY_F1)
+                return "F1";
+            if(value == XKB_KEY_F2)
+                return "F2";
+            if(value == XKB_KEY_F3)
+                return "F3";
+            if(value == XKB_KEY_F4)
+                return "F4";
+            if(value == XKB_KEY_F5)
+                return "F5";
+            if(value == XKB_KEY_F6)
+                return "F6";
+            if(value == XKB_KEY_F7)
+                return "F7";
+            if(value == XKB_KEY_F8)
+                return "F8";
+            if(value == XKB_KEY_F9)
+                return "F9";
+            if(value == XKB_KEY_F10)
+                return "F10";
+            if(value == XKB_KEY_F11)
+                return "F11";
+
+            return "";
+        }
+    }
+
     template<>Key readValue<Key>(std::string value) {
         Key key;
         key.mod = getModsFromString(value);
@@ -86,12 +434,11 @@ namespace {
         }
         ++i;
         std::string keystr = value.substr(i, value.size() - i);
-        KeySym ks = XStringToKeysym(keystr.c_str());
-        key.key = XKeysymToKeycode(core->d, ks);
+        key.key = readXKBKeyFromString(keystr);
         return key;
     }
 
-    int Buttons [] = {0, Button1, Button2, Button3, Button4, Button5};
+    int Buttons [] = {0, BTN_LEFT, BTN_MIDDLE, BTN_RIGHT, BTN_GEAR_DOWN, BTN_GEAR_UP};
 
     template<>Button readValue<Button>(std::string value) {
         Button but;
@@ -103,11 +450,13 @@ namespace {
         i++;
         std::string tmp = value.substr(i, value.size() - i);
         tmp = trim(tmp); tmp = tmp.substr(1, tmp.size() - 1);
+
         if(!std::isdigit(tmp[0])){
             std::cout << "Error reading button binding!" << std::endl;
             but.button = 0;
             return but;
         }
+
         but.button = Buttons[tmp[0] - '0'];
         return but;
     }

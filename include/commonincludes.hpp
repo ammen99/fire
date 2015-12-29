@@ -53,6 +53,11 @@
 
 #include <fstream>
 
+extern "C"{
+#include "../src/wlc/include/wlc/wlc.h"
+}
+#include <linux/input.h>
+
 #ifdef YCM
 #define private public
 #endif

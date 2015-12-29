@@ -31,7 +31,7 @@ namespace OpenGL {
         PFNGLUNIFORMMATRIX4FVPROC glUniformMatrix4fv;
         PFNGLUSEPROGRAMPROC glUseProgram;
         PFNGLVERTEXATTRIBPOINTERPROC glVertexAttribPointer;
-        
+
         PFNGLCHECKFRAMEBUFFERSTATUSPROC glCheckFramebufferStatus;
         PFNGLDELETETEXTURESEXTPROC glDeleteTextures;
         PFNGLFRAMEBUFFERTEXTURE2DPROC glFramebufferTexture2D;

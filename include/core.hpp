@@ -10,9 +10,16 @@
 class WinStack;
 
 struct Context{
-    XEvent xev;
-    Context();
-    Context(XEvent x);
+    struct {
+        struct {
+            int x_root, y_root;
+        } xbutton;
+    } xev;
+
+    Context(int x, int y) {
+        xev.xbutton.x_root = x;
+        xev.xbutton.y_root = y;
+    }
 };
 
 enum BindingType {
@@ -23,26 +30,26 @@ enum BindingType {
 struct Binding{
     bool active = false;
     BindingType type;
-    uint mod;
+    uint32_t mod;
     uint id;
-    std::function<void(Context*)> action;
+    std::function<void(Context)> action;
 };
 
 struct KeyBinding : Binding {
-    KeyCode key;
+    uint32_t key;
 
     void enable();
     void disable();
 };
 
 struct ButtonBinding : Binding {
-    uint button;
+    uint32_t button;
 
     void enable();
     void disable();
 };
 
-// hooks are done once a redraw cycle
+// hooks are used to handle pointer motion
 struct Hook {
     protected:
         bool active;
@@ -83,6 +90,7 @@ struct SignalListener {
 #define GetTuple(x,y,t) auto x = std::get<0>(t); \
                         auto y = std::get<1>(t)
 
+using WindowCallbackProc = std::function<void(FireWindow)>;
 
 class Core {
 
@@ -91,9 +99,8 @@ class Core {
 
     private:
 
-        WinStack *wins;
+        //WinStack *wins;
         int cntHooks;
-        int damage;
 
         int mousex, mousey; // pointer x, y
         int width, height;
@@ -101,6 +108,8 @@ class Core {
         int vx, vy;          // viewport position
 
         std::vector<std::vector<FireWindow> > backgrounds;
+
+        std::unordered_map<wlc_handle, FireWindow> windows;
 
         uint nextID = 0;
         pollfd fd;
@@ -118,92 +127,64 @@ class Core {
             std::vector<SignalListener*>> signals;
         void addDefaultSignals();
 
-
-        void handleEvent(XEvent xev);
-        void wait(int timeout);
-        void enableInputPass(Window win);
-        void addExistingWindows(); // adds windows created before
-                                   // we registered for SubstructureRedirect
-                                   //
         void initDefaultPlugins();
         template<class T> PluginPtr createPlugin();
         PluginPtr loadPluginFromFile(std::string path, void **handle);
         void loadDynamicPlugins();
 
-        void defaultRenderer();
-        void afterEffects();
-
-        struct {
-            RenderHook currentRenderer;
-            bool replaced = true;
-        } render;
-
-        struct {
-            char *seat;
-            char *sid;
-            DBusConnection *dbus;
-
-            wl_event_source *dbus_ctx;
-            std::string spaath;
-            int vt;
-
-            struct {
-                DBusPendingCall *active;
-            } pending;
-        } logind;
-
-    public:
-
-        Display *d;
-        Window s0owner, overlay, root, outputwin;
-
-        bool terminate = false; // should main loop exit?
-        bool mainrestart = false; // should main() restart us?
-
     public:
         Core(int vx, int vy);
         ~Core();
         void init();
-        void loop();
-        void exit();
-        void set_active(bool active);
-        wl_event_loop * get_event_loop();
-
-        void input_created(libinput_device *dev);
-        void input_destroyed(libinput_device *dev);
 
         static int onXError (Display* d, XErrorEvent* xev);
         static int onOtherWmDetected(Display *d, XErrorEvent *xev);
 
         void run(const char *command);
-        FireWindow findWindow(Window win);
-        FireWindow getActiveWindow();
-        std::function<FireWindow(int,int)> getWindowAtPoint;
+        FireWindow find_window(wlc_handle handle);
+        FireWindow get_active_window();
 
-        void addWindow(XCreateWindowEvent);
-        void addWindow(Window);
-        void focusWindow(FireWindow win);
-        void closeWindow(FireWindow win);
-        void removeWindow(FireWindow win);
-        void mapWindow(FireWindow win, bool xmap = true);
-        void unmapWindow(FireWindow win);
+        wlc_handle get_top_window(wlc_handle output, size_t offset);
+
+        FireWindow getWindowAtPoint(int x, int y);
+
+        void add_window(wlc_handle view);
+
+        void focus_window(FireWindow win);
+        void close_window(FireWindow win);
+
+        void remove_window(FireWindow win);
+
+        void for_each_window(WindowCallbackProc);
+
+        bool process_key_event(uint32_t key, uint32_t mods, wlc_key_state state);
+        bool process_button_event(uint32_t button, uint32_t mods, wlc_button_state state, wlc_point point);
+        bool process_pointer_motion_event(wlc_point point);
+
+        void grab_keyboard();
+        void ungrad_keyboard();
+        void grab_pointer();
+        void ungrab_pointer();
+
+
+
         int getRefreshRate();
 
         void setBackground(const char *path);
         bool setRenderer(RenderHook rh);
         void setDefaultRenderer();
 
-        void addKey (KeyBinding *kb, bool grab = false);
-        void remKey (uint key);
+        void add_key (KeyBinding *kb, bool grab = false);
+        void rem_key (uint key);
 
-        void addBut (ButtonBinding *bb, bool grab = false);
-        void remBut (uint key);
+        void add_but (ButtonBinding *bb, bool grab = false);
+        void rem_but (uint key);
 
-        void addHook(Hook*);
-        void remHook(uint key);
+        void add_hook(Hook*);
+        void rem_hook(uint key);
 
-        void addEffect(EffectHook *);
-        void remEffect(uint key, FireWindow win = nullptr);
+        void add_effect(EffectHook *);
+        void rem_effect(uint key, FireWindow win = nullptr);
 
         void addSignal(std::string name);
         void connectSignal(std::string name, SignalListener *callback);
@@ -211,9 +192,11 @@ class Core {
         void triggerSignal(std::string name, SignalListenerData data);
 
         void regOwner(Ownership owner);
-        bool checkKey(KeyBinding *kb, XKeyEvent xkey);
-        bool checkButPress  (ButtonBinding *bb, XButtonEvent xb);
-        bool checkButRelease(ButtonBinding *bb, XButtonEvent xb);
+
+        bool check_key(KeyBinding *kb, uint32_t key, uint32_t mod);
+        bool check_but_press  (ButtonBinding *bb, uint32_t button, uint32_t mod);
+        bool check_but_release(ButtonBinding *bb, uint32_t button, uint32_t mod);
+
         bool activateOwner  (Ownership owner);
         bool deactivateOwner(Ownership owner);
 
@@ -229,18 +212,6 @@ class Core {
         std::tuple<int, int> getWorksize  ();
         std::tuple<int, int> getScreenSize();
         std::tuple<int, int> getMouseCoord();
-
-        bool resetDMG;
-        Region dmg;
-        void damageRegion(Region r);
-        void damageREGION(REGION r);
-        Region getMaximisedRegion();
-        Region getRegionFromRect(int tlx, int tly, int brx, int bry);
-        REGION getREGIONFromRect(int tlx, int tly, int brx, int bry);
-        /* use this function to draw all windows
-         * but do not forget to turn it off
-         * as it is extremely bad for performance */
-        void setRedrawEverything(bool value);
 };
 extern Core *core;
 #endif

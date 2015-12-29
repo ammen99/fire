@@ -2,51 +2,52 @@
 
 void Exit::init() {
     this->owner->special = true;
+
     KeyBinding *exit = new KeyBinding();
-    exit->action = [](Context *ctx){
-        core->terminate = true;
+    exit->action = [](Context ctx){
+        wlc_terminate();
     };
 
-    exit->mod = ControlMask | Mod1Mask;
-    exit->type = BindingTypePress;
-    exit->key = XKeysymToKeycode(core->d, XK_q);
-    core->addKey(exit, true);
+    exit->mod = WLC_BIT_MOD_CTRL | WLC_BIT_MOD_ALT;
+    exit->key = XKB_KEY_q;
+    core->add_key(exit, true);
 }
 
+//TODO: implement refresh using wlc
 void Refresh::init() {
-    ref.key = XKeysymToKeycode(core->d, XK_r);
+    ref.key = XKB_KEY_r;
     ref.type = BindingTypePress;
     ref.mod = ControlMask | Mod1Mask;
-    ref.action = [] (Context *ctx) {
-        core->terminate = true;
-        core->mainrestart = true;
+    ref.action = [] (Context ctx) {
+        //core->terminate = true;
+        //core->mainrestart = true;
     };
-    core->addKey(&ref, true);
+    core->add_key(&ref, true);
 }
 
 void Close::init() {
     KeyBinding *close = new KeyBinding();
-    close->mod = Mod1Mask;
+    close->mod = WLC_BIT_MOD_ALT;
     close->type = BindingTypePress;
-    close->key = XKeysymToKeycode(core->d, XK_F4);
-    close->action = [](Context *ctx) {
-        auto w = core->getActiveWindow();
-        core->closeWindow(w);
+    close->key = XKB_KEY_F4;
+    close->action = [](Context ctx) {
+        core->close_window(core->get_active_window());
     };
-    core->addKey(close, true);
+    core->add_key(close, true);
 }
 
 void Focus::init() {
-    this->owner->special = true;
     focus.type = BindingTypePress;
-    focus.button = Button1;
+
+    focus.button = BTN_LEFT;
     focus.mod = 0;
     focus.active = true;
 
-    focus.action = [] (Context *ctx){
-        auto xev = ctx->xev.xbutton;
+    focus.action = [] (Context ctx){
+        auto xev = ctx.xev.xbutton;
         auto w = core->getWindowAtPoint(xev.x_root, xev.y_root);
-        if(w) core->focusWindow(w);
+        if(w) core->focus_window(w);
     };
-    core->addBut(&focus, false);
+
+    core->add_but(&focus, false);
 }

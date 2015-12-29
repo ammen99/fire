@@ -1,8 +1,8 @@
-#include <commonincludes.hpp>
-#include <opengl.hpp>
-#include <winstack.hpp>
-#include <core.hpp>
-#include <wm.hpp>
+#include "../include/commonincludes.hpp"
+#include "../include/opengl.hpp"
+#include "../include/winstack.hpp"
+#include "../include/core.hpp"
+#include "../include/wm.hpp"
 
 #include <sstream>
 #include <memory>
@@ -34,13 +34,12 @@ class CorePlugin : public Plugin {
 PluginPtr plug; // used to get core options
 
 Core::Core(int vx, int vy) {
+    config = new Config("~/.config/firerc");
+
     this->vx = vx;
     this->vy = vy;
+
 }
-
-void Core::addExistingWindows() {}
-
-
 void Core::init() {
 
     initDefaultPlugins();
@@ -57,8 +56,8 @@ void Core::init() {
 
     loadDynamicPlugins();
 
-    OpenGL::initOpenGL((*plug->options["shadersrc"]->data.sval).c_str());
-    core->setBackground((*plug->options["background"]->data.sval).c_str());
+    //OpenGL::initOpenGL((*plug->options["shadersrc"]->data.sval).c_str());
+    //core->setBackground((*plug->options["background"]->data.sval).c_str());
 
     for(auto p : plugins) {
         p->owner = std::make_shared<_Ownership>();
@@ -69,11 +68,6 @@ void Core::init() {
         p->updateConfiguration();
     }
 
-    dmg = getMaximisedRegion();
-    resetDMG = true;
-
-    addExistingWindows();
-    setDefaultRenderer();
     addDefaultSignals();
 }
 
@@ -90,23 +84,19 @@ void Core::run(const char *command) {
     auto pid = fork();
 
     if(!pid) {
-        std::string str("DISPLAY=");
-        str = str.append(XDisplayString(d));
-        putenv(const_cast<char*>(str.c_str()));
         std::exit(execl("/bin/sh", "/bin/sh", "-c", command, NULL));
     }
 }
 
-Context::Context(XEvent ev) : xev(ev){}
 Hook::Hook() : active(false) {}
 
-void Core::addHook(Hook *hook){
+void Core::add_hook(Hook *hook){
     if(hook)
         hook->id = nextID++,
         hooks.push_back(hook);
 }
 
-void Core::remHook(uint key) {
+void Core::rem_hook(uint key) {
     auto it = std::remove_if(hooks.begin(), hooks.end(), [key] (Hook *hook) {
                 if(hook && hook->id == key) {
                         hook->disable();
@@ -120,7 +110,7 @@ void Core::remHook(uint key) {
 }
 
 
-void Core::addEffect(EffectHook *hook){
+void Core::add_effect(EffectHook *hook){
     if(!hook) return;
 
     hook->id = nextID++;
@@ -131,7 +121,7 @@ void Core::addEffect(EffectHook *hook){
         hook->win->effects[hook->id] = hook;
 }
 
-void Core::remEffect(uint key, FireWindow w) {
+void Core::rem_effect(uint key, FireWindow w) {
     if(w == nullptr) {
         auto it = std::remove_if(effects.begin(), effects.end(),
                 [key] (EffectHook *hook) {
@@ -171,26 +161,22 @@ void Hook::disable() {
 
 void KeyBinding::enable() {
     if(active) return;
-
     active = true;
-    XGrabKey(core->d, key, mod, core->root,
-            false, GrabModeAsync, GrabModeAsync);
 }
 
 void KeyBinding::disable() {
     if(!active) return;
 
     active = false;
-    XUngrabKey(core->d, key, mod, core->root);
 }
 
-void Core::addKey(KeyBinding *kb, bool grab) {
+void Core::add_key(KeyBinding *kb, bool grab) {
     if(!kb) return;
     keys.push_back(kb);
     if(grab) kb->enable();
 }
 
-void Core::remKey(uint key) {
+void Core::rem_key(uint key) {
     auto it = std::remove_if(keys.begin(), keys.end(), [key] (KeyBinding *kb) {
                 if(kb) return kb->id == key;
                 else return true;
@@ -201,29 +187,22 @@ void Core::remKey(uint key) {
 
 void ButtonBinding::enable() {
     if(active) return;
-
     active = true;
-    XGrabButton(core->d, button, mod,
-            core->root, false, ButtonPressMask,
-            GrabModeAsync, GrabModeAsync,
-            None, None);
 }
 
 void ButtonBinding::disable() {
     if(!active) return;
-
     active = false;
-    XUngrabButton(core->d, button, mod, core->root);
 }
 
-void Core::addBut(ButtonBinding *bb, bool grab) {
+void Core::add_but(ButtonBinding *bb, bool grab) {
     if(!bb) return;
 
     buttons.push_back(bb);
     if(grab) bb->enable();
 }
 
-void Core::remBut(uint key) {
+void Core::rem_but(uint key) {
     auto it = std::remove_if(buttons.begin(), buttons.end(), [key] (ButtonBinding *bb) {
                 if(bb) return bb->id == key;
                 else return true;
@@ -273,50 +252,11 @@ bool Core::deactivateOwner(Ownership owner) {
     return true;
 }
 
-void Core::afterEffects() {
-    std::vector<EffectHook*> runningEffects;
-    for(auto effect : effects)
-        if(effect && effect->getState())
-            runningEffects.push_back(effect);
-
-    for(auto effect : runningEffects)
-        effect->action();
-
-    OpenGL::API.glUseProgram(0);
-    OpenGL::useDefaultProgram();
-}
-
-void Core::defaultRenderer() {
-    XIntersectRegion(dmg, output, dmg);
-
-    OpenGL::preStage();
-    wins->renderWindows();
-    afterEffects();
-    OpenGL::endStage();
-
-    if(resetDMG)
-        XDestroyRegion(dmg),
-        dmg = getRegionFromRect(0, 0, 0, 0),
-        FireWin::allDamaged = false;
-}
-
-bool Core::setRenderer(RenderHook rh) {
-    if(render.replaced)
-        return false;
-    render.replaced = true;
-    render.currentRenderer = rh;
-    return true;
-}
-
-void Core::setDefaultRenderer() {
-    if(!render.replaced)
-        return;
-
-    render.replaced = false;
-
-    render.currentRenderer =
-        std::bind(std::mem_fn(&Core::defaultRenderer), this);
-}
+//TODO: implement grab/ungrab keyboard and pointer
+void Core::grab_pointer() {}
+void Core::ungrab_pointer() {}
+void Core::grab_keyboard() {}
+void Core::ungrad_keyboard() {}
 
 void Core::addSignal(std::string name) {
     if(signals.find(name) == signals.end())
@@ -365,137 +305,75 @@ void Core::addDefaultSignals() {
     addSignal("move-window");
 }
 
-void Core::addWindow(XCreateWindowEvent xev) {
-    FireWindow w = std::make_shared<FireWin>(xev.window, true);
+void Core::add_window(wlc_handle view) {
+    FireWindow w = std::make_shared<FireWin>(view);
+    windows[view] = w;
 
-    if(xev.parent != root && xev.parent != 0 && !w->transientFor)
-        w->transientFor = findWindow(xev.parent);
-
-    wins->addWindow(w);
-    if(w->type != WindowTypeWidget)
-        wins->focusWindow(w);
+    wlc_view_bring_to_front(view);
+    wlc_view_focus(view);
 }
 
-void Core::addWindow(Window id) {
-    XCreateWindowEvent xev;
-    xev.window = id;
-    xev.parent = 0;
-    addWindow(xev);
+void Core::focus_window(FireWindow win) {
+    assert(win);
+    auto id = win->get_id();
+    wlc_view_focus(id);
 }
 
-void Core::focusWindow(FireWindow win) {
-    wins->focusWindow(win);
+FireWindow Core::find_window(wlc_handle handle) {
+    auto it = windows.find(handle);
+    if(it == windows.end()) return nullptr;
+    return it->second;
 }
 
-FireWindow Core::findWindow(Window win) {
-    return wins->findWindow(win);
+FireWindow Core::get_active_window() {
+    return find_window(get_top_window(wlc_get_focused_output(), 0));
 }
 
-FireWindow Core::getActiveWindow() {
-    return wins->getTopmostToplevel();
+wlc_handle Core::get_top_window(wlc_handle output, size_t offset) {
+    size_t memb;
+    const wlc_handle *views = wlc_output_get_views(output, &memb);
+    return (memb > 0 ? views[(memb - 1 + offset) % memb] : 0);
 }
 
-void Core::mapWindow(FireWindow win, bool xmap) {
-    if(xmap)
-        XMapWindow(d, win->id),
-        XSync(d, 0);
+void Core::for_each_window(WindowCallbackProc call) {
+    size_t num;
+    const wlc_handle* views = wlc_output_get_views(wlc_get_focused_output(), &num);
 
-    if(win->initialMapping){
-        win->initialMapping = false;
-        /* ensure windows do not save their position to some
-         * other workspace which might not exist */
-        int x = win->attrib.x, y = win->attrib.y;
-        if(WinUtil::constrainNewWindowPosition(x, y))
-            win->move(x, y, true);
+    for(int i = 0; i < num; i++) {
+        auto w = find_window(views[i]);
+        if(w) call(w);
     }
-
-    win->syncAttrib();
-    win->addDamage();
-
-    if(win->attrib.map_state == IsViewable)
-        win->pixmap = XCompositeNameWindowPixmap(d, win->id);
-    else
-        win->pixmap = 0;
-
-    if(win->transientFor)
-        wins->restackTransients(win->transientFor);
-    wins->checkAddClient(win);
-
-    SignalListenerData v;
-    v.push_back((void*)&win);
-    triggerSignal("map-window", v);
 }
 
-void Core::unmapWindow(FireWindow win) {
-    win->attrib.map_state = IsUnmapped;
 
-    SignalListenerData v;
-    v.push_back((void*)&win);
-    triggerSignal("unmap-window", v);
+void Core::close_window(FireWindow win) {
+    assert(win);
 
-    wins->checkRemoveClient(win);
+    wlc_view_close(win->get_id());
+    focus_window(get_active_window());
 }
 
-void Core::closeWindow(FireWindow win) {
-    if(!win) return;
+void Core::remove_window(FireWindow win) {
+    assert(win);
 
-    int cnt;
-    Atom *atoms;
-    auto status = XGetWMProtocols(d, win->id, &atoms, &cnt);
-    Atom wmdelete = XInternAtom(d, "WM_DELETE_WINDOW", 0);
-    Atom wmproto  = XInternAtom(d, "WM_PROTOCOLS", 0);
-
-    if(status != 0) {
-        bool send = false; // should we send a wm_delete_window?
-        for(int i = 0; i < cnt; i++)
-            if(atoms[i] == wmdelete)
-                send = true;
-
-        if(send) {
-            XEvent xev;
-
-            xev.type         = ClientMessage;
-            xev.xclient.window       = win->id;
-            xev.xclient.message_type = wmproto;
-            xev.xclient.format       = 32;
-            xev.xclient.data.l[0]    = wmdelete;
-            xev.xclient.data.l[1]    = CurrentTime;
-            xev.xclient.data.l[2]    = 0;
-            xev.xclient.data.l[3]    = 0;
-            xev.xclient.data.l[4]    = 0;
-
-            XSendEvent (d, win->id, FALSE, NoEventMask, &xev);
-        } else
-            XKillClient (d, win->id);
-    } else
-        XKillClient(d, win->id);
-
-    wins->focusWindow(wins->getTopmostToplevel());
-}
-
-void Core::removeWindow(FireWindow win) {
-    wins->removeWindow(win);
+    windows.erase(win->get_id());
     win.reset();
 }
 
-void Core::wait(int timeout) {
-    poll(&fd, 1, timeout / 1000); // convert from usec to msec
-}
-
-bool Core::checkKey(KeyBinding *kb, XKeyEvent xkey) {
+bool Core::check_key(KeyBinding *kb, uint32_t key, uint32_t mod) {
     if(!kb->active)
         return false;
 
-    if(kb->key != xkey.keycode)
+    if(kb->key != key)
         return false;
 
-    if(kb->mod != xkey.state)
+    if(kb->mod != mod)
         return false;
 
     return true;
 }
 
-bool Core::checkButPress(ButtonBinding *bb, XButtonEvent xb) {
+bool Core::check_but_press(ButtonBinding *bb, uint32_t button, uint32_t mod) {
 
     if(!bb->active)
         return false;
@@ -503,367 +381,82 @@ bool Core::checkButPress(ButtonBinding *bb, XButtonEvent xb) {
     if(bb->type != BindingTypePress)
         return false;
 
-    auto state = xb.state & AllModifiers;
-    if(state != bb->mod && bb->mod != AnyModifier)
+    if(bb->mod != mod)
         return false;
 
-    if(bb->button != xb.button)
+    if(bb->button != button)
         return false;
+
     return true;
 }
 
-bool Core::checkButRelease(ButtonBinding *bb, XButtonEvent kb) {
+bool Core::check_but_release(ButtonBinding *bb, uint32_t button, uint32_t mod) {
     if(!bb->active)
         return false;
 
     if(bb->type != BindingTypeRelease)
         return false;
 
-    if(bb->button != kb.button)
+    if(bb->button != button)
         return false;
 
     return true;
 }
 
-void Core::handleEvent(XEvent xev){
-    switch(xev.type) {
-        case Expose:
-            dmg = getMaximisedRegion();
-            break;
-        case KeyPress: {
-            // check keybindings
-            for(auto kb : keys)
-                if(checkKey(kb, xev.xkey))
-                   kb->action(new Context(xev));
-            break;
+bool Core::process_key_event(uint32_t key_in, uint32_t mod, wlc_key_state state) {
+    if(state == WLC_KEY_STATE_RELEASED) return false;
+
+    for(auto key : keys) {
+        if(check_key(key, key_in, mod)) {
+            key->action(Context(0, 0));
+            return true;
         }
-
-        case CreateNotify: {
-                        if (xev.xcreatewindow.window == overlay)
-                break;
-
-            if(xev.xcreatewindow.window == outputwin)
-                break;
-
-            auto it = findWindow(xev.xcreatewindow.window);
-
-            /* guard against (almost) indiscoverable bugs,
-             * i.e we kept some destroyed window */
-            if(it != nullptr) {
-                std::cout << "old window!!!" << std::endl;
-                wins->removeWindow(it);
-            }
-
-            addWindow(xev.xcreatewindow);
-            break;
-        }
-        case DestroyNotify: {
-            auto w = wins->findWindow(xev.xdestroywindow.window);
-            if(!w) break;
-            w->destroyed = true;
-            if(!w->keepCount)
-                removeWindow(w);
-            break;
-        }
-        case MapRequest: {
-            auto w = wins->findWindow(xev.xmaprequest.window);
-            if(w) mapWindow(w);
-            break;
-        }
-        case MapNotify: {
-            auto w = findWindow(xev.xmap.window);
-            if(w) mapWindow(w, false),
-                  wins->focusWindow(w);
-            break;
-        }
-        case UnmapNotify: {
-            auto w = wins->findWindow(xev.xunmap.window);
-            if(w) unmapWindow(w);
-            break;
-        }
-
-        case ButtonPress: {
-            mousex = xev.xbutton.x_root;
-            mousey = xev.xbutton.y_root;
-
-            for(auto bb : buttons) {
-                if(checkButPress(bb, xev.xbutton)) {
-                    bb->action(new Context(xev));
-                    break;
-                }
-            }
-
-            XAllowEvents(d, ReplayPointer, xev.xbutton.time);
-            break;
-        }
-        case ButtonRelease:
-            for(auto bb : this->buttons)
-                if(checkButRelease(bb, xev.xbutton))
-                    bb->action(new Context(xev));
-
-            XAllowEvents(d, ReplayPointer, xev.xbutton.time);
-            break;
-
-        case MotionNotify:
-            mousex = xev.xmotion.x_root;
-            mousey = xev.xmotion.y_root;
-            break;
-
-        case ConfigureRequest: {
-            auto w = findWindow(xev.xconfigurerequest.window);
-            if(!w) { // from compiz window manager
-                XWindowChanges xwc;
-                std::memset(&xwc, 0, sizeof(xwc));
-
-                auto xwcm = xev.xconfigurerequest.value_mask &
-                    (CWX | CWY | CWWidth | CWHeight | CWBorderWidth);
-
-                xwc.x        = xev.xconfigurerequest.x;
-                xwc.y        = xev.xconfigurerequest.y;
-                xwc.width        = xev.xconfigurerequest.width;
-                xwc.height       = xev.xconfigurerequest.height;
-                xwc.border_width = xev.xconfigurerequest.border_width;
-
-                XConfigureWindow (d, xev.xconfigurerequest.window,
-                        xwcm, &xwc);
-                break;
-            }
-
-            int width = w->attrib.width, height = w->attrib.height;
-            int x = w->attrib.x, y = w->attrib.y;
-
-            if(xev.xconfigurerequest.value_mask & CWWidth)
-                width = xev.xconfigurerequest.width;
-            if(xev.xconfigurerequest.value_mask & CWX)
-                x = xev.xconfigurerequest.x;
-            if(xev.xconfigurerequest.value_mask & CWHeight)
-                height = xev.xconfigurerequest.height;
-            if(xev.xconfigurerequest.value_mask & CWY)
-                y = xev.xconfigurerequest.y;
-
-            w->moveResize(x, y, width, height);
-
-            /* note : pass XConfigureRequest to server, then wait for ConfigureNotify */
-
-            if(xev.xconfigurerequest.value_mask & CWStackMode &&
-               xev.xconfigurerequest.value_mask & CWSibling) {
-                XWindowChanges xwc;
-                xwc.sibling = xev.xconfigurerequest.above;
-                xwc.stack_mode = xev.xconfigurerequest.detail;
-                auto mask = CWStackMode | CWSibling;
-
-                XConfigureWindow(d, w->id, mask, &xwc);
-            }
-
-//            if(xev.xconfigurerequest.value_mask & CWStackMode) {
-//                if(xev.xconfigurerequest.above) {
-//                    auto below = findWindow(xev.xconfigurerequest.above);
-//                    if(below) {
-//                        std::cout << "Calling from ConfigureRequest" << std::endl;
-//                        if(xev.xconfigurerequest.detail == Above)
-//                            wins->restackAbove(w, below);
-//                        else
-//                            wins->restackAbove(below, w);
-//                    }
-//                }
-//                else {
-//                    if(xev.xconfigurerequest.detail == Above) {
-//                        focusWindow(w);
-//                    }
-//                }
-//            }
-            mapWindow(w, false);
-
-        }
-
-        case PropertyNotify: {
-            auto w = findWindow(xev.xproperty.window);
-            if(!w) break;
-
-            if(xev.xproperty.atom == winTypeAtom) {
-                w->type = WinUtil::getWindowType(w->id);
-                wins->recalcWindowLayer(w);
-                wins->restackTransients(w);
-            }
-
-            if(xev.xproperty.atom == winStateAtom) {
-                w->state = WinUtil::getWindowState(w->id);
-                w->updateState();
-                wins->recalcWindowLayer(w);
-                wins->restackTransients(w);
-            }
-
-            if(xev.xproperty.atom == XA_WM_TRANSIENT_FOR)
-                w->transientFor = WinUtil::getTransient(w->id),
-                wins->restackTransients(w);
-
-            if(xev.xproperty.atom == wmClientLeaderAtom)
-                w->leader = WinUtil::getClientLeader(w->id),
-                wins->restackTransients(w);
-            break;
-        }
-
-        case ConfigureNotify: {
-            if(xev.xconfigure.window == root) {
-                terminate = true, mainrestart = true;
-                break;
-            }
-
-            auto w = findWindow(xev.xconfigure.window);
-            if(!w) break;
-
-            if(xev.xconfigure.width != w->attrib.width ||
-                    xev.xconfigure.height != w->attrib.height)
-                w->resize(xev.xconfigure.width, xev.xconfigure.height, false);
-
-            if(xev.xconfigure.x != w->attrib.x ||
-                    xev.xconfigure.y != w->attrib.y)
-                w->move(xev.xconfigure.x, xev.xconfigure.y, false);
-
-            wins->restackAbove(w, findWindow(xev.xconfigure.above));
-            break;
-        }
-
-        case ClientMessage: {
-            if (xev.xclient.message_type == activeWinAtom) {
-                auto w = findWindow(xev.xclient.window);
-                if(!w) break;
-                wins->focusWindow(w);
-            }
-            break;
-        }
-
-        case EnterNotify:
-        case LeaveNotify:       // we ignore
-        case FocusIn:           // all of these
-        case MappingNotify:
-        case SelectionRequest:
-        case SelectionNotify:
-        case KeyRelease:
-        case CirculateRequest:
-        case CirculateNotify:
-        case ReparentNotify:
-            break;
-
-        default:
-            if(xev.type == damage + XDamageNotify) {
-                if(FireWin::allDamaged)
-                    break;
-
-                XDamageNotifyEvent *x =
-                    reinterpret_cast<XDamageNotifyEvent*> (&xev);
-
-                auto w = findWindow(x->drawable);
-                if(!w) break;
-
-                w->damaged = true;
-
-                if(!w->visible)
-                    break;
-
-                auto damagedArea = getREGIONFromRect(
-                        x->area.x + w->attrib.x,
-                        x->area.y + w->attrib.y,
-                        x->area.x + w->attrib.x + x->area.width,
-                        x->area.y + w->attrib.y + x->area.height);
-
-                damageREGION(damagedArea);
-            break;
-            }
     }
+
+    return false;
 }
+
+
+bool Core::process_button_event(uint32_t button, uint32_t mod,
+        wlc_button_state state, wlc_point point) {
+
+    mousex = point.x;
+    mousey = point.y;
+
+    for(auto but : buttons) {
+        if(state == WLC_BUTTON_STATE_PRESSED && check_but_press(but, button, mod)) {
+            but->action(Context(mousex, mousey));
+            return true;
+        }
+
+        if(state == WLC_BUTTON_STATE_RELEASED && check_but_release(but, button, mod)) {
+            but->action(Context(mousex, mousey));
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool Core::process_pointer_motion_event(wlc_point point) {
+    return false;
+
+    mousex = point.x;
+    mousey = point.y;
+
+    bool ran_hook = false;
+
+    for(auto h : hooks) {
+        if(h->getState())
+            h->action(), ran_hook = true;
+    }
+
+    return ran_hook;
+}
+
 #define Second 1000000
 #define MaxDelay 1000
 #define MinRR 61
-
-void Core::loop(){
-
-    if(nextID == (uint)(-1)) {
-        mainrestart = true, terminate = true;
-        return;
-    }
-
-    int currentCycle = Second / plug->options["rrate"]->data.ival;
-    int baseCycle = currentCycle;
-
-    timeval before, after;
-    gettimeofday(&before, 0);
-    bool hadEvents = false;
-
-    XEvent xev;
-    while(!terminate) {
-        /* handle current events */
-        while(XPending(d)) {
-            XNextEvent(d, &xev);
-            handleEvent(xev);
-        }
-
-        gettimeofday(&after, 0);
-        int diff = (after.tv_sec - before.tv_sec) * 1000000 +
-            after.tv_usec - before.tv_usec;
-
-        if(diff < currentCycle) {     // we have time to next redraw, wait
-            wait(currentCycle - diff);// for events
-            if(fd.revents & POLLIN || !resetDMG || cntHooks) {
-                /* disable optimisation */
-                hadEvents = true;
-                currentCycle = baseCycle;
-                continue;
-            }
-            fd.revents = 0;
-
-        }
-        else {
-
-            if(cntHooks) {
-                /* copy running hooks,
-                 * since a hook can remove itself
-                 * causing a crash(same pattern is used
-                 * in other places such as effects, too) */
-                std::vector<Hook*> runningHooks;
-                for (auto hook : hooks)
-                    if(hook->getState())
-                        runningHooks.push_back(hook);
-
-                for(auto hook : runningHooks)
-                    hook->action();
-            }
-
-            /* if some screen region is damaged, draw it */
-            if(FireWin::allDamaged || !XEmptyRegion(dmg))
-                render.currentRenderer();
-
-            /* optimisation when idle */
-            if(!cntHooks && !hadEvents && resetDMG)
-                currentCycle *= 2;
-
-            before = after;
-            hadEvents = false;
-        }
-    }
-}
-
-int Core::onOtherWmDetected(Display* d, XErrorEvent *xev) {
-    if(static_cast<int>(xev->error_code) == BadAccess)
-        wmDetected = true;
-    return 0;
-}
-
-int Core::onXError(Display *d, XErrorEvent *xev) {
-    if(xev->resourceid == 0) // invalid window
-        return 0;
-
-    std::cout << std::endl << "____________________________" << std::endl;
-    std::cout << "XError code   " << int(xev->error_code) << std::endl;
-    char buf[512];
-    XGetErrorText(d, xev->error_code, buf, 512);
-    std::cout << "XError string " << buf << std::endl;
-    std::cout << "ResourceID = " << xev->resourceid << std::endl;
-    std::cout << "____________________________" << std::endl << std::endl;
-
-    //print_trace();
-    return 0;
-}
 
 std::tuple<int, int> Core::getWorkspace() {
     return std::make_tuple(vx, vy);
@@ -881,6 +474,34 @@ std::tuple<int, int> Core::getMouseCoord() {
     return std::make_tuple(mousex, mousey);
 }
 
+namespace {
+    bool point_inside(wlc_point point, wlc_geometry rect) {
+        if(point.x < rect.origin.x || point.y < rect.origin.y)
+            return false;
+
+        if(point.x > rect.origin.x + rect.size.w)
+            return false;
+
+        if(point.y > rect.origin.y + rect.size.h)
+            return false;
+
+        return true;
+    }
+}
+
+FireWindow Core::getWindowAtPoint(int x, int y) {
+
+    FireWindow chosen = nullptr;
+
+    for_each_window([x,y, &chosen] (FireWindow w) {
+            if(point_inside({x, y}, w->attrib)) {
+                if(!chosen) chosen = w;
+            }
+    });
+
+    return chosen;
+}
+
 void Core::switchWorkspace(std::tuple<int, int> nPos) {
     auto nx = std::get<0> (nPos);
     auto ny = std::get<1> (nPos);
@@ -896,151 +517,102 @@ void Core::switchWorkspace(std::tuple<int, int> nPos) {
     auto proc = [dx, dy, sw, sh] (FireWindow w) {
         //if(w->state & WindowStateSticky)
         //    return;
-        w->move(w->attrib.x + dx, w->attrib.y + dy);
+        w->move(w->attrib.origin.x + dx, w->attrib.origin.y + dy);
 
-        if(w->attrib.x > sw || w->attrib.y > sh ||
-                w->attrib.x + w->attrib.width < 0 ||
-                w->attrib.y + w->attrib.height < 0)
+        if(w->attrib.origin.x > sw || w->attrib.origin.y > sh ||
+                w->attrib.origin.x + int(w->attrib.size.w) < 0 ||
+                w->attrib.origin.y + int(w->attrib.size.h) < 0)
             w->visible = false;
         else
             w->visible = true;
     };
-    wins->forEachWindow(proc);
+
+    for_each_window(proc);
 
     vx = nx;
     vy = ny;
 
     auto ws = getWindowsOnViewport(this->getWorkspace());
     if(ws.size() != 0)
-        wins->focusWindow(ws[0]);
+        focus_window(ws[0]);
 }
 
 std::vector<FireWindow> Core::getWindowsOnViewport(std::tuple<int, int> vp) {
-    auto x = std::get<0>(vp);
-    auto y = std::get<1>(vp);
-
-    auto view = getRegionFromRect((x - vx) * width, (y - vy) * height,
-                       (x - vx + 1) * width, (y - vy + 1) * height);
-
-    std::vector<FireWindow> ret;
-    Region tmp = XCreateRegion();
-
-    auto proc = [view, &ret, tmp] (FireWindow w) {
-        if(!w->region)
-            return;
-
-        if(w->state & WindowStateSkipTaskbar)
-            return;
-
-        if(w->type == WindowTypeWidget ||
-                w->type == WindowTypeDock)
-            return;
-
-        XIntersectRegion(view, w->region, tmp);
-        if(tmp && !XEmptyRegion(tmp) && !w->norender)
-            ret.push_back(w);
-    };
-
-    wins->forEachWindow(proc);
-    XDestroyRegion(view);
-    XDestroyRegion(tmp);
-
-    return ret;
+ //   auto x = std::get<0>(vp);
+//    auto y = std::get<1>(vp);
+//
+//    auto view = getRegionFromRect((x - vx) * width, (y - vy) * height,
+//                       (x - vx + 1) * width, (y - vy + 1) * height);
+//
+//    std::vector<FireWindow> ret;
+//    Region tmp = XCreateRegion();
+//
+//    auto proc = [view, &ret, tmp] (FireWindow w) {
+//        if(!w->region)
+//            return;
+//
+//        if(w->state & WindowStateSkipTaskbar)
+//            return;
+//
+//        if(w->type == WindowTypeWidget ||
+//                w->type == WindowTypeDock)
+//            return;
+//
+//        XIntersectRegion(view, w->region, tmp);
+//        if(tmp && !XEmptyRegion(tmp) && !w->norender)
+//            ret.push_back(w);
+//    };
+//
+//    wins->forEachWindow(proc);
+//    XDestroyRegion(view);
+//    XDestroyRegion(tmp);
+//
+//    return ret;
 }
 
 void Core::getViewportTexture(std::tuple<int, int> vp,
         GLuint &fbuff, GLuint &texture) {
 
-    OpenGL::useDefaultProgram();
-    if(fbuff == -1 || texture == -1)
-        OpenGL::prepareFramebuffer(fbuff, texture);
-    OpenGL::preStage(fbuff);
-    glClear(GL_COLOR_BUFFER_BIT);
-
-    GetTuple(x, y, vp);
-    FireWin::allDamaged = true;
-
-    auto view = getRegionFromRect((x - vx) * width, (y - vy) * height,
-                       (x - vx + 1) * width, (y - vy + 1) * height);
-
-    glm::mat4 off = glm::translate(glm::mat4(),
-            glm::vec3(2 * (vx - x), 2 * (y - vy), 0));
-    glm::mat4 save = Transform::gtrs;
-    Transform::gtrs *= off;
-
-    Region tmp = XCreateRegion();
-    std::vector<FireWindow> winsToDraw;
-
-    auto proc = [view, tmp, &winsToDraw](FireWindow win) {
-        if(!win->isVisible() || !win->region)
-            return;
-
-        XIntersectRegion(view, win->region, tmp);
-        if(!XEmptyRegion(tmp))
-            winsToDraw.push_back(win);
-    };
-    wins->forEachWindow(proc);
-
-    auto it = winsToDraw.rbegin();
-    while(it != winsToDraw.rend())
-        (*it++)->render();
-
-    Transform::gtrs = save;
-    OpenGL::API.glBindFramebuffer(GL_FRAMEBUFFER, 0);
+//    OpenGL::useDefaultProgram();
+//    if(fbuff == -1 || texture == -1)
+//        OpenGL::prepareFramebuffer(fbuff, texture);
+//    OpenGL::preStage(fbuff);
+//    glClear(GL_COLOR_BUFFER_BIT);
+//
+//    GetTuple(x, y, vp);
+//    FireWin::allDamaged = true;
+//
+//    auto view = getRegionFromRect((x - vx) * width, (y - vy) * height,
+//                       (x - vx + 1) * width, (y - vy + 1) * height);
+//
+//    glm::mat4 off = glm::translate(glm::mat4(),
+//            glm::vec3(2 * (vx - x), 2 * (y - vy), 0));
+//    glm::mat4 save = Transform::gtrs;
+//    Transform::gtrs *= off;
+//
+//    Region tmp = XCreateRegion();
+//    std::vector<FireWindow> winsToDraw;
+//
+//    auto proc = [view, tmp, &winsToDraw](FireWindow win) {
+//        if(!win->isVisible() || !win->region)
+//            return;
+//
+//        XIntersectRegion(view, win->region, tmp);
+//        if(!XEmptyRegion(tmp))
+//            winsToDraw.push_back(win);
+//    };
+//    wins->forEachWindow(proc);
+//
+//    auto it = winsToDraw.rbegin();
+//    while(it != winsToDraw.rend())
+//        (*it++)->render();
+//
+//    Transform::gtrs = save;
+//    OpenGL::API.glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 namespace {
     int fullRedraw = 0;
-}
-
-void Core::setRedrawEverything(bool val) {
-    if(val) {
-        fullRedraw++;
-
-        output = getRegionFromRect(-vx * width, -vy * height,
-                (vwidth  - vx) * width, (vheight - vy) * height);
-        FireWin::allDamaged = true;
-        core->resetDMG = false;
-    }
-    else if(--fullRedraw == 0)
-        output = getMaximisedRegion(),
-        FireWin::allDamaged = false,
-        core->resetDMG = true;
-}
-
-REGION Core::getREGIONFromRect(int tlx, int tly, int brx, int bry) {
-    REGION r;
-    r.numRects = r.size = 1;
-    r.rects = new BOX[1];
-    r.extents.x1 = r.rects[0].x1 = tlx;
-    r.extents.y1 = r.rects[0].y1 = tly;
-    r.extents.x2 = r.rects[0].x2 = brx;
-    r.extents.y2 = r.rects[0].y2 = bry;
-    return r;
-}
-
-Region Core::getRegionFromRect(int tlx, int tly, int brx, int bry) {
-    auto r = getREGIONFromRect(tlx, tly, brx, bry);
-    Region ret;
-    ret = XCreateRegion();
-    XUnionRegion(&r, ret, ret);
-    return ret;
-}
-
-Region Core::getMaximisedRegion() {
-    return getRegionFromRect(0, 0, width, height);
-}
-
-#define MAX_DAMAGED_RECTS 150
-
-void Core::damageRegion(Region r) {
-    XUnionRegion(r, dmg, dmg);
-    if(dmg->numRects > MAX_DAMAGED_RECTS)
-        FireWin::allDamaged = true;
-}
-
-void Core::damageREGION(REGION r) {
-    damageRegion(&r);
 }
 
 int Core::getRefreshRate() {
@@ -1068,46 +640,45 @@ namespace {
     }
 }
 
-void Core::setBackground(const char *path) {
-    std::cout << "[DD] Background file: " << path << std::endl;
-
-    auto texture = GLXUtils::loadImage(const_cast<char*>(path));
-
-    if(texture == -1)
-        texture = getFilledTexture(width, height, 128, 128, 128, 255);
-
-    uint vao, vbo;
-    OpenGL::generateVAOVBO(0, height, width, -height, vao, vbo);
-
-    backgrounds.clear();
-    backgrounds.resize(vheight);
-    for(int i = 0; i < vheight; i++)
-        backgrounds[i].resize(vwidth);
-
-    for(int i = 0; i < vheight; i++){
-        for(int j = 0; j < vwidth; j++) {
-
-            backgrounds[i][j] = std::make_shared<FireWin>(0, false);
-
-            backgrounds[i][j]->vao = vao;
-            backgrounds[i][j]->vbo = vbo;
-            backgrounds[i][j]->norender = false;
-            backgrounds[i][j]->texture  = texture;
-            backgrounds[i][j]->attrib.map_state = InputOutput;
-
-            backgrounds[i][j]->attrib.x = (j - vx) * width;
-            backgrounds[i][j]->attrib.y = (i - vy) * height;
-            backgrounds[i][j]->attrib.width  = width;
-            backgrounds[i][j]->attrib.height = height;
-
-            backgrounds[i][j]->type = WindowTypeDesktop;
-            backgrounds[i][j]->updateVBO();
-            backgrounds[i][j]->transform.color = glm::vec4(1,1,1,1);
-            backgrounds[i][j]->updateRegion();
-            wins->addWindow(backgrounds[i][j]);
-        }
-    }
-}
+//void Core::setBackground(const char *path) {
+//    std::cout << "[DD] Background file: " << path << std::endl;
+//
+//    auto texture = GLXUtils::loadImage(const_cast<char*>(path));
+//
+//    if(texture == -1)
+//        texture = getFilledTexture(width, height, 128, 128, 128, 255);
+//
+//    uint vao, vbo;
+//    OpenGL::generateVAOVBO(0, height, width, -height, vao, vbo);
+//
+//    backgrounds.clear();
+//    backgrounds.resize(vheight);
+//    for(int i = 0; i < vheight; i++)
+//        backgrounds[i].resize(vwidth);
+//
+//    for(int i = 0; i < vheight; i++){
+//        for(int j = 0; j < vwidth; j++) {
+//
+//            backgrounds[i][j] = std::make_shared<FireWin>(0, false);
+//
+//            backgrounds[i][j]->vao = vao;
+//            backgrounds[i][j]->vbo = vbo;
+//            backgrounds[i][j]->norender = false;
+//            backgrounds[i][j]->texture  = texture;
+//
+//            backgrounds[i][j]->attrib.x = (j - vx) * width;
+//            backgrounds[i][j]->attrib.y = (i - vy) * height;
+//            backgrounds[i][j]->attrib.width  = width;
+//            backgrounds[i][j]->attrib.height = height;
+//
+//            backgrounds[i][j]->type = WindowTypeDesktop;
+//            backgrounds[i][j]->updateVBO();
+//            backgrounds[i][j]->transform.color = glm::vec4(1,1,1,1);
+//            backgrounds[i][j]->updateRegion();
+//            wins->addWindow(backgrounds[i][j]);
+//        }
+//    }
+//}
 
 namespace {
     template<class A, class B> B unionCast(A object) {

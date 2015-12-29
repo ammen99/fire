@@ -4,7 +4,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/CMake)
 set(CMAKE_CXX_STANDARD 11)
 
 project(fireman C CXX)
-# Find required packages
+# Find required package
 find_package(PkgConfig)
 
 pkg_check_modules(xlib REQUIRED x11 xext xdamage xfixes xcomposite)
@@ -17,7 +17,7 @@ file(GLOB SOURCES "src/*.cpp")
 add_executable(fireman ${SOURCES})
 
 # Compiler options
-set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-O2 -fpermissive")
+set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-g -fpermissive")
 
 # Libraries
 target_link_libraries(fireman X11 Xext Xdamage Xfixes Xcomposite)
@@ -31,5 +31,5 @@ install(DIRECTORY shaders/ DESTINATION share/fireman/shaders)
 install(FILES config DESTINATION lib/fireman/firerc)
 
 # Plugins
-#add_subdirectory(plugins)
+add_subdirectory(plugins)
 

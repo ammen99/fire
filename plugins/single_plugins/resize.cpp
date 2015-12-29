@@ -1,5 +1,5 @@
 #include <wm.hpp>
-/* specialized class for operations on window(for ex. Move and Resize) */
+
 class Resize : public Plugin {
     private:
         int sx, sy; // starting pointer x, y
@@ -9,6 +9,8 @@ class Resize : public Plugin {
         int scX = 1, scY = 1;
         SignalListener sigScl;
         Button iniButton;
+
+        uint32_t edges;
 
     private:
         ButtonBinding press;
@@ -27,19 +29,19 @@ class Resize : public Plugin {
 
         using namespace std::placeholders;
         hook.action = std::bind(std::mem_fn(&Resize::Intermediate), this);
-        core->addHook(&hook);
+        core->add_hook(&hook);
         press.type   = BindingTypePress;
         press.mod    = iniButton.mod;
         press.button = iniButton.button;
         press.action = std::bind(std::mem_fn(&Resize::Initiate), this, _1);
-        core->addBut(&press, true);
+        core->add_but(&press, true);
 
 
         release.type   = BindingTypeRelease;
         release.mod    = AnyModifier;
         release.button = iniButton.button;
         release.action = std::bind(std::mem_fn(&Resize::Terminate), this,_1);
-        core->addBut(&release, false);
+        core->add_but(&release, false);
     }
 
     void init() {
@@ -49,11 +51,8 @@ class Resize : public Plugin {
         core->connectSignal("screen-scale-changed", &sigScl);
     }
 
-    void Initiate(Context *ctx) {
-        if(!ctx)
-            return;
-
-        auto xev = ctx->xev.xbutton;
+    void Initiate(Context ctx) {
+        auto xev = ctx.xev.xbutton;
         auto w = core->getWindowAtPoint(xev.x_root,xev.y_root);
 
         if(!w)
@@ -65,80 +64,61 @@ class Resize : public Plugin {
 
         owner->grab();
 
-        core->focusWindow(w);
+        core->focus_window(w);
+
         win = w;
         hook.enable();
         release.enable();
 
-        if(w->attrib.width == 0)
-            w->attrib.width = 1;
-        if(w->attrib.height == 0)
-            w->attrib.height = 1;
+        sx = xev.x_root;
+        sy = xev.y_root;
 
-        this->sx = xev.x_root;
-        this->sy = xev.y_root;
+        const int32_t halfw = win->attrib.origin.x + win->attrib.size.w / 2;
+        const int32_t halfh = win->attrib.origin.y + win->attrib.size.h / 2;
 
-        cx = w->attrib.x + w->attrib.width / 2;
-        cy = w->attrib.y + w->attrib.height/ 2;
+        edges = (sx < halfw ? WLC_RESIZE_EDGE_LEFT : (sx >= halfw ? WLC_RESIZE_EDGE_RIGHT : 0)) |
+            (sy < halfh ? WLC_RESIZE_EDGE_TOP : (sy >= halfh ? WLC_RESIZE_EDGE_BOTTOM : 0));
 
-        owner->active = true;
-        core->setRedrawEverything(true);
+        if(!edges) Terminate(ctx);
     }
 
-    void Terminate(Context *ctx) {
-        if(!ctx)
-            return;
-
+    void Terminate(Context ctx) {
         hook.disable();
         release.disable();
-
-        win->transform.scalation = glm::mat4();
-        win->transform.translation = glm::mat4();
-
-        GetTuple(cmx, cmy, core->getMouseCoord());
-
-        int dw = (cmx - sx) * scX;
-        int dh = (cmy - sy) * scY;
-
-        int nw = win->attrib.width  + dw;
-        int nh = win->attrib.height + dh;
-
-        win->resize(nw, nh);
-
-        core->setRedrawEverything(false);
-        win->addDamage();
         core->deactivateOwner(owner);
     }
 
     void Intermediate() {
+
         GetTuple(cmx, cmy, core->getMouseCoord());
-        int dw = cmx - sx;
-        int dh = cmy - sy;
 
-        int nw = win->attrib.width  + dw;
-        int nh = win->attrib.height + dh;
+        const int32_t dx = cmx - sx;
+        const int32_t dy = cmy - sy;
 
-        float kW = float(nw) / float(win->attrib.width );
-        float kH = float(nh) / float(win->attrib.height);
+        if (edges) {
+            const struct wlc_size min = { 10, 10 };
 
-        GetTuple(sw, sh, core->getScreenSize());
+            struct wlc_geometry n = win->attrib;
 
-        float w2 = float(sw) / 2.;
-        float h2 = float(sh) / 2.;
+            if (edges & WLC_RESIZE_EDGE_LEFT) n.size.w -= dx, n.origin.x += dx;
+            else if (edges & WLC_RESIZE_EDGE_RIGHT) n.size.w += dx;
 
-        float tlx = float(win->attrib.x) - w2,
-              tly = h2 - float(win->attrib.y);
+            if (edges & WLC_RESIZE_EDGE_TOP) n.size.h -= dy, n.origin.y += dy;
+            else if (edges & WLC_RESIZE_EDGE_BOTTOM) n.size.h += dy;
 
-        float ntlx = kW * tlx;
-        float ntly = kH * tly;
+            if (n.size.w < min.w) {
+                n.size.w = min.w;
+                n.origin.x = win->attrib.origin.x;
+            }
 
-        win->transform.translation =
-            glm::translate(glm::mat4(), glm::vec3(
-                        float(tlx - ntlx) / w2, float(tly - ntly) / h2,
-                        0.f));
+            if (n.size.h < min.h) {
+                n.origin.y = win->attrib.origin.y;
+                n.size.h = min.h;
+            }
 
-        win->transform.scalation =
-            glm::scale(glm::mat4(), glm::vec3(kW, kH, 1.f));
+            win->moveResize(n.origin.x, n.origin.y, n.size.w, n.size.h);
+
+        }
     }
 
     void onScaleChanged(SignalListenerData data) {
