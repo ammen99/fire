@@ -21,10 +21,10 @@ class Grid : public Plugin {
 
     std::vector<GridWindow> wins;
     KeyBinding keys[10];
-    KeyCode codes[10];
+    uint32_t codes[10];
 
     Hook rnd;
-    int steps;
+    int steps = 1;
     int curstep;
     GridWindow currentWin;
 
@@ -35,28 +35,28 @@ class Grid : public Plugin {
     void init() {
         options.insert(newIntOption("duration", 200));
 
-        codes[1] = XKeysymToKeycode(core->d, XK_KP_End);
-        codes[2] = XKeysymToKeycode(core->d, XK_KP_Down);
-        codes[3] = XKeysymToKeycode(core->d, XK_KP_Page_Down);
-        codes[4] = XKeysymToKeycode(core->d, XK_KP_Left);
-        codes[5] = XKeysymToKeycode(core->d, XK_KP_Begin);
-        codes[6] = XKeysymToKeycode(core->d, XK_KP_Right);
-        codes[7] = XKeysymToKeycode(core->d, XK_KP_Home);
-        codes[8] = XKeysymToKeycode(core->d, XK_KP_Up);
-        codes[9] = XKeysymToKeycode(core->d, XK_KP_Page_Up);
+        codes[1] = XKB_KEY_KP_End;
+        codes[2] = XKB_KEY_KP_Down;
+        codes[3] = XKB_KEY_KP_Page_Down;
+        codes[4] = XKB_KEY_KP_Left;
+        codes[5] = XKB_KEY_KP_Begin;
+        codes[6] = XKB_KEY_KP_Right;
+        codes[7] = XKB_KEY_KP_Home;
+        codes[8] = XKB_KEY_KP_Up;
+        codes[9] = XKB_KEY_KP_Page_Up;
 
         using namespace std::placeholders;
 
         for(int i = 1; i < 10; i++) {
             keys[i].key    = codes[i];
-            keys[i].mod    = ControlMask | Mod1Mask;
+            keys[i].mod    = WLC_BIT_MOD_ALT | WLC_BIT_MOD_CTRL;
             keys[i].action = std::bind(std::mem_fn(&Grid::handleKey), this, _1);
             keys[i].type   = BindingTypePress;
-            core->addKey(&keys[i], true);
+            core->add_key(&keys[i], true);
         }
 
         rnd.action = std::bind(std::mem_fn(&Grid::step), this);
-        core->addHook(&rnd);
+        core->add_hook(&rnd);
     }
 
     void initOwnership(){
@@ -65,36 +65,37 @@ class Grid : public Plugin {
     }
 
     void updateConfiguration() {
-        steps = getSteps(options["duration"]->data.ival);
+        //steps = getSteps(options["duration"]->data.ival);
+        steps = 1;
     }
 
     void step() {
 
         GetTuple(sw, sh, core->getScreenSize());
         float offx = GetProgress(0,
-                currentWin.win->attrib.x - currentWin.size.x, curstep, steps);
+                currentWin.win->attrib.origin.x - currentWin.size.x, curstep, steps);
 
         float offy = GetProgress(0,
-                currentWin.win->attrib.y - currentWin.size.y, curstep, steps);
+                currentWin.win->attrib.origin.y - currentWin.size.y, curstep, steps);
 
         offx /= (sw / 2.);
         offy /= (sh / 2.);
 
-        float sclx = GetProgress(currentWin.win->attrib.width,
+        float sclx = GetProgress(currentWin.win->attrib.size.w,
                            currentWin.size.width, curstep, steps);
 
-        float scly = GetProgress(currentWin.win->attrib.height,
+        float scly = GetProgress(currentWin.win->attrib.size.h,
                            currentWin.size.height, curstep, steps);
 
-        sclx /= currentWin.win->attrib.width;
-        scly /= currentWin.win->attrib.height;
+        sclx /= currentWin.win->attrib.size.w;
+        scly /= currentWin.win->attrib.size.h;
 
 
         float w2 = float(sw) / 2.;
         float h2 = float(sh) / 2.;
 
-        float tlx = float(currentWin.win->attrib.x) - w2,
-              tly = h2 - float(currentWin.win->attrib.y);
+        float tlx = float(currentWin.win->attrib.origin.x) - w2,
+              tly = h2 - float(currentWin.win->attrib.origin.y);
 
         float ntlx = sclx * tlx;
         float ntly = scly * tly;
@@ -116,8 +117,7 @@ class Grid : public Plugin {
             currentWin.win->resize(currentWin.size.width,
                     currentWin.size.height);
 
-            core->setRedrawEverything(false);
-            core->dmg = core->getMaximisedRegion();
+            core->set_redraw_everything(false);
             rnd.disable();
         }
     }
@@ -125,14 +125,14 @@ class Grid : public Plugin {
     void toggleMaxim(FireWindow win, int &x, int &y, int &w, int &h) {
         auto it = std::find_if(wins.begin(), wins.end(),
                 [win](GridWindow w) {
-                return win->id == w.win->id;
+                return win->get_id() == w.win->get_id();
                 });
 
         if(it == wins.end()) { // we haven't maximized this window, so
             // maximize it and add it to window list
             std::cout << "maximizing window";
-            wins.push_back(GridWindow(win, win->attrib.x, win->attrib.y,
-                        win->attrib.width, win->attrib.height));
+            wins.push_back(GridWindow(win, win->attrib.origin.x, win->attrib.origin.y,
+                        win->attrib.size.w, win->attrib.size.h));
 
             GetTuple(sw, sh, core->getScreenSize());
 
@@ -173,14 +173,15 @@ class Grid : public Plugin {
             x = w2, y = h2, w = w2, h = h2;
     }
 
-    void handleKey(Context *ctx) {
-        auto win = core->getActiveWindow();
-        if(!win)
-            return;
+    void handleKey(Context ctx) {
+        auto win = core->get_active_window();
+        if(!win) return;
+
+        printf("handle key\n");
 
         int x, y, w, h;
         for(int i = 1; i < 10; i++) {
-            if(ctx->xev.xkey.keycode == codes[i]) {
+            if(ctx.xev.xkey.key == codes[i]) {
                 if(i == 5)
                     toggleMaxim(win, x, y, w, h);
                 else
@@ -195,7 +196,7 @@ class Grid : public Plugin {
         currentWin.size.height = h;
         curstep = 0;
         rnd.enable();
-        core->setRedrawEverything(true);
+        core->set_redraw_everything(true);
     }
 };
 

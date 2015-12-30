@@ -142,6 +142,8 @@ class Core {
         PluginPtr loadPluginFromFile(std::string path, void **handle);
         void loadDynamicPlugins();
 
+        GLuint background = -1;
+
     public:
         Core(int vx, int vy);
         ~Core();
@@ -183,6 +185,7 @@ class Core {
 
         int getRefreshRate();
 
+        GLuint get_background();
         void setBackground(const char *path);
         bool setRenderer(RenderHook rh);
         void setDefaultRenderer();

@@ -143,6 +143,10 @@ bool should_repaint_everything() {
     return core->should_repaint_everything();
 }
 
+uint get_background_texture() {
+    return core->get_background();
+}
+
 int main(int argc, char *argv[]) {
 
     std::cout << "e hay" << std::endl;
@@ -152,6 +156,7 @@ int main(int argc, char *argv[]) {
 
     interface.get_mvp_for_surface = get_mvp_for_view;
     interface.should_paint_all_windows = should_repaint_everything;
+    interface.get_background_texture = get_background_texture;
 
     interface.view.created        = view_created;
     interface.view.destroyed      = view_destroyed;

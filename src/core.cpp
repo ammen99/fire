@@ -6,6 +6,7 @@
 
 #include <sstream>
 #include <memory>
+#include "jpeg.hpp"
 
 bool wmDetected;
 
@@ -527,15 +528,20 @@ void Core::switchWorkspace(std::tuple<int, int> nPos) {
     auto proc = [=] (FireWindow w) {
         //if(w->state & WindowStateSticky)
         //    return;
+
+
+        bool has_been_before = rect_inside(view, w->attrib);
+
         w->attrib.origin.x += dx;
-        w->attrib.origin.y += dy;
+        w->attrib.origin.y -= dy;
 
-        w->transform.translation = glm::translate(w->transform.translation,
-                glm::vec3(2 * dx / float(width), 2 * dy / float(height), 0.0));
 
-        if(rect_inside(view, w->attrib))
+        if(has_been_before && rect_inside(view, w->attrib))
             w->move(w->attrib.origin.x, w->attrib.origin.y);
 
+        else
+            w->transform.translation = glm::translate(w->transform.translation,
+                    glm::vec3(2 * dx / float(width), -2 * dy / float(height), 0.0));
     };
 
     for_each_window(proc);
@@ -544,10 +550,9 @@ void Core::switchWorkspace(std::tuple<int, int> nPos) {
     vy = ny;
 
     auto ws = getWindowsOnViewport(this->getWorkspace());
-//    for(int i = ws.size() - 1; i >= 0; i--) {
-//        if(rect_inside(view, ws[i]->attrib))
-//            focus_window(ws[i]);
-//    }
+
+    for(int i = ws.size() - 1; i >= 0; i--)
+        focus_window(ws[i]);
 }
 
 std::vector<FireWindow> Core::getWindowsOnViewport(std::tuple<int, int> vp) {
@@ -641,6 +646,12 @@ namespace {
         glBindTexture(GL_TEXTURE_2D, 0);
         return tex;
     }
+}
+
+GLuint Core::get_background() {
+    if(background != -1) return background;
+
+    return (background = LoadJPEG(plug->options["background"]->data.sval->c_str()));
 }
 
 //void Core::setBackground(const char *path) {

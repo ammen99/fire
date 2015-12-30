@@ -21,7 +21,7 @@ set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-g -fpermissive")
 
 # Libraries
 target_link_libraries(fireman X11 Xext Xdamage Xfixes Xcomposite)
-target_link_libraries(fireman GLESv2 GL GLEW IL ILU ILUT)
+target_link_libraries(fireman jpeg GLESv2 GL GLEW IL ILU ILUT)
 target_link_libraries(fireman dl wayland-server wlc xkbcommon input wayland-client wayland-cursor wayland-egl)
 
 # Installation
