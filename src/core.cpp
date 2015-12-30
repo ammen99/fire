@@ -109,6 +109,12 @@ void Core::rem_hook(uint key) {
     hooks.erase(it, hooks.end());
 }
 
+void Core::run_hooks() {
+    for(auto h : hooks) {
+        if(h->getState())
+            h->action();
+    }
+}
 
 void Core::add_effect(EffectHook *hook){
     if(!hook) return;
@@ -413,7 +419,7 @@ bool Core::process_key_event(uint32_t key_in, uint32_t mod, wlc_key_state state)
     if(state == WLC_KEY_STATE_RELEASED) return false;
 
     if(key_in == XKB_KEY_r && (mod & WLC_BIT_MOD_ALT)) {
-        run("weston-terminal");
+        run("dmenu_run");
         //wlc_exec("weston-terminal", t);
     }
 
@@ -457,14 +463,7 @@ bool Core::process_pointer_motion_event(wlc_point point) {
     mousex = point.x;
     mousey = point.y;
 
-    bool ran_hook = false;
-
-    for(auto h : hooks) {
-        if(h->getState())
-            h->action(), ran_hook = true;
-    }
-
-    return ran_hook;
+    return false;
 }
 
 #define Second 1000000

@@ -107,6 +107,8 @@ class Core {
 
     private:
 
+        int redraw_timer = 0;
+
         //WinStack *wins;
         int cntHooks;
 
@@ -175,7 +177,7 @@ class Core {
         void ungrab_pointer();
 
 
-
+        bool should_redraw() { return redraw_timer > 0 || cntHooks > 0; }
         int getRefreshRate();
 
         void setBackground(const char *path);
@@ -190,6 +192,7 @@ class Core {
 
         void add_hook(Hook*);
         void rem_hook(uint key);
+        void run_hooks();
 
         void add_effect(EffectHook *);
         void rem_effect(uint key, FireWindow win = nullptr);

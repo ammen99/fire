@@ -106,6 +106,19 @@ void view_request_move(wlc_handle view, const struct wlc_point *origin) {
     core->triggerSignal("move-request", data);
 }
 
+void output_pre_paint(wlc_handle output) {
+    assert(core);
+
+    core->run_hooks();
+}
+
+void output_post_paint(wlc_handle output) {
+    assert(core);
+
+    if(core->should_redraw())
+        wlc_output_schedule_repaint((struct wlc_output*)convert_from_wlc_handle(output, "output"));
+}
+
 int main(int argc, char *argv[]) {
 
     std::cout << "e hay" << std::endl;
@@ -121,6 +134,9 @@ int main(int argc, char *argv[]) {
 
     interface.view.request.resize = view_request_resize;
     interface.view.request.move   = view_request_move;
+
+    interface.output.render.pre = output_pre_paint;
+    interface.output.render.post = output_post_paint;
 
     interface.keyboard.key = keyboard_key;
 
