@@ -39,6 +39,9 @@ Core::Core(int vx, int vy) {
     this->vx = vx;
     this->vy = vy;
 
+    width = 1366;
+    height = 768;
+
 }
 void Core::init() {
 
@@ -341,7 +344,13 @@ FireWindow Core::get_active_window() {
 wlc_handle Core::get_top_window(wlc_handle output, size_t offset) {
     size_t memb;
     const wlc_handle *views = wlc_output_get_views(output, &memb);
-    return (memb > 0 ? views[(memb - 1 + offset) % memb] : 0);
+
+    for(int i = memb - 1; i >= 0; i--) {
+        auto w = find_window(views[i]);
+        if(w && w->is_visible()) return w->get_id();
+    }
+
+    return 0;
 }
 
 void Core::for_each_window(WindowCallbackProc call) {
@@ -487,37 +496,12 @@ std::tuple<int, int> Core::getMouseCoord() {
     return std::make_tuple(mousex, mousey);
 }
 
-namespace {
-    bool point_inside(wlc_point point, wlc_geometry rect) {
-        if(point.x < rect.origin.x || point.y < rect.origin.y)
-            return false;
-
-        if(point.x > rect.origin.x + rect.size.w)
-            return false;
-
-        if(point.y > rect.origin.y + rect.size.h)
-            return false;
-
-        return true;
-    }
-
-    bool rect_inside(wlc_geometry screen, wlc_geometry win) {
-        if(win.origin.x + win.size.w < screen.origin.x) return false;
-        if(win.origin.y + win.size.h < screen.origin.y) return false;
-
-        if(screen.origin.x + screen.size.w < win.origin.x) return false;
-        if(screen.origin.y + screen.size.h < win.origin.y) return false;
-
-        return true;
-    }
-}
-
 FireWindow Core::getWindowAtPoint(int x, int y) {
 
     FireWindow chosen = nullptr;
 
     for_each_window([x,y, &chosen] (FireWindow w) {
-            if(point_inside({x, y}, w->attrib)) {
+            if(w->is_visible() && point_inside({x, y}, w->attrib)) {
                 if(chosen == nullptr) chosen = w;
             }
     });
@@ -534,22 +518,24 @@ void Core::switchWorkspace(std::tuple<int, int> nPos) {
 
     auto dx = (vx - nx) * width;
     auto dy = (vy - ny) * height;
-    GetTuple(sw, sh, core->getScreenSize());
+
+    wlc_geometry view = {{0, 0}, {(uint)width, (uint) height}};
 
     //glm::mat4 translate_matrix = glm::translate(glm::mat4(), glm::vec3(2 * dx / float(sw),))
 
     using namespace std::placeholders;
-    auto proc = [dx, dy, sw, sh] (FireWindow w) {
+    auto proc = [=] (FireWindow w) {
         //if(w->state & WindowStateSticky)
         //    return;
-        w->move(w->attrib.origin.x + dx, w->attrib.origin.y + dy);
+        w->attrib.origin.x += dx;
+        w->attrib.origin.y += dy;
 
-        if(w->attrib.origin.x > sw || w->attrib.origin.y > sh ||
-                w->attrib.origin.x + int(w->attrib.size.w) < 0 ||
-                w->attrib.origin.y + int(w->attrib.size.h) < 0)
-            w->visible = false;
-        else
-            w->visible = true;
+        w->transform.translation = glm::translate(w->transform.translation,
+                glm::vec3(2 * dx / float(width), 2 * dy / float(height), 0.0));
+
+        if(rect_inside(view, w->attrib))
+            w->move(w->attrib.origin.x, w->attrib.origin.y);
+
     };
 
     for_each_window(proc);
@@ -558,8 +544,10 @@ void Core::switchWorkspace(std::tuple<int, int> nPos) {
     vy = ny;
 
     auto ws = getWindowsOnViewport(this->getWorkspace());
-    if(ws.size() != 0)
-        focus_window(ws[0]);
+//    for(int i = ws.size() - 1; i >= 0; i--) {
+//        if(rect_inside(view, ws[i]->attrib))
+//            focus_window(ws[i]);
+//    }
 }
 
 std::vector<FireWindow> Core::getWindowsOnViewport(std::tuple<int, int> vp) {

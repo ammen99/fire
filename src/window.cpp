@@ -15,11 +15,31 @@ Transform::Transform() {
 }
 
 glm::mat4 Transform::compose() {
-    return (gtrs*translation*viewport_translation)*(grot*rotation)*(gscl*scalation);
+    return (gtrs*translation)*(grot*rotation)*(gscl*scalation);
 }
 
-bool FireWin::allDamaged = false;
+bool point_inside(wlc_point point, wlc_geometry rect) {
+    if(point.x < rect.origin.x || point.y < rect.origin.y)
+        return false;
 
+    if(point.x > rect.origin.x + rect.size.w)
+        return false;
+
+    if(point.y > rect.origin.y + rect.size.h)
+        return false;
+
+    return true;
+}
+
+bool rect_inside(wlc_geometry screen, wlc_geometry win) {
+    if(win.origin.x + win.size.w < screen.origin.x) return false;
+    if(win.origin.y + win.size.h < screen.origin.y) return false;
+
+    if(screen.origin.x + screen.size.w < win.origin.x) return false;
+    if(screen.origin.y + screen.size.h < win.origin.y) return false;
+
+    return true;
+}
 
 FireWin::FireWin(wlc_handle _view) {
     view = _view;
@@ -40,24 +60,13 @@ FireWin::~FireWin() {
 
 
 
-bool FireWin::isVisible() {
-    if(destroyed && !keepCount)
-        return false;
+bool FireWin::is_visible() {
 
-    if(!visible && !allDamaged)
-        return false;
+    GetTuple(sw, sh, core->getScreenSize());
 
-    if(norender)
-        return false;
+    wlc_geometry geom = {{0, 0}, {(uint)sw, (uint)sh}};
 
-    return true;
-}
-
-bool FireWin::shouldBeDrawn() {
-    if(!isVisible())
-        return false;
-
-    return true;
+    return rect_inside(geom, attrib);
 }
 
 void FireWin::move(int x, int y) {

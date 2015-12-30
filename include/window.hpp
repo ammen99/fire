@@ -12,8 +12,6 @@ class Transform {
         glm::mat4 scalation;
         glm::mat4 translation;
 
-        glm::mat4 viewport_translation;
-
         glm::vec4 color;
     public:
         Transform();
@@ -30,6 +28,9 @@ struct EffectHook;
 #define ExistsData(win, name) ((win)->data.find((name)) != (win)->data.end())
 #define AllocData(type, win, name) (win)->data[(name)] = new type()
 
+bool point_inside(wlc_point point, wlc_geometry rect);
+bool rect_inside(wlc_geometry screen, wlc_geometry win);
+
 class FireWin {
     wlc_handle view;
 
@@ -44,26 +45,13 @@ class FireWin {
 
         struct wlc_geometry attrib;
 
-        static bool allDamaged;
-        GLuint texture; // image on screen
-
         bool norender = false;       // should we draw window?
         bool destroyed = false;      // is window destroyed?
-        bool visible = true;         // is window visible on screen?
-        bool initialMapping = false; // is window already mapped?
 
         int keepCount = 0; // used to determine whether to destroy window
         Transform transform;
 
-        bool disableVBOChange = false;
-        GLuint vbo = -1;
-        GLuint vao = -1;
-
-        std::shared_ptr<FireWin> transientFor; // transientFor
-        std::shared_ptr<FireWin> leader;
-
-        bool isVisible();
-        bool shouldBeDrawn();
+        bool is_visible();
 
         void move(int x, int y);
         void resize(int w, int h);

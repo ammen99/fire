@@ -54,6 +54,8 @@ class VSwitch : public Plugin {
         int brx2 = tlx2 + sw;
         int bry2 = tly2 + sh;
 
+        core->set_redraw_everything(true);
+
 //        core->setRedrawEverything(true);
 //        output = core->getRegionFromRect(std::min(tlx1, tlx2),
 //                std::min(tly1, tly2),
@@ -97,6 +99,7 @@ class VSwitch : public Plugin {
         if(stepNum == vstep){
             Transform::gtrs = glm::mat4();
             core->switchWorkspace(std::make_tuple(nx, ny));
+            core->set_redraw_everything(false);
             //core->setRedrawEverything(false);
 
             if(dirs.size() == 0) {

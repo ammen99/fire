@@ -147,9 +147,6 @@ class Core {
         ~Core();
         void init();
 
-        static int onXError (Display* d, XErrorEvent* xev);
-        static int onOtherWmDetected(Display *d, XErrorEvent *xev);
-
         void run(const char *command);
         FireWindow find_window(wlc_handle handle);
         FireWindow get_active_window();
@@ -178,6 +175,12 @@ class Core {
 
 
         bool should_redraw() { return redraw_timer > 0 || cntHooks > 0; }
+        bool should_repaint_everything() { return redraw_timer > 0; }
+        void set_redraw_everything(bool state) {
+            if(state) ++redraw_timer;
+            else if(redraw_timer) --redraw_timer;
+        }
+
         int getRefreshRate();
 
         void setBackground(const char *path);

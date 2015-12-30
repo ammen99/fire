@@ -13,82 +13,102 @@ extern "C" {
 #include "./wlc/src/resources/resources.h"
 #include "./wlc/src/platform/context/context.h"
 #include "./wlc/src/compositor/output.h"
-
-bool keyboard_key(wlc_handle view, uint32_t time,
-        const struct wlc_modifiers *modifiers, uint32_t key,
-        enum wlc_key_state state) {
-
-   (void)time, (void)key;
-   uint32_t sym = wlc_keyboard_get_keysym_for_key(key, NULL);
-
-   return core->process_key_event(sym, modifiers->mods, state);
 }
 
-bool pointer_button(wlc_handle view, uint32_t time,
-        const struct wlc_modifiers *modifiers, uint32_t button,
-        enum wlc_button_state state, const struct wlc_point *position) {
+    bool keyboard_key(wlc_handle view, uint32_t time,
+            const struct wlc_modifiers *modifiers, uint32_t key,
+            enum wlc_key_state state) {
 
-   (void)button, (void)time, (void)modifiers;
+        (void)time, (void)key;
+        uint32_t sym = wlc_keyboard_get_keysym_for_key(key, NULL);
 
-   assert(core);
-   return core->process_button_event(button, modifiers->mods,
-           state, *position);
-}
+        bool grabbed = core->process_key_event(sym, modifiers->mods, state);
 
-bool pointer_motion(wlc_handle handle, uint32_t time, const struct wlc_point *position) {
-    assert(core);
-    wlc_pointer_set_position(position);
-    return core->process_pointer_motion_event(*position);
-}
+        if(grabbed) return true;
+        auto w = core->find_window(view);
+        if(w && !w->is_visible()) return true;
 
-static void
-cb_log(enum wlc_log_type type, const char *str)
-{
-   (void)type;
-   printf("%s\n", str);
-}
+        return false;
+    }
 
-bool view_created(wlc_handle view) {
-    assert(core);
-    core->add_window(view);
-    return true;
-}
+    bool pointer_button(wlc_handle view, uint32_t time,
+            const struct wlc_modifiers *modifiers, uint32_t button,
+            enum wlc_button_state state, const struct wlc_point *position) {
 
-void view_destroyed(wlc_handle view) {
-    assert(core);
-    core->remove_window(core->find_window(view));
-    core->focus_window(core->get_active_window());
-}
+        (void)button, (void)time, (void)modifiers;
 
-void view_focus(wlc_handle view, bool focus) {
-   wlc_view_set_state(view, WLC_BIT_ACTIVATED, focus);
-   wlc_view_bring_to_front(view);
-}
+        assert(core);
+        bool grabbed = core->process_button_event(button, modifiers->mods,
+                state, *position);
 
-Matrix4x4 get_transform(glm::mat4 mat) {
-    printf("get transform\n");
-    return {{
-         mat[0][0], mat[0][1], mat[0][2], mat[0][3],
-         mat[1][0], mat[1][1], mat[1][2], mat[1][3],
-         mat[2][0], mat[2][1], mat[2][2], mat[2][3],
-         mat[3][0], mat[3][1], mat[3][2], mat[3][3],
-     }};
-}
+        if(grabbed) return true;
 
-Matrix4x4 get_mvp_for_view(struct wlc_view *view) {
-    auto w = core->find_window(convert_to_wlc_handle(view));
+        auto w = core->find_window(view);
+        if(w && !w->is_visible()) return true;
 
-    if(w) return get_transform(w->transform.compose());
-}
+        return false;
+    }
 
-void view_request_resize(wlc_handle view, uint32_t edges, const struct wlc_point *origin) {
-    SignalListenerData data;
+    bool pointer_motion(wlc_handle handle, uint32_t time, const struct wlc_point *position) {
+        assert(core);
+        wlc_pointer_set_position(position);
+        bool grabbed = core->process_pointer_motion_event(*position);
 
-    auto w = core->find_window(view);
-    if(!w) return;
+        if(grabbed) return true;
+        auto w = core->find_window(handle);
+        if(w && !w->is_visible()) return true;
 
-    data.push_back((void*)(&w));
-    data.push_back((void*)(origin));
+        return false;
+    }
+
+    static void
+        cb_log(enum wlc_log_type type, const char *str)
+        {
+            (void)type;
+            printf("%s\n", str);
+        }
+
+    bool view_created(wlc_handle view) {
+        assert(core);
+        core->add_window(view);
+        return true;
+    }
+
+    void view_destroyed(wlc_handle view) {
+        assert(core);
+        core->remove_window(core->find_window(view));
+        core->focus_window(core->get_active_window());
+    }
+
+    void view_focus(wlc_handle view, bool focus) {
+        wlc_view_set_state(view, WLC_BIT_ACTIVATED, focus);
+        wlc_view_bring_to_front(view);
+    }
+
+    Matrix4x4 get_transform(glm::mat4 mat) {
+        printf("get transform\n");
+        return {{
+            mat[0][0], mat[0][1], mat[0][2], mat[0][3],
+                mat[1][0], mat[1][1], mat[1][2], mat[1][3],
+                mat[2][0], mat[2][1], mat[2][2], mat[2][3],
+                mat[3][0], mat[3][1], mat[3][2], mat[3][3],
+        }};
+    }
+
+    Matrix4x4 get_mvp_for_view(struct wlc_view *view) {
+        auto w = core->find_window(convert_to_wlc_handle(view));
+
+        if(w) return get_transform(w->transform.compose());
+    }
+
+    void view_request_resize(wlc_handle view, uint32_t edges, const struct wlc_point *origin) {
+        SignalListenerData data;
+
+        auto w = core->find_window(view);
+        if(!w) return;
+
+        data.push_back((void*)(&w));
+        data.push_back((void*)(origin));
 
     core->triggerSignal("resize-request", data);
 }
@@ -119,6 +139,10 @@ void output_post_paint(wlc_handle output) {
         wlc_output_schedule_repaint((struct wlc_output*)convert_from_wlc_handle(output, "output"));
 }
 
+bool should_repaint_everything() {
+    return core->should_repaint_everything();
+}
+
 int main(int argc, char *argv[]) {
 
     std::cout << "e hay" << std::endl;
@@ -127,6 +151,7 @@ int main(int argc, char *argv[]) {
     static struct wlc_interface interface;
 
     interface.get_mvp_for_surface = get_mvp_for_view;
+    interface.should_paint_all_windows = should_repaint_everything;
 
     interface.view.created        = view_created;
     interface.view.destroyed      = view_destroyed;
@@ -152,5 +177,4 @@ int main(int argc, char *argv[]) {
 
     wlc_run();
     return EXIT_SUCCESS;
-}
 }
