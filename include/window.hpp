@@ -7,10 +7,14 @@ class Transform {
         static glm::mat4 grot;
         static glm::mat4 gscl;
         static glm::mat4 gtrs;
+
+        static glm::mat4 ViewProj;
+        static bool has_rotation;
     public:
         glm::mat4 rotation;
         glm::mat4 scalation;
         glm::mat4 translation;
+        glm::mat4 translateToCenter;
 
         glm::vec4 color;
     public:

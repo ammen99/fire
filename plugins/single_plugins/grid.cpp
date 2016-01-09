@@ -65,8 +65,9 @@ class Grid : public Plugin {
     }
 
     void updateConfiguration() {
-        //steps = getSteps(options["duration"]->data.ival);
-        steps = 1;
+        //steps = 60;
+        steps = getSteps(options["duration"]->data.ival);
+        //steps = 1;
     }
 
     void step() {

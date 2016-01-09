@@ -17,11 +17,11 @@ void getOffsetStepForWindow(FireWindow win, float c,
         float &offX, float &offY) {
     GetTuple(sw, sh, core->getScreenSize());
 
-    int newposX = sw / 2 - win->attrib.width / (2.f / c);
-    int newposY = sh / 2 - win->attrib.height/ (2.f / c);
+    int newposX = sw / 2 - win->attrib.size.w / (2.f);
+    int newposY = sh / 2 - win->attrib.size.h / (2.f);
 
-    offX =  2 * float(win->attrib.x - newposX) / float(sw);
-    offY = -2 * float(win->attrib.y - newposY) / float(sh);
+    offX =  2 * c * float(win->attrib.origin.x - newposX) / float(sw);
+    offY = -2 * c * float(win->attrib.origin.y - newposY) / float(sh);
 }
 
 struct WinAttrib {
@@ -49,7 +49,6 @@ class ATSwitcher : public Plugin {
 #define MAXDIRS 10
     std::queue<int> dirs;
 
-    FireWindow background;
     bool active, block = false; // block is waiting to exit
     int index;
 
@@ -87,40 +86,40 @@ class ATSwitcher : public Plugin {
 
         using namespace std::placeholders;
 
-        active = false;
+        active = true;
         initiate.mod = actKey.mod;
         initiate.key = actKey.key;
         initiate.type = BindingTypePress;
         initiate.action =
             std::bind(std::mem_fn(&ATSwitcher::handleKey), this, _1);
-        core->addKey(&initiate, true);
+        core->add_key(&initiate, true);
 
         forward.mod = 0;
-        forward.key = XKeysymToKeycode(core->d, XK_Right);
+        forward.key = XKB_KEY_Right;
         forward.type = BindingTypePress;
         forward.action = initiate.action;
-        core->addKey(&forward, false);
+        core->add_key(&forward, false);
 
         backward.mod = 0;
-        backward.key = XKeysymToKeycode(core->d, XK_Left);
+        backward.key = XKB_KEY_Left;
         backward.type = BindingTypePress;
         backward.action = initiate.action;
-        core->addKey(&backward, false);
+        core->add_key(&backward, false);
 
         terminate.mod = 0;
-        terminate.key = XKeysymToKeycode(core->d, XK_Return);
+        terminate.key = XKB_KEY_Return;
         terminate.type = BindingTypePress;
         terminate.action = initiate.action;
-        core->addKey(&terminate, false);
+        core->add_key(&terminate, false);
 
         rnd.action = std::bind(std::mem_fn(&ATSwitcher::step), this);
-        core->addHook(&rnd);
+        core->add_hook(&rnd);
 
         ini.action = std::bind(std::mem_fn(&ATSwitcher::initHook), this);
-        core->addHook(&ini);
+        core->add_hook(&ini);
 
         exit.action = std::bind(std::mem_fn(&ATSwitcher::exitHook), this);
-        core->addHook(&exit);
+        core->add_hook(&exit);
     }
 
     void init() {
@@ -129,10 +128,12 @@ class ATSwitcher : public Plugin {
         options.insert(newKeyOption("activate", Key{0, 0}));
     }
 
-    void handleKey(Context *ctx) {
-        auto xev = ctx->xev.xkey;
+    void handleKey(Context ctx) {
+        auto xev = ctx.xev.xkey;
 
-        if(xev.keycode == XKeysymToKeycode(core->d, XK_Tab)) {
+
+
+        if(xev.key == XKB_KEY_Tab) {
             if(active) {
                 if(ini.getState() || rnd.getState()) {
                     if(!block)
@@ -148,21 +149,21 @@ class ATSwitcher : public Plugin {
             }
         }
 
-        if(xev.keycode == XKeysymToKeycode(core->d, XK_Left)) {
+        if(xev.key == XKB_KEY_Left) {
             if(rnd.getState() || ini.getState())
                 dirs.push(1);
             else
                 moveLeft();
         }
 
-        if(xev.keycode == XKeysymToKeycode(core->d, XK_Right)) {
+        if(xev.key == XKB_KEY_Right) {
             if(rnd.getState() || ini.getState())
                 dirs.push(-1);
             else
                 moveRight();
         }
 
-        if(xev.keycode == XKeysymToKeycode(core->d, XK_Return))
+        if(xev.key == XKB_KEY_Return)
             if(active) {
                 if(ini.getState() || rnd.getState()) {
                     if(!block)
@@ -177,54 +178,40 @@ class ATSwitcher : public Plugin {
         if(!core->activateOwner(owner))
             return;
 
-        owner->grab();
+        //owner->grab();
 
         windows.clear();
         windows = core->getWindowsOnViewport(core->getWorkspace());
 
-        if(windows.size() == 1) {
-            core->deactivateOwner(owner);
-            return;
-        }
+        auto view = glm::lookAt(glm::vec3(0., 0., 1.67),
+                glm::vec3(0., 0., 0.),
+                glm::vec3(0., 1., 0.));
+        auto proj = glm::perspective(45.f, 1.f, .1f, 100.f);
 
+        Transform::ViewProj = proj * view;
+        //
         active = true;
-
-        background = nullptr;
-        auto it = windows.begin();
-        while(it != windows.end()) { // find background window
-            if((*it)->type == WindowTypeDesktop) {
-                background = (*it),
-                windows.erase(it);
-                break;
-            }
-            ++it;
-        }
 
         for(auto w : windows) {
             WinAttrib wia;
             wia.win = w;
 
             float offx, offy;
-            getOffsetStepForWindow(w, 1, offx, offy);
+            getOffsetStepForWindow(w, 0.5, offx, offy);
+
             wia.offX = -offx;
             wia.offY = -offy;
+
+            wia.scale = true;
+            wia.scaleStart = 1;
+            wia.scaleEnd = 0.5;
+
             winsToMove.push_back(wia);
 
             w->transform.translation = glm::translate(
-                    glm::mat4(), glm::vec3(offx, offy, 0));
-            w->disableVBOChange = true;
-            OpenGL::generateVAOVBO(w->attrib.width,
-                    w->attrib.height, w->vao, w->vbo);
+                    glm::mat4(), glm::vec3(0, 0, 0));
         }
 ////
-        OpenGL::transformed = true;
-        if(background) {
-            background->transform.translation = glm::translate(glm::mat4(),
-                    glm::vec3(0.f, 0.f, -1.0f));
-            background->transform.scalation   = glm::scale(glm::mat4(),
-                    glm::vec3(1.51f, 1.51f, 1.f));
-        }
-
         backward.enable(); forward.enable(); terminate.enable();
 
         attribs.offset = 0.6f;
@@ -237,26 +224,23 @@ class ATSwitcher : public Plugin {
             attribs.back = 0.;
 
         index = 0;
-        core->setRedrawEverything(true);
+        core->set_redraw_everything(true);
         curstep = 0;
         ini.enable();
     }
 
     void initHook() {
-
-        auto c = (.5f * float(curstep) +
-                float(initsteps - curstep)) / float(initsteps);
-        if(background)
-            background->transform.color = glm::vec4(c, c, c, 1.0);
-
         for(auto attrib : winsToMove) {
+            auto c2 = (float(curstep) * attrib.scaleEnd +
+                    float(initsteps - curstep) * attrib.scaleStart) / float(initsteps);
+
             attrib.win->transform.translation =
                 glm::translate(attrib.win->transform.translation,
                         glm::vec3(attrib.offX / float(initsteps),
                                   attrib.offY / float(initsteps), 0));
 
             attrib.win->transform.scalation =
-                glm::scale(glm::mat4(), glm::vec3(c, c, 1));
+                glm::scale(glm::mat4(), glm::vec3(c2, c2, 1));
         }
 
         curstep++;
@@ -270,8 +254,10 @@ class ATSwitcher : public Plugin {
             curstep = 0;
 
             auto size = windows.size();
-            if(size < 1)
+            if(size <= 1) {
                 return;
+                rnd.disable();
+            }
 
             auto prev = (index + size - 1) % size;
             auto next = (index + size + 1) % size;
@@ -288,8 +274,8 @@ class ATSwitcher : public Plugin {
 
             prv.scale = true;
             prv.scaleStart = 0.5;
-            prv.scaleEnd = getFactor(windows[prev]->attrib.width,
-                    windows[prev]->attrib.height, 0.5);
+            prv.scaleEnd = getFactor(windows[prev]->attrib.size.w,
+                    windows[prev]->attrib.size.h, 0.5);
             winsToMove.push_back(prv);
 
             if(prev == next)
@@ -304,8 +290,8 @@ class ATSwitcher : public Plugin {
 
                 ind.scale = true;
                 ind.scaleStart = 0.5;
-                ind.scaleEnd = getFactor(windows[index]->attrib.width,
-                        windows[index]->attrib.height,
+                ind.scaleEnd = getFactor(windows[index]->attrib.size.w,
+                        windows[index]->attrib.size.h,
                         0.5);
 
                 winsToMove.push_back(ind);
@@ -319,14 +305,14 @@ class ATSwitcher : public Plugin {
 
             nxt.scale = true;
             nxt.scaleStart = 0.5;
-            nxt.scaleEnd = getFactor(windows[next]->attrib.width,
-                    windows[next]->attrib.height, 0.5);
+            nxt.scaleEnd = getFactor(windows[next]->attrib.size.w,
+                    windows[next]->attrib.size.h, 0.5);
 
             winsToMove.push_back(nxt);
             for(int i = 0; i < windows.size(); i++) {
                 if(i != next && i != prev && i != index) {
-                    auto c = getFactor(windows[i]->attrib.width,
-                                  windows[i]->attrib.height, 0.5);
+                    auto c = getFactor(windows[i]->attrib.size.w,
+                                  windows[i]->attrib.size.h, 0.5);
                     windows[i]->transform.scalation =
                         glm::scale(glm::mat4(), glm::vec3(c, c, 1));
                 }
@@ -364,23 +350,11 @@ class ATSwitcher : public Plugin {
                 w->transform.scalation   =
                 w->transform.translation =
                 w->transform.rotation    = glm::mat4(),
-                w->transform.color[3] = 1,
-                w->disableVBOChange = false,
-                OpenGL::generateVAOVBO(w->attrib.x,
-                        w->attrib.y,
-                        w->attrib.width,
-                        w->attrib.height,
-                        w->vao, w->vbo);
+                w->transform.color[3] = 1;
 
-            core->setRedrawEverything(false);
-            core->dmg = core->getMaximisedRegion();
+            Transform::ViewProj = glm::mat4();
+            core->set_redraw_everything(false);
 
-            if(background)
-                background->transform.color = glm::vec4(1, 1, 1, 1),
-                background->transform.translation = glm::mat4(),
-                background->transform.scalation   = glm::mat4();
-
-            OpenGL::transformed = false;
             winsToMove.clear();
         }
     }
@@ -472,7 +446,7 @@ class ATSwitcher : public Plugin {
         nxt.rotateAngle = -attribs.angle * factor;
         winsToMove.push_back(nxt);
 
-        core->focusWindow(windows[index]);
+        core->focus_window(windows[index]);
 
         if(!active) {
         }
@@ -532,15 +506,17 @@ class ATSwitcher : public Plugin {
 
         auto size = windows.size();
 
+        if(!size) return;
+
         WinAttrib ind;
         ind.win = windows[index];
         ind.scale = true;
-        ind.scaleStart = getFactor(ind.win->attrib.width,
-                ind.win->attrib.height, 0.5);
+        ind.scaleStart = getFactor(ind.win->attrib.size.w,
+                ind.win->attrib.size.h, 0.5);
         ind.scaleEnd = 1;
 
         float offx, offy;
-        getOffsetStepForWindow(ind.win, 1, offx, offy);
+        getOffsetStepForWindow(ind.win, 0.5, offx, offy);
         ind.offX = offx;
         ind.offY = offy;
         ind.offZ = 0;
@@ -558,10 +534,10 @@ class ATSwitcher : public Plugin {
             wia.win = windows[i];
 
             if(i != prev && i != next && i != index) {
+
                 windows[i]->transform.translation =
                 windows[i]->transform.scalation =
                 windows[i]->transform.rotation = glm::mat4();
-                windows[i]->updateVBO();
 
                 wia.tr = true;
                 windows[i]->transform.color[3] = 0;
@@ -573,8 +549,14 @@ class ATSwitcher : public Plugin {
                 continue;
             }
 
+            wia.scale = true;
+            wia.scaleStart = getFactor(ind.win->attrib.size.w,
+                    ind.win->attrib.size.h, 0.5);
+            wia.scaleEnd = 1;
+
+
             float offx, offy;
-            getOffsetStepForWindow(windows[i], 1, offx, offy);
+            getOffsetStepForWindow(windows[i], 0.5, offx, offy);
 
             if(i == prev)
                 wia.rotateAngle = -attribs.angle,

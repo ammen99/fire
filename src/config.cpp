@@ -250,6 +250,9 @@ namespace {
             if(value == "F12")
                 return XKB_KEY_F12;
 
+            if(value == "Tab")
+                return XKB_KEY_Tab;
+
             return -1;
         }
 
