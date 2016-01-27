@@ -20,8 +20,8 @@ class CorePlugin : public Plugin {
             options.insert(newIntOption("vwidth", 3));
             options.insert(newIntOption("vheight", 3));
             options.insert(newStringOption("background", ""));
-            options.insert(newStringOption("shadersrc", "/usr/local/share/fireman/shaders"));
-            options.insert(newStringOption("pluginpath", "/usr/local/lib/fireman/"));
+            options.insert(newStringOption("shadersrc", "/usr/local/share/"));
+            options.insert(newStringOption("pluginpath", "/usr/local/lib/"));
             options.insert(newStringOption("plugins", ""));
         }
         void initOwnership() {
@@ -727,7 +727,7 @@ PluginPtr Core::loadPluginFromFile(std::string path, void **h) {
 
 void Core::loadDynamicPlugins() {
     std::stringstream stream(*plug->options["plugins"]->data.sval);
-    auto path = *plug->options["pluginpath"]->data.sval;
+    auto path = *plug->options["pluginpath"]->data.sval + "/wayfire/";
 
     std::string plugin;
     while(stream >> plugin){

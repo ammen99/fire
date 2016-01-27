@@ -18,13 +18,13 @@ Transform::Transform() {
 }
 
 glm::mat4 Transform::compose() {
-    if(!has_rotation)
+//    if(!has_rotation)
         return ViewProj*(gtrs*translation)*(grot*rotation)*(gscl*scalation);
-    else {
-        // if we have rotation, we must translate the object
-        // back to the center, rotate it and translate back
-        return ViewProj*(gtrs*translation)*(grot*)
-    }
+//    else {
+//        // if we have rotation, we must translate the object
+//        // back to the center, rotate it and translate back
+//        return ViewProj*(gtrs*translation)*(grot*)
+//    }
 }
 
 bool point_inside(wlc_point point, wlc_geometry rect) {
