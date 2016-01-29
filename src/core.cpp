@@ -1241,7 +1241,7 @@ PluginPtr Core::loadPluginFromFile(std::string path, void **h) {
 
 void Core::loadDynamicPlugins() {
     std::stringstream stream(*plug->options["plugins"]->data.sval);
-    auto path = *plug->options["pluginpath"]->data.sval;
+    auto path = *plug->options["pluginpath"]->data.sval+"/fireman/";
 
     std::string plugin;
     while(stream >> plugin){
