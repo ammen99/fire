@@ -54,7 +54,7 @@
 #include <fstream>
 
 extern "C"{
-#include "../src/wlc/include/wlc/wlc.h"
+#include <wlc/wlc.h>
 }
 #include <linux/input.h>
 

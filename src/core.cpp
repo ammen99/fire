@@ -321,9 +321,12 @@ void Core::addDefaultSignals() {
 void Core::add_window(wlc_handle view) {
     FireWindow w = std::make_shared<FireWin>(view);
     windows[view] = w;
+    printf("add window \n");
 
     wlc_view_bring_to_front(view);
     wlc_view_focus(view);
+
+    wlc_view_set_mask(view, 1);
 }
 
 void Core::focus_window(FireWindow win) {
