@@ -146,8 +146,14 @@ bool output_created(wlc_handle output) {
     return true;
 }
 
+void log(wlc_log_type type, const char *msg) {
+    std::cout << msg << std::endl;
+}
+
+
 int main(int argc, char *argv[]) {
     static struct wlc_interface interface;
+    wlc_log_set_handler(log);
 
     interface.view.created        = view_created;
     interface.view.destroyed      = view_destroyed;

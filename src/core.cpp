@@ -369,9 +369,8 @@ void Core::for_each_window(WindowCallbackProc call) {
 
 
 void Core::close_window(FireWindow win) {
-    assert(win);
+    if(!win) return;
 
-    printf("close windows\n");
     wlc_view_close(win->get_id());
     focus_window(get_active_window());
 }
@@ -505,6 +504,10 @@ FireWindow Core::getWindowAtPoint(int x, int y) {
     FireWindow chosen = nullptr;
 
     for_each_window([x,y, &chosen] (FireWindow w) {
+            printf("get window at point iter %d\n", w->is_visible());
+            printf("%d %d %d %d\n", w->attrib.origin.x, w->attrib.origin.y,
+                    w->attrib.size.w, w->attrib.size.h);
+            printf("%d %d\n", x, y);
             if(w->is_visible() && point_inside({x, y}, w->attrib)) {
                 if(chosen == nullptr) chosen = w;
             }

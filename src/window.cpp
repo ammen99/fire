@@ -41,11 +41,13 @@ bool point_inside(wlc_point point, wlc_geometry rect) {
 }
 
 bool rect_inside(wlc_geometry screen, wlc_geometry win) {
-    if(win.origin.x + win.size.w < screen.origin.x) return false;
-    if(win.origin.y + win.size.h < screen.origin.y) return false;
+    if(win.origin.x + win.size.w < screen.origin.x &&
+       win.origin.y + win.size.h < screen.origin.y)
+        return false;
 
-    if(screen.origin.x + screen.size.w < win.origin.x) return false;
-    if(screen.origin.y + screen.size.h < win.origin.y) return false;
+    if(screen.origin.x + screen.size.w < win.origin.x &&
+       screen.origin.y + screen.size.h < win.origin.y)
+        return false;
 
     return true;
 }
@@ -74,7 +76,6 @@ bool FireWin::is_visible() {
     GetTuple(sw, sh, core->getScreenSize());
 
     wlc_geometry geom = {{0, 0}, {(uint)sw, (uint)sh}};
-
     return rect_inside(geom, attrib);
 }
 
