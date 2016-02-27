@@ -110,10 +110,10 @@ class Core {
         int redraw_timer = 0;
 
         //WinStack *wins;
-        int cntHooks;
+        int cntHooks = 0;
 
         int mousex, mousey; // pointer x, y
-        int width, height;
+        uint32_t width, height;
         int vwidth, vheight; // viewport size
         int vx, vy;          // viewport position
 
@@ -165,6 +165,7 @@ class Core {
         void remove_window(FireWindow win);
 
         void for_each_window(WindowCallbackProc);
+        void for_each_window_reverse(WindowCallbackProc);
 
         bool process_key_event(uint32_t key, uint32_t mods, wlc_key_state state);
         bool process_button_event(uint32_t button, uint32_t mods, wlc_button_state state, wlc_point point);
@@ -182,6 +183,8 @@ class Core {
             if(state) ++redraw_timer;
             else if(redraw_timer) --redraw_timer;
         }
+
+        void render(wlc_handle output);
 
         int getRefreshRate();
 

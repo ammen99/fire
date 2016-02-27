@@ -1,8 +1,8 @@
-#include "../include/commonincludes.hpp"
-#include "../include/opengl.hpp"
-#include "../include/winstack.hpp"
-#include "../include/core.hpp"
-#include "../include/wm.hpp"
+#include "commonincludes.hpp"
+#include "opengl.hpp"
+#include "winstack.hpp"
+#include "core.hpp"
+#include "wm.hpp"
 
 #include <sstream>
 #include <memory>
@@ -12,6 +12,8 @@ bool wmDetected;
 
 Core *core;
 int refreshrate;
+
+GLuint vao, vbo;
 
 class CorePlugin : public Plugin {
     public:
@@ -114,6 +116,7 @@ void Core::rem_hook(uint key) {
 }
 
 void Core::run_hooks() {
+    //printf("run hooks \n");
     for(auto h : hooks) {
         if(h->getState())
             h->action();
@@ -321,7 +324,6 @@ void Core::addDefaultSignals() {
 void Core::add_window(wlc_handle view) {
     FireWindow w = std::make_shared<FireWin>(view);
     windows[view] = w;
-    printf("add window \n");
 
     wlc_view_bring_to_front(view);
     wlc_view_focus(view);
@@ -360,8 +362,20 @@ wlc_handle Core::get_top_window(wlc_handle output, size_t offset) {
 void Core::for_each_window(WindowCallbackProc call) {
     size_t num;
     const wlc_handle* views = wlc_output_get_views(wlc_get_focused_output(), &num);
+    std::cout << "foraeee" << std::endl;
 
     for(int i = num - 1; i >= 0; i--) {
+        auto w = find_window(views[i]);
+        std::cout << "ffff" << std::endl;
+        if(w) call(w);
+    }
+}
+
+void Core::for_each_window_reverse(WindowCallbackProc call) {
+    size_t num;
+    const wlc_handle *views = wlc_output_get_views(wlc_get_focused_output(), &num);
+
+    for(int i = 0; i < num; i++) {
         auto w = find_window(views[i]);
         if(w) call(w);
     }
@@ -396,11 +410,8 @@ bool Core::check_key(KeyBinding *kb, uint32_t key, uint32_t mod) {
 }
 
 bool Core::check_but_press(ButtonBinding *bb, uint32_t button, uint32_t mod) {
-
-    //printf("check but press %d\n", mod == WLC_BIT_MOD_ALT);
     if(!bb->active)
         return false;
-
 
     if(bb->type != BindingTypePress)
         return false;
@@ -482,6 +493,24 @@ bool Core::process_pointer_motion_event(wlc_point point) {
 #define MaxDelay 1000
 #define MinRR 61
 
+#include <wlc/wlc-wayland.h>
+#include <wlc/wlc-render.h>
+
+void Core::render(wlc_handle output) {
+    GLuint bg = get_background();
+    const wlc_geometry g = {{0, 0}, {1366, 768}};
+    OpenGL::renderTexture(bg, g);
+    glUseProgram(0);
+
+    return;
+    for_each_window_reverse([](FireWindow w) {
+                auto surf = wlc_view_get_surface(w->get_id());
+//                wlc_geometry g;
+//                wlc_view_get_geometry(w->get_id(), &g);
+//                wlc_surface_render(surf, &g);
+            });
+}
+
 std::tuple<int, int> Core::getWorkspace() {
     return std::make_tuple(vx, vy);
 }
@@ -504,10 +533,10 @@ FireWindow Core::getWindowAtPoint(int x, int y) {
     FireWindow chosen = nullptr;
 
     for_each_window([x,y, &chosen] (FireWindow w) {
-            printf("get window at point iter %d\n", w->is_visible());
-            printf("%d %d %d %d\n", w->attrib.origin.x, w->attrib.origin.y,
-                    w->attrib.size.w, w->attrib.size.h);
-            printf("%d %d\n", x, y);
+//            printf("get window at point iter %d\n", w->is_visible());
+//            printf("%d %d %d %d\n", w->attrib.origin.x, w->attrib.origin.y,
+//                    w->attrib.size.w, w->attrib.size.h);
+//            printf("%d %d\n", x, y);
             if(w->is_visible() && point_inside({x, y}, w->attrib)) {
                 if(chosen == nullptr) chosen = w;
             }
@@ -657,6 +686,7 @@ namespace {
 GLuint Core::get_background() {
     if(background != -1) return background;
 
+    OpenGL::initOpenGL("/usr/share/wayfire/shaders/");
     return (background = LoadJPEG(plug->options["background"]->data.sval->c_str()));
 }
 

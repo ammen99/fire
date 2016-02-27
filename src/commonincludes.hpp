@@ -1,22 +1,6 @@
 #ifndef COMMON_INCLUDES
 #define COMMON_INCLUDES
 
-#include <X11/Xlib.h>
-#include <X11/extensions/Xcomposite.h>
-#include <X11/extensions/Xfixes.h>
-#include <X11/extensions/shape.h>
-#include <X11/extensions/XShm.h>
-#include <X11/Xatom.h>
-#include <X11/extensions/Xdamage.h>
-#include <X11/keysym.h>
-#include <X11/Xmu/Xmu.h>
-#include <X11/Xmu/WinUtil.h>
-#include <X11/Xregion.h>
-
-#include <wayland-server.h>
-#include <systemd/sd-login.h>
-#include <dbus-1.0/dbus/dbus.h>
-
 #include <libinput.h>
 
 
@@ -39,10 +23,9 @@
 #include <queue>
 #include <algorithm>
 
-
+#define GL_GLEXT_PROTOTYPES
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
-#include <GL/glx.h>
 
 #define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>

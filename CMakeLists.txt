@@ -11,7 +11,7 @@ pkg_check_modules(xlib REQUIRED x11 xext xdamage xfixes xcomposite)
 pkg_check_modules(gl REQUIRED gl glew ILUT)
 
 # Main executable
-include_directories(include /usr/include/pixman-1 /usr/include/dbus-1.0/ /usr/lib64/dbus-1.0/include src/wlc/include src/wlc/src src/wlc/shared)
+include_directories(src)
 file(GLOB SOURCES "src/*.cpp")
 
 add_executable(wayfire ${SOURCES})
@@ -26,7 +26,6 @@ target_link_libraries(wayfire dl wayland-server wlc xkbcommon input wayland-clie
 
 # Installation
 install(TARGETS wayfire DESTINATION bin)
-install(DIRECTORY include/ DESTINATION include/wayfire)
 install(DIRECTORY shaders/ DESTINATION share/wayfire/shaders)
 install(FILES config DESTINATION lib/wayfire/firerc)
 

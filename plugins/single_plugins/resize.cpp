@@ -38,7 +38,7 @@ class Resize : public Plugin {
 
 
         release.type   = BindingTypeRelease;
-        release.mod    = AnyModifier;
+        release.mod    = 0;
         release.button = iniButton.button;
         release.action = std::bind(std::mem_fn(&Resize::terminate), this, _1);
         core->add_but(&release, false);
@@ -121,7 +121,7 @@ class Resize : public Plugin {
                 n.size.h = min.h;
             }
 
-            win->moveResize(n.origin.x, n.origin.y, n.size.w, n.size.h);
+            win->set_geometry(n.origin.x, n.origin.y, n.size.w, n.size.h);
 
         }
 

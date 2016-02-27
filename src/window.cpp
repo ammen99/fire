@@ -1,5 +1,5 @@
-#include <core.hpp>
-#include <opengl.hpp>
+#include "core.hpp"
+#include "opengl.hpp"
 
 
 /* misc definitions */
@@ -93,13 +93,8 @@ void FireWin::resize(int w, int h) {
     wlc_view_set_geometry(view, 0, &attrib);
 }
 
-void FireWin::moveResize(int x, int y, int w, int h) {
-
-    attrib.origin.x = x;
-    attrib.origin.y = y;
-    attrib.size.w = w;
-    attrib.size.h = h;
-
+void FireWin::set_geometry(int x, int y, int w, int h) {
+    attrib = (wlc_geometry){.origin = {x, y}, .size = {(uint32_t)w, (uint32_t)h}};
     wlc_view_set_geometry(view, 0, &attrib);
 }
 

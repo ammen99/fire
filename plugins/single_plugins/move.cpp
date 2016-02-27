@@ -41,7 +41,7 @@ class Move : public Plugin {
             core->add_but(&press, true);
 
             release.type   = BindingTypeRelease;
-            release.mod    = AnyModifier;
+            release.mod    = 0;
             release.button = iniButton.button;
             release.action = std::bind(std::mem_fn(&Move::Terminate), this, _1);
             core->add_but(&release, false);

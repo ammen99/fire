@@ -1,4 +1,4 @@
-#include <wm.hpp>
+#include "wm.hpp"
 
 void Exit::init() {
     this->owner->special = true;
@@ -17,7 +17,7 @@ void Exit::init() {
 void Refresh::init() {
     ref.key = XKB_KEY_r;
     ref.type = BindingTypePress;
-    ref.mod = ControlMask | Mod1Mask;
+    ref.mod = WLC_BIT_MOD_CTRL | WLC_BIT_MOD_ALT;
     ref.action = [] (Context ctx) {
         //core->terminate = true;
         //core->mainrestart = true;

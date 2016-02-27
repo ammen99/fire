@@ -1,5 +1,4 @@
-#include "../include/core.hpp"
-#include "../include/opengl.hpp"
+#include "core.hpp"
 
 #include <GL/glext.h>
 #include <EGL/egl.h>
@@ -80,21 +79,21 @@ void view_focus(wlc_handle view, bool focus) {
     wlc_view_bring_to_front(view);
 }
 
-matrix4x4_t get_transform(glm::mat4 mat) {
-    return {{
-        mat[0][0], mat[0][1], mat[0][2], mat[0][3],
-            mat[1][0], mat[1][1], mat[1][2], mat[1][3],
-            mat[2][0], mat[2][1], mat[2][2], mat[2][3],
-            mat[3][0], mat[3][1], mat[3][2], mat[3][3],
-    }};
-}
-
-matrix4x4_t get_mvp_for_view(wlc_handle view) {
-    auto w = core->find_window(view);
-
-    if(w) return get_transform(w->transform.compose());
-    else  return get_transform(glm::mat4());
-}
+//matrix4x4_t get_transform(glm::mat4 mat) {
+//    return {{
+//        mat[0][0], mat[0][1], mat[0][2], mat[0][3],
+//            mat[1][0], mat[1][1], mat[1][2], mat[1][3],
+//            mat[2][0], mat[2][1], mat[2][2], mat[2][3],
+//            mat[3][0], mat[3][1], mat[3][2], mat[3][3],
+//    }};
+//}
+//
+//matrix4x4_t get_mvp_for_view(wlc_handle view) {
+//    auto w = core->find_window(view);
+//
+//    if(w) return get_transform(w->transform.compose());
+//    else  return get_transform(glm::mat4());
+//}
 
 void view_request_resize(wlc_handle view, uint32_t edges, const struct wlc_point *origin) {
     SignalListenerData data;
@@ -125,12 +124,14 @@ void output_pre_paint(wlc_handle output) {
     assert(core);
 
     core->run_hooks();
+    core->render(output);
+
+    if(core->should_redraw())
+        wlc_output_schedule_render(output);
 }
 
 void output_post_paint(wlc_handle output) {
     assert(core);
-    if(core->should_redraw())
-        wlc_output_schedule_render(output);
 }
 
 bool should_repaint_everything() {
@@ -150,6 +151,13 @@ void log(wlc_log_type type, const char *msg) {
     std::cout << msg << std::endl;
 }
 
+void view_request_geometry(wlc_handle view, const wlc_geometry *g) {
+    auto win = core->find_window(view);
+    if (!win) return;
+
+    win->set_geometry(g->origin.x, g->origin.y, g->size.w, g->size.h);
+}
+
 
 int main(int argc, char *argv[]) {
     static struct wlc_interface interface;
@@ -158,15 +166,14 @@ int main(int argc, char *argv[]) {
     interface.view.created        = view_created;
     interface.view.destroyed      = view_destroyed;
     interface.view.focus          = view_focus;
-    interface.view.render.transform = get_mvp_for_view;
 
     interface.view.request.resize = view_request_resize;
     interface.view.request.move   = view_request_move;
+    interface.view.request.geometry = view_request_geometry;
 
     interface.output.created = output_created;
     interface.output.render.pre = output_pre_paint;
     interface.output.render.post = output_post_paint;
-    interface.output.render.background = get_background_texture;
 
     interface.keyboard.key = keyboard_key;
 

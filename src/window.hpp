@@ -60,9 +60,7 @@ class FireWin {
         void move(int x, int y);
         void resize(int w, int h);
 
-        /* special function to deal with ConfigureRequest
-         * it needs special handling */
-        void moveResize(int x, int y, int w, int h);
+        void set_geometry(int x, int y, int w, int h);
 
         wlc_handle get_id() {return view;}
 };

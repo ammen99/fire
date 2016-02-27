@@ -6,7 +6,7 @@
 
 struct GridWindow {
     FireWindow win;
-    XWindowAttributes size;
+    struct {int x, y, width, height;} size;
     GridWindow(){}
     GridWindow(FireWindow id, int x, int y, int w, int h) {
         this->win = id;
@@ -71,6 +71,7 @@ class Grid : public Plugin {
     }
 
     void step() {
+        printf("step \n");
 
         GetTuple(sw, sh, core->getScreenSize());
         float offx = GetProgress(0,

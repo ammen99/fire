@@ -1,7 +1,7 @@
-#include <winstack.hpp>
-#include <opengl.hpp>
-#include <algorithm>
-
+//#include <winstack.hpp>
+//#include <opengl.hpp>
+//#include <algorithm>
+//
 
 //std::unordered_map<Window, FireWindow> windows;
 //
