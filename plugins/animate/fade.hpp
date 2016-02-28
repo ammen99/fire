@@ -3,7 +3,7 @@
 extern int fadeDuration;
 enum FadeMode { FadeIn = 1, FadeOut = -1 };
 template<FadeMode mode> class Fade : public Animation {
-    FireWindow win;
+    View win;
     int progress = 0;
     int maxstep = 0;
     int target = 0;
@@ -12,7 +12,7 @@ template<FadeMode mode> class Fade : public Animation {
     bool savetr;
 
     public:
-    Fade(FireWindow w);
+    Fade(View w);
     bool Step();
     bool Run();
     ~Fade();

@@ -5,10 +5,10 @@
                                             *((steps)-(curstep)))/(steps))
 
 struct GridWindow {
-    FireWindow win;
+    View win;
     struct {int x, y, width, height;} size;
     GridWindow(){}
-    GridWindow(FireWindow id, int x, int y, int w, int h) {
+    GridWindow(View id, int x, int y, int w, int h) {
         this->win = id;
         size.x = x;
         size.y = y;
@@ -124,7 +124,7 @@ class Grid : public Plugin {
         }
     }
 
-    void toggleMaxim(FireWindow win, int &x, int &y, int &w, int &h) {
+    void toggleMaxim(View win, int &x, int &y, int &w, int &h) {
         auto it = std::find_if(wins.begin(), wins.end(),
                 [win](GridWindow w) {
                 return win->get_id() == w.win->get_id();

@@ -2,7 +2,7 @@
 #define FIRE_H
 
 #include "commonincludes.hpp"
-#include "window.hpp"
+#include "view.hpp"
 #include "glx.hpp"
 #include "config.hpp"
 #include "plugin.hpp"
@@ -85,7 +85,7 @@ enum EffectType { EFFECT_OVERLAY, EFFECT_WINDOW };
 struct EffectHook : public Hook {
     EffectType type;
     /* used only if type == EFFECT_WINDOW */
-    FireWindow win;
+    View win;
 };
 
 using SignalListenerData = std::vector<void*>;
@@ -98,7 +98,7 @@ struct SignalListener {
 #define GetTuple(x,y,t) auto x = std::get<0>(t); \
                         auto y = std::get<1>(t)
 
-using WindowCallbackProc = std::function<void(FireWindow)>;
+using WindowCallbackProc = std::function<void(View)>;
 
 class Core {
 
@@ -117,9 +117,9 @@ class Core {
         int vwidth, vheight; // viewport size
         int vx, vy;          // viewport position
 
-        std::vector<std::vector<FireWindow> > backgrounds;
+        std::vector<std::vector<View> > backgrounds;
 
-        std::unordered_map<wlc_handle, FireWindow> windows;
+        std::unordered_map<wlc_handle, View> windows;
 
         uint nextID = 0;
         pollfd fd;
@@ -150,19 +150,19 @@ class Core {
         void init();
 
         void run(const char *command);
-        FireWindow find_window(wlc_handle handle);
-        FireWindow get_active_window();
+        View find_window(wlc_handle handle);
+        View get_active_window();
 
         wlc_handle get_top_window(wlc_handle output, size_t offset);
 
-        FireWindow getWindowAtPoint(int x, int y);
+        View getWindowAtPoint(int x, int y);
 
         void add_window(wlc_handle view);
 
-        void focus_window(FireWindow win);
-        void close_window(FireWindow win);
+        void focus_window(View win);
+        void close_window(View win);
 
-        void remove_window(FireWindow win);
+        void remove_window(View win);
 
         void for_each_window(WindowCallbackProc);
         void for_each_window_reverse(WindowCallbackProc);
@@ -204,7 +204,7 @@ class Core {
         void run_hooks();
 
         void add_effect(EffectHook *);
-        void rem_effect(uint key, FireWindow win = nullptr);
+        void rem_effect(uint key, View win = nullptr);
 
         void addSignal(std::string name);
         void connectSignal(std::string name, SignalListener *callback);
@@ -225,7 +225,7 @@ class Core {
         void getViewportTexture(std::tuple<int, int>, GLuint& fbuff,
                 GLuint& tex);
 
-        std::vector<FireWindow> getWindowsOnViewport(std::tuple<int, int>);
+        std::vector<View> getWindowsOnViewport(std::tuple<int, int>);
         void switchWorkspace(std::tuple<int, int>);
 
         std::tuple<int, int> getWorkspace ();

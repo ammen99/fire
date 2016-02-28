@@ -10,7 +10,7 @@ struct FadeWindowData : public WindowData {
 /* FadeIn begin */
 
 template<>
-Fade<FadeIn>::Fade (FireWindow _win) : win(_win), run(true) {
+Fade<FadeIn>::Fade (View _win) : win(_win), run(true) {
 
     /* exit if already running */
     if(ExistsData(win, "fade")) {
@@ -56,7 +56,7 @@ template<> Fade<FadeIn>::~Fade() {}
 
 /* FadeOut begin */
 template<>
-Fade<FadeOut>::Fade (FireWindow _win) : win(_win), run(true) {
+Fade<FadeOut>::Fade (View _win) : win(_win), run(true) {
 
     /* exit if already running */
     if(ExistsData(win, "fade")) {

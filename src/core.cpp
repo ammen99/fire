@@ -134,7 +134,7 @@ void Core::add_effect(EffectHook *hook){
         hook->win->effects[hook->id] = hook;
 }
 
-void Core::rem_effect(uint key, FireWindow w) {
+void Core::rem_effect(uint key, View w) {
     if(w == nullptr) {
         auto it = std::remove_if(effects.begin(), effects.end(),
                 [key] (EffectHook *hook) {
@@ -230,7 +230,7 @@ void Core::regOwner(Ownership owner) {
 bool Core::activateOwner(Ownership owner) {
 
     if(!owner) {
-        std::cout << "Error detected ?? calling with nullptr!!1" << std::endl;
+        std::cout << "Error detected ?? calling with nullptr!!" << std::endl;
         return false;
     }
 
@@ -246,7 +246,6 @@ bool Core::activateOwner(Ownership owner) {
 
             bool act_owner_in_owner_compat =
                 owner->compat.find(act_owner->name) != owner->compat.end();
-
 
             if(!owner_in_act_owner_compat && !act_owner->compatAll)
                 return false;
@@ -310,7 +309,7 @@ void Core::addDefaultSignals() {
 
     /* move-window is triggered when a window is moved
      * Data contains 3 elements:
-     * 1. raw pointer to FireWin
+     * 1. raw pointer to FireView
      * 2. dx
      * 3. dy */
 
@@ -322,7 +321,7 @@ void Core::addDefaultSignals() {
 }
 
 void Core::add_window(wlc_handle view) {
-    FireWindow w = std::make_shared<FireWin>(view);
+    View w = std::make_shared<FireView>(view);
     windows[view] = w;
 
     wlc_view_bring_to_front(view);
@@ -331,19 +330,19 @@ void Core::add_window(wlc_handle view) {
     wlc_view_set_mask(view, 1);
 }
 
-void Core::focus_window(FireWindow win) {
+void Core::focus_window(View win) {
     if(!win) return;
     auto id = win->get_id();
     wlc_view_focus(id);
 }
 
-FireWindow Core::find_window(wlc_handle handle) {
+View Core::find_window(wlc_handle handle) {
     auto it = windows.find(handle);
     if(it == windows.end()) return nullptr;
     return it->second;
 }
 
-FireWindow Core::get_active_window() {
+View Core::get_active_window() {
     return find_window(get_top_window(wlc_get_focused_output(), 0));
 }
 
@@ -362,11 +361,9 @@ wlc_handle Core::get_top_window(wlc_handle output, size_t offset) {
 void Core::for_each_window(WindowCallbackProc call) {
     size_t num;
     const wlc_handle* views = wlc_output_get_views(wlc_get_focused_output(), &num);
-    std::cout << "foraeee" << std::endl;
 
     for(int i = num - 1; i >= 0; i--) {
         auto w = find_window(views[i]);
-        std::cout << "ffff" << std::endl;
         if(w) call(w);
     }
 }
@@ -382,14 +379,14 @@ void Core::for_each_window_reverse(WindowCallbackProc call) {
 }
 
 
-void Core::close_window(FireWindow win) {
+void Core::close_window(View win) {
     if(!win) return;
 
     wlc_view_close(win->get_id());
     focus_window(get_active_window());
 }
 
-void Core::remove_window(FireWindow win) {
+void Core::remove_window(View win) {
     assert(win);
 
     windows.erase(win->get_id());
@@ -503,12 +500,12 @@ void Core::render(wlc_handle output) {
     glUseProgram(0);
 
     return;
-    for_each_window_reverse([](FireWindow w) {
-                auto surf = wlc_view_get_surface(w->get_id());
+//    for_each_window_reverse([](View w) {
+//                auto surf = wlc_view_get_surface(w->get_id());
 //                wlc_geometry g;
 //                wlc_view_get_geometry(w->get_id(), &g);
 //                wlc_surface_render(surf, &g);
-            });
+//            });
 }
 
 std::tuple<int, int> Core::getWorkspace() {
@@ -528,15 +525,11 @@ std::tuple<int, int> Core::getMouseCoord() {
     return std::make_tuple(mousex, mousey);
 }
 
-FireWindow Core::getWindowAtPoint(int x, int y) {
+View Core::getWindowAtPoint(int x, int y) {
 
-    FireWindow chosen = nullptr;
+    View chosen = nullptr;
 
-    for_each_window([x,y, &chosen] (FireWindow w) {
-//            printf("get window at point iter %d\n", w->is_visible());
-//            printf("%d %d %d %d\n", w->attrib.origin.x, w->attrib.origin.y,
-//                    w->attrib.size.w, w->attrib.size.h);
-//            printf("%d %d\n", x, y);
+    for_each_window([x,y, &chosen] (View w) {
             if(w->is_visible() && point_inside({x, y}, w->attrib)) {
                 if(chosen == nullptr) chosen = w;
             }
@@ -560,7 +553,7 @@ void Core::switchWorkspace(std::tuple<int, int> nPos) {
     //glm::mat4 translate_matrix = glm::translate(glm::mat4(), glm::vec3(2 * dx / float(sw),))
 
     using namespace std::placeholders;
-    auto proc = [=] (FireWindow w) {
+    auto proc = [=] (View w) {
         //if(w->state & WindowStateSticky)
         //    return;
 
@@ -590,7 +583,7 @@ void Core::switchWorkspace(std::tuple<int, int> nPos) {
         focus_window(ws[i]);
 }
 
-std::vector<FireWindow> Core::getWindowsOnViewport(std::tuple<int, int> vp) {
+std::vector<View> Core::getWindowsOnViewport(std::tuple<int, int> vp) {
     auto x = std::get<0>(vp);
     auto y = std::get<1>(vp);
 
@@ -601,9 +594,9 @@ std::vector<FireWindow> Core::getWindowsOnViewport(std::tuple<int, int> vp) {
     view.size.w = width;
     view.size.h = height;
 
-    std::vector<FireWindow> ret;
+    std::vector<View> ret;
 
-    auto proc = [view, &ret] (FireWindow w) {
+    auto proc = [view, &ret] (View w) {
         if(rect_inside(view, w->attrib))
             ret.push_back(w);
     };
@@ -623,7 +616,7 @@ void Core::getViewportTexture(std::tuple<int, int> vp,
 //    glClear(GL_COLOR_BUFFER_BIT);
 //
 //    GetTuple(x, y, vp);
-//    FireWin::allDamaged = true;
+//    FireView::allDamaged = true;
 //
 //    auto view = getRegionFromRect((x - vx) * width, (y - vy) * height,
 //                       (x - vx + 1) * width, (y - vy + 1) * height);
@@ -634,9 +627,9 @@ void Core::getViewportTexture(std::tuple<int, int> vp,
 //    Transform::gtrs *= off;
 //
 //    Region tmp = XCreateRegion();
-//    std::vector<FireWindow> winsToDraw;
+//    std::vector<View> winsToDraw;
 //
-//    auto proc = [view, tmp, &winsToDraw](FireWindow win) {
+//    auto proc = [view, tmp, &winsToDraw](View win) {
 //        if(!win->isVisible() || !win->region)
 //            return;
 //
@@ -709,7 +702,7 @@ GLuint Core::get_background() {
 //    for(int i = 0; i < vheight; i++){
 //        for(int j = 0; j < vwidth; j++) {
 //
-//            backgrounds[i][j] = std::make_shared<FireWin>(0, false);
+//            backgrounds[i][j] = std::make_shared<FireView>(0, false);
 //
 //            backgrounds[i][j]->vao = vao;
 //            backgrounds[i][j]->vbo = vbo;

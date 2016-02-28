@@ -4,7 +4,7 @@ namespace {
     GLuint program;
     GLuint mvpID;
     GLuint depthID, colorID, bgraID;
-    glm::mat4 View;
+    glm::mat4 ViewMat;
     glm::mat4 Proj;
     glm::mat4 MVP;
 
@@ -90,7 +90,6 @@ namespace OpenGL {
         GLint uvPosition = GL_CALL(glGetAttribLocation(program, "uvPosition"));
  //       GLint texID      = GL_CALL(glGetAttribLocation(program, "smp"));
 
-        std::cout << position << " " << uvPosition << std::endl;
         auto w2ID = GL_CALL(glGetUniformLocation(program, "w2"));
         auto h2ID = GL_CALL(glGetUniformLocation(program, "h2"));
 
@@ -112,7 +111,7 @@ namespace OpenGL {
 
     void renderTransformedTexture(GLuint tex, const wlc_geometry& g, glm::mat4 Model) {
         if(transformed)
-            MVP = Proj * View * Model;
+            MVP = Proj * ViewMat * Model;
         else
             MVP = Model;
 
@@ -202,8 +201,6 @@ namespace OpenGL {
 
         program = glCreateProgram();
 
-        std::cout << "ccc" << std::endl;
-
         GL_CALL(glAttachShader (program, vss));
         GL_CALL(glAttachShader (program, fss));
         GL_CALL(glLinkProgram (program));
@@ -214,7 +211,7 @@ namespace OpenGL {
         colorID = GL_CALL(glGetUniformLocation(program, "color"));
         bgraID  = GL_CALL(glGetUniformLocation(program, "bgra"));
 
-        View = glm::lookAt(glm::vec3(0., 0., 1.67),
+        ViewMat = glm::lookAt(glm::vec3(0., 0., 1.67),
                 glm::vec3(0., 0., 0.),
                 glm::vec3(0., 1., 0.));
         Proj = glm::perspective(45.f, 1.f, .1f, 100.f);

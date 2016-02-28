@@ -8,7 +8,7 @@ class FireParticleSystem;
 
 class Fire {
     FireParticleSystem *ps;
-    FireWindow w;
+    View w;
 
     EffectHook hook;
     Hook transparency;
@@ -18,7 +18,7 @@ class Fire {
     int progress = 0;
 
     public:
-        Fire(FireWindow win);
+        Fire(View win);
         void step();
         void adjustAlpha();
         void handleWindowMoved(SignalListenerData d);

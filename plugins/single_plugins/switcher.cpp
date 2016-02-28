@@ -13,7 +13,7 @@ float getFactor(int x, int y, float percent) {
         return 0;
 }
 
-void getOffsetStepForWindow(FireWindow win, float c,
+void getOffsetStepForWindow(View win, float c,
         float &offX, float &offY) {
     GetTuple(sw, sh, core->getScreenSize());
 
@@ -25,7 +25,7 @@ void getOffsetStepForWindow(FireWindow win, float c,
 }
 
 struct WinAttrib {
-    FireWindow win;
+    View win;
     bool tr = false;
     float rotateAngle;
     float offX;
@@ -44,7 +44,7 @@ class ATSwitcher : public Plugin {
     KeyBinding terminate;
 
     Key actKey;
-    std::vector<FireWindow> windows;
+    std::vector<View> windows;
 
 #define MAXDIRS 10
     std::queue<int> dirs;

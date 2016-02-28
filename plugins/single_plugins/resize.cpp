@@ -4,7 +4,7 @@ class Resize : public Plugin {
     private:
         int sx, sy; // starting pointer x, y
         int cx, cy; // coordinates of the center of the window
-        FireWindow win; // window we're operating on
+        View win; // window we're operating on
 
         Button iniButton;
 
@@ -52,7 +52,7 @@ class Resize : public Plugin {
         using namespace std::placeholders;
     }
 
-    void initiate(Context ctx, FireWindow pwin) {
+    void initiate(Context ctx, View pwin) {
 
         auto xev = ctx.xev.xbutton;
 
@@ -130,7 +130,7 @@ class Resize : public Plugin {
     }
 
     void on_resize_request(SignalListenerData data) {
-        FireWindow w = *(FireWindow*)data[0];
+        View w = *(View*)data[0];
         wlc_point point = *(wlc_point*)data[1];
 
         initiate(Context(point.x, point.y, 0, 0), w);

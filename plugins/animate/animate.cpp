@@ -70,7 +70,7 @@ class AnimatePlugin : public Plugin {
         }
 
         void mapWindow(SignalListenerData data) {
-            auto win = *((FireWindow*) data[0]);
+            auto win = *((View*) data[0]);
             if(map_animation == "fire")
                 new Fire(win);
             else
@@ -78,7 +78,7 @@ class AnimatePlugin : public Plugin {
         }
 
         void unmapWindow(SignalListenerData data) {
-            auto win = *((FireWindow*) data[0]);
+            auto win = *((View*) data[0]);
             new AnimationHook(new Fade<FadeOut>(win));
         }
 

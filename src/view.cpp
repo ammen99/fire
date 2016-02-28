@@ -41,37 +41,31 @@ bool point_inside(wlc_point point, wlc_geometry rect) {
 }
 
 bool rect_inside(wlc_geometry screen, wlc_geometry win) {
-    if(win.origin.x + win.size.w < screen.origin.x &&
-       win.origin.y + win.size.h < screen.origin.y)
+    if(win.origin.x + (int32_t)win.size.w < screen.origin.x &&
+       win.origin.y + (int32_t)win.size.h < screen.origin.y)
         return false;
 
-    if(screen.origin.x + screen.size.w < win.origin.x &&
-       screen.origin.y + screen.size.h < win.origin.y)
+    if(screen.origin.x + (int32_t)screen.size.w < win.origin.x &&
+       screen.origin.y + (int32_t)screen.size.h < win.origin.y)
         return false;
 
     return true;
 }
 
-FireWin::FireWin(wlc_handle _view) {
+FireView::FireView(wlc_handle _view) {
     view = _view;
-
     auto geom = wlc_view_get_geometry(view);
-
     std::memcpy(&attrib, geom, sizeof(attrib));
 }
 
-FireWin::~FireWin() {
-
-    for(auto d : data)
-        delete d.second;
-    data.clear();
+FireView::~FireView() {
 }
 
 #define Mod(x,m) (((x)%(m)+(m))%(m))
 
 
 
-bool FireWin::is_visible() {
+bool FireView::is_visible() {
 
     GetTuple(sw, sh, core->getScreenSize());
 
@@ -79,21 +73,21 @@ bool FireWin::is_visible() {
     return rect_inside(geom, attrib);
 }
 
-void FireWin::move(int x, int y) {
+void FireView::move(int x, int y) {
     attrib.origin.x = x;
     attrib.origin.y = y;
 
     wlc_view_set_geometry(view, 0, &attrib);
 }
 
-void FireWin::resize(int w, int h) {
+void FireView::resize(int w, int h) {
     attrib.size.w = w;
     attrib.size.h = h;
 
     wlc_view_set_geometry(view, 0, &attrib);
 }
 
-void FireWin::set_geometry(int x, int y, int w, int h) {
+void FireView::set_geometry(int x, int y, int w, int h) {
     attrib = (wlc_geometry){.origin = {x, y}, .size = {(uint32_t)w, (uint32_t)h}};
     wlc_view_set_geometry(view, 0, &attrib);
 }

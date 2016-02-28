@@ -11,7 +11,7 @@
 //    StackTypeNoStacking = 8
 //};
 //
-//using WindowProc = std::function<void(FireWindow)>;
+//using WindowProc = std::function<void(View)>;
 //
 //class WinStack {
 //    private:
@@ -20,46 +20,46 @@
 //         * LayerNormal is for normal windows
 //         * and LayerBelow is for desktop windows */
 //
-//        std::vector<std::list<FireWindow> >layers;
+//        std::vector<std::list<View> >layers;
 //        std::unordered_set<Window> clientList;
 //
-//        typedef std::list<FireWindow>::iterator StackIterator;
+//        typedef std::list<View>::iterator StackIterator;
 //
-//        StackIterator getIteratorPositionForWindow(FireWindow win);
-//        bool recurseIsAncestor(FireWindow parent, FireWindow win);
+//        StackIterator getIteratorPositionForWindow(View win);
+//        bool recurseIsAncestor(View parent, FireViewdow win);
 //
-//        void addClient(FireWindow win);
-//        void removeClient(FireWindow win);
+//        void addClient(View win);
+//        void removeClient(View win);
 //        void setNetClientList();
-//        bool isClientWindow(FireWindow win);
+//        bool isClientWindow(View win);
 //
 //    public:
-//        FireWindow activeWin;
+//        View activeWin;
 //
 //        WinStack();
-//        void addWindow(FireWindow win);
-//        void removeWindow(FireWindow win);
-//        void recalcWindowLayer(FireWindow win);
-//        Layer getTargetLayerForWindow(FireWindow win);
-//        FireWindow findWindow(Window win);
-//        FireWindow getTopmostToplevel();
+//        void addWindow(View win);
+//        void removeWindow(View win);
+//        void recalcWindowLayer(View win);
+//        Layer getTargetLayerForWindow(View win);
+//        View findWindow(Window win);
+//        View getTopmostToplevel();
 //        void renderWindows();
 //        void forEachWindow(WindowProc proc);
 //
-//        void checkAddClient(FireWindow win);
-//        void checkRemoveClient(FireWindow win);
+//        void checkAddClient(View win);
+//        void checkRemoveClient(View win);
 //
-//        void focusWindow(FireWindow win);
+//        void focusWindow(View win);
 //        /* rstr shows whether we have to restack transients also */
-//        void restackAbove(FireWindow above, FireWindow below, bool rstr = true);
-//        FireWindow findWindowAtCursorPosition(int x, int y);
+//        void restackAbove(View above, FireViewdow below, bool rstr = true);
+//        View findWindowAtCursorPosition(int x, int y);
 //
-//        void restackTransients(FireWindow win);
-//        FireWindow findTopmostStackingWindow(FireWindow win);
+//        void restackTransients(View win);
+//        View findTopmostStackingWindow(FireViewdow win);
 //
-//        FireWindow getAncestor(FireWindow win);
-//        bool isAncestorTo(FireWindow parent, FireWindow win);
-//        StackType getStackType(FireWindow win1, FireWindow win2);
-//        bool isTransientInGroup(FireWindow win, FireWindow parent);
+//        View getAncestor(FireViewdow win);
+//        bool isAncestorTo(View parent, FireViewdow win);
+//        StackType getStackType(View win1, FireViewdow win2);
+//        bool isTransientInGroup(View win, FireViewdow parent);
 //};
 #endif

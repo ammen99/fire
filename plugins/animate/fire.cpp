@@ -132,7 +132,7 @@ struct DeleteFireObjectHook {
 
 };
 
-Fire::Fire(FireWindow win) : w(win) {
+Fire::Fire(View win) : w(win) {
     auto x = win->attrib.x,
          y = win->attrib.y,
          w = win->attrib.width,
@@ -238,7 +238,7 @@ void Fire::handleWindowMoved(SignalListenerData d) {
 }
 
 void Fire::handleWindowUnmapped(SignalListenerData d) {
-    FireWindow ww = *(FireWindow*)d[0];
+    View ww = *(FireWindow*)d[0];
     if(ww->id == w->id) {
         ps->disable();
         step();

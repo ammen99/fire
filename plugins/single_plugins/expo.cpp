@@ -27,7 +27,7 @@ class Expo : public Plugin {
 
         Hook hook;
         bool active;
-        std::function<FireWindow(int, int)> save; // used to restore
+        std::function<View(int, int)> save; // used to restore
 
         Key toggleKey;
     public:
@@ -220,7 +220,7 @@ class Expo : public Plugin {
         }
     }
 
-    FireWindow findWindow(int px, int py) {
+    View findWindow(int px, int py) {
         GetTuple(w, h, core->getScreenSize());
         GetTuple(vw, vh, core->getWorksize());
         GetTuple(cvx, cvy, core->getWorkspace());

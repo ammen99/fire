@@ -23,28 +23,24 @@ class Transform {
 };
 
 
-struct WindowData {
+struct ViewData {
 };
 
 struct EffectHook;
 
-#define GetData(type, win, name) ((type*)(win->data[(name)]))
-#define ExistsData(win, name) ((win)->data.find((name)) != (win)->data.end())
-#define AllocData(type, win, name) (win)->data[(name)] = new type()
-
 bool point_inside(wlc_point point, wlc_geometry rect);
 bool rect_inside(wlc_geometry screen, wlc_geometry win);
 
-class FireWin {
+class FireView {
     wlc_handle view;
 
     public:
 
-        FireWin(wlc_handle);
-        ~FireWin();
+        FireView(wlc_handle);
+        ~FireView();
         /* this can be used by plugins to store
          * specific for the plugin data */
-        std::unordered_map<std::string, WindowData*> data;
+        std::unordered_map<std::string, ViewData> data;
         std::unordered_map<uint, EffectHook*> effects;
 
         struct wlc_geometry attrib;
@@ -65,7 +61,7 @@ class FireWin {
         wlc_handle get_id() {return view;}
 };
 
-typedef std::shared_ptr<FireWin> FireWindow;
+typedef std::shared_ptr<FireView> View;
 
 class Core;
 

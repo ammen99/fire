@@ -4,7 +4,7 @@ class Move : public Plugin {
 
         int sx, sy; // starting pointer x, y
 
-        FireWindow win; // window we're operating on
+        View win; // window we're operating on
 
         ButtonBinding press;
         ButtonBinding release;
@@ -59,7 +59,7 @@ class Move : public Plugin {
             core->connectSignal("move-request", &move_request);
         }
 
-        void Initiate(Context ctx, FireWindow pwin) {
+        void Initiate(Context ctx, View pwin) {
 
             auto xev = ctx.xev.xbutton;
             if(!pwin) {
@@ -71,9 +71,8 @@ class Move : public Plugin {
 
             else win = pwin;
 
-            if(!core->activateOwner(owner)){
+            if(!core->activateOwner(owner))
                 return;
-            }
 
             owner->grab();
 
@@ -90,30 +89,18 @@ class Move : public Plugin {
             hook.disable();
             release.disable();
             core->deactivateOwner(owner);
-
-            auto xev = ctx.xev.xbutton;
-            win->transform.translation = glm::mat4();
-
-            int dx = (xev.x_root - sx) * scX;
-            int dy = (xev.y_root - sy) * scY;
-
-            int nx = win->attrib.origin.x + dx;
-            int ny = win->attrib.origin.y + dy;
-
-            win->move(nx, ny);
         }
 
         void Intermediate() {
             GetTuple(cmx, cmy, core->getMouseCoord());
-            GetTuple(w, h, core->getScreenSize());
 
-            printf("%d %d\n", cmx - sx, sy - cmy);
+            int nx = win->attrib.origin.x + (cmx - sx) * scX;
+            int ny = win->attrib.origin.y + (cmy - sy) * scY;
 
-            win->transform.translation =
-                glm::translate(glm::mat4(), glm::vec3(
-                            float(cmx - sx) / float(w / 2.0),
-                            float(sy - cmy) / float(h / 2.0),
-                            0.f));
+            win->move(nx, ny);
+
+            sx = cmx;
+            sy = cmy;
         }
 
         void onScaleChanged(SignalListenerData data) {
@@ -122,7 +109,7 @@ class Move : public Plugin {
         }
 
         void on_move_request(SignalListenerData data) {
-            FireWindow w = *(FireWindow*)data[0];
+            View w = *(View*)data[0];
             if(!w) return;
 
             wlc_point origin = *(wlc_point*)data[1];

@@ -3,14 +3,14 @@
 //#include <algorithm>
 //
 
-//std::unordered_map<Window, FireWindow> windows;
+//std::unordered_map<Window, View> windows;
 //
-//using StackIterator = std::list<FireWindow>::iterator;
+//using StackIterator = std::list<View>::iterator;
 //WinStack::WinStack() {
 //    layers.resize(3);
 //}
 //
-//void WinStack::addWindow(FireWindow win) {
+//void WinStack::addWindow(View win) {
 //    if(findWindow(win->id) != nullptr &&
 //            win->type != WindowTypeDesktop) {
 //        return;
@@ -26,7 +26,7 @@
 //    checkAddClient(win);
 //}
 //
-//Layer WinStack::getTargetLayerForWindow(FireWindow win) {
+//Layer WinStack::getTargetLayerForWindow(View win) {
 //    if(win->type == WindowTypeDesktop ||
 //           win->state & WindowStateBelow)
 //        return LayerBelow;
@@ -39,7 +39,7 @@
 //    else return LayerNormal;
 //}
 //
-//void WinStack::recalcWindowLayer(FireWindow win) {
+//void WinStack::recalcWindowLayer(View win) {
 //    auto newLayer = getTargetLayerForWindow(win);
 //    if(win->layer == newLayer)
 //        return;
@@ -51,14 +51,14 @@
 //    win->layer = newLayer;
 //}
 //
-//StackIterator WinStack::getIteratorPositionForWindow(FireWindow win) {
+//StackIterator WinStack::getIteratorPositionForWindow(View win) {
 //    return std::find_if(layers[win->layer].begin(), layers[win->layer].end(),
-//            [win] (FireWindow w) {
+//            [win] (View w) {
 //                return w && w->id == win->id;
 //            });
 //}
 //
-//FireWindow WinStack::findWindow(Window win) {
+//View WinStack::findWindow(Window win) {
 //    if(windows.find(win) != windows.end())
 //        return windows[win];
 //
@@ -66,7 +66,7 @@
 //}
 //
 //void WinStack::renderWindows() {
-//    if(FireWin::allDamaged) {
+//    if(FireView::allDamaged) {
 //        XDestroyRegion(core->dmg);
 //        core->dmg = copyRegion(output);
 //
@@ -87,7 +87,7 @@
 //    if(!core->dmg)
 //        core->dmg = copyRegion(output);
 //
-//    std::vector<FireWindow> winsToDraw;
+//    std::vector<View> winsToDraw;
 //
 //    auto tmp = XCreateRegion();
 //    for(auto wins : layers) {
@@ -111,7 +111,7 @@
 //    XDestroyRegion(tmp);
 //}
 //
-//void WinStack::removeWindow(FireWindow win) {
+//void WinStack::removeWindow(View win) {
 //    if(!win) return;
 //    removeClient(win);
 //
@@ -123,7 +123,7 @@
 //}
 //
 //
-//bool WinStack::recurseIsAncestor(FireWindow parent, FireWindow win) {
+//bool WinStack::recurseIsAncestor(View parent, FireViewdow win) {
 //    if(parent->id == win->id)
 //        return true;
 //
@@ -138,14 +138,14 @@
 //    return mask;
 //}
 //
-//bool WinStack::isAncestorTo(FireWindow parent, FireWindow win) {
+//bool WinStack::isAncestorTo(View parent, FireViewdow win) {
 //    if(win->id == parent->id) // a window is not its own ancestor
 //        return false;
 //
 //    return recurseIsAncestor(parent, win);
 //}
 //
-//StackType WinStack::getStackType(FireWindow win1, FireWindow win2) {
+//StackType WinStack::getStackType(View win1, FireViewdow win2) {
 //
 //    if(win1->id == win2->id)
 //        return StackTypeNoStacking;
@@ -163,7 +163,7 @@
 //}
 //
 //
-//FireWindow WinStack::getAncestor(FireWindow win) {
+//View WinStack::getAncestor(FireViewdow win) {
 //
 //    if(!win)
 //        return nullptr;
@@ -171,7 +171,7 @@
 //    if(win->type == WindowTypeNormal)
 //        return win;
 //
-//    FireWindow w1, w2;
+//    View w1, w2;
 //    w1 = w2 = nullptr;
 //
 //    if(win->transientFor)
@@ -193,7 +193,7 @@
 //        return nullptr;
 //}
 //
-//void WinStack::restackAbove(FireWindow above, FireWindow below, bool rstTransients) {
+//void WinStack::restackAbove(View above, FireViewdow below, bool rstTransients) {
 //    if(above == nullptr || below == nullptr)
 //        return;
 //
@@ -226,7 +226,7 @@
 //}
 //
 ///* returns the topmost window that we can restack above */
-//FireWindow WinStack::findTopmostStackingWindow(FireWindow win) {
+//View WinStack::findTopmostStackingWindow(FireViewdow win) {
 //    for(int layer = win->layer; layer < layers.size(); layer++) {
 //        for(auto w : layers[layer]) {
 //            if(win->id == w->id || win->type == WindowTypeDesktop)
@@ -242,7 +242,7 @@
 //    return nullptr;
 //}
 //
-//bool WinStack::isTransientInGroup(FireWindow transient, FireWindow parent) {
+//bool WinStack::isTransientInGroup(View transient, FireViewdow parent) {
 //    if(parent->leader != transient->leader && transient->leader != parent)
 //        return false;
 //
@@ -253,12 +253,12 @@
 //    return false;
 //}
 //
-//void WinStack::restackTransients(FireWindow win) {
+//void WinStack::restackTransients(View win) {
 //
 //    if(win == nullptr)
 //        return;
 //
-//    std::vector<FireWindow> winsToRestack;
+//    std::vector<View> winsToRestack;
 //    for(auto w : layers[win->layer])
 //        if(isAncestorTo(win, w) || isTransientInGroup(w, win))
 //            winsToRestack.push_back(w);
@@ -267,7 +267,7 @@
 //        restackAbove(w, win, false);
 //}
 //
-//void WinStack::focusWindow(FireWindow win) {
+//void WinStack::focusWindow(View win) {
 //    if(win == nullptr || win->type == WindowTypeDesktop)
 //        return;
 //
@@ -325,7 +325,7 @@
 //    activeWin->addDamage();
 //}
 //
-//FireWindow WinStack::findWindowAtCursorPosition(int x, int y) {
+//View WinStack::findWindowAtCursorPosition(int x, int y) {
 //    for(auto wins : layers) {
 //        for(auto w : wins)
 //            if(w->attrib.map_state == IsViewable && // desktop and invisible
@@ -340,7 +340,7 @@
 //    return nullptr;
 //}
 //
-//FireWindow WinStack::getTopmostToplevel() {
+//View WinStack::getTopmostToplevel() {
 //    for(auto &wins : layers)
 //        for(auto w : wins) {
 //            if(w->isVisible() && !w->destroyed &&
@@ -369,7 +369,7 @@
 //            XA_WINDOW, 32, PropModeReplace, (unsigned char *) arr, i);
 //}
 //
-//bool WinStack::isClientWindow(FireWindow win) {
+//bool WinStack::isClientWindow(View win) {
 //    if(win->attrib.map_state != IsViewable)
 //        return false;
 //    if(win->attrib.override_redirect)
@@ -378,22 +378,22 @@
 //    return true;
 //}
 //
-//void WinStack::addClient(FireWindow win) {
+//void WinStack::addClient(View win) {
 //    clientList.insert(win->id);
 //    setNetClientList();
 //}
-//void WinStack::removeClient(FireWindow win) {
+//void WinStack::removeClient(View win) {
 //    if(clientList.find(win->id) != clientList.end())
 //        clientList.erase(win->id);
 //    setNetClientList();
 //}
 //
-//void WinStack::checkAddClient(FireWindow win) {
+//void WinStack::checkAddClient(View win) {
 //    if(isClientWindow(win) &&
 //            clientList.find(win->id) == clientList.end())
 //        addClient(win);
 //}
 //
-//void WinStack::checkRemoveClient(FireWindow win) {
+//void WinStack::checkRemoveClient(View win) {
 //    removeClient(win);
 //}
