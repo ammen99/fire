@@ -1,4 +1,7 @@
 # Fire
+Fire is unmaintained. There is really no good reason to (mostly) duplicate the functionality of compiz. Check [Wayfire](https://github.com/WayfireWM/wayfire) for a wayland version of fire, which is currently developed.
+
+
 # Introduction
 Fire is a compositing window manager written from scratch. It uses X11 and OpenGL to render windows. It has a simple configuration system and extensible plugin interface. Right now I'm using Fire as my WM on my main system, but I cannot guarantee for 100% stability. 
 
